@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,14 +13,15 @@ import {
   deactivateUserByAdmin,
   fetchNavVisibilitySettings,
   fetchProfiles,
+  fetchRoleCatalog,
   fetchUserRoles,
   saveNavVisibilitySettings,
+  saveRoleCatalog,
   setUserRole,
 } from "@/lib/supabase-api";
 import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibility-settings";
 import type { AppRole, NavVisibilitySettings } from "@/types/hospital";
 
-const roleOptions: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 const defaultNavSettings: NavVisibilitySettings = {
   admin: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
   director: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
@@ -32,14 +33,31 @@ const defaultNavSettings: NavVisibilitySettings = {
 const UsersPage = () => {
   const { roles, user } = useAuth();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ email: "", password: "", display_name: "", role: "staff" as AppRole });
+  const [form, setForm] = useState({ email: "", password: "", display_name: "", role: "admin" as AppRole });
+  const [newRoleName, setNewRoleName] = useState("");
 
   const { data: profiles = [] } = useQuery({ queryKey: ["profiles"], queryFn: fetchProfiles });
   const { data: roleMap = {} } = useQuery({ queryKey: ["user_roles"], queryFn: () => fetchUserRoles() });
+  const { data: roleCatalog = ["admin"] } = useQuery({
+    queryKey: ["app_settings", "role_catalog"],
+    queryFn: fetchRoleCatalog,
+  });
   const { data: navVisibility = defaultNavSettings } = useQuery({
     queryKey: ["app_settings", "nav_visibility"],
     queryFn: fetchNavVisibilitySettings,
   });
+
+  useEffect(() => {
+    if (!roleCatalog.length) return;
+    if (!roleCatalog.includes(form.role)) {
+      setForm((prev) => ({ ...prev, role: roleCatalog[0] }));
+    }
+  }, [roleCatalog, form.role]);
+
+  const roleOptions = useMemo(
+    () => Array.from(new Set([...(roleCatalog ?? []), ...users.map((u) => u.role)])),
+    [roleCatalog, users],
+  );
 
   const users = useMemo(
     () =>
@@ -54,7 +72,7 @@ const UsersPage = () => {
     mutationFn: () => createUserByAdmin(roles, form),
     onSuccess: async () => {
       toast({ title: "User created" });
-      setForm({ email: "", password: "", display_name: "", role: "staff" });
+      setForm({ email: "", password: "", display_name: "", role: roleCatalog[0] ?? "admin" });
       await queryClient.invalidateQueries({ queryKey: ["profiles"] });
       await queryClient.invalidateQueries({ queryKey: ["user_roles"] });
     },
@@ -91,12 +109,80 @@ const UsersPage = () => {
     onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
   });
 
+  const roleCatalogMutation = useMutation({
+    mutationFn: (nextCatalog: AppRole[]) => {
+      if (!user?.id) throw new Error("You must be signed in to save roles.");
+      return saveRoleCatalog(roles, nextCatalog, user.id);
+    },
+    onSuccess: async () => {
+      toast({ title: "Roles updated" });
+      await queryClient.invalidateQueries({ queryKey: ["app_settings", "role_catalog"] });
+    },
+    onError: (error) => toast({ title: "Roles save failed", description: (error as Error).message, variant: "destructive" }),
+  });
+
+  const addRole = () => {
+    const normalized = newRoleName.trim();
+    if (!normalized) return;
+    if (roleCatalog.includes(normalized)) {
+      toast({ title: "Role already exists", variant: "destructive" });
+      return;
+    }
+    void roleCatalogMutation.mutate([...roleCatalog, normalized]);
+    setNewRoleName("");
+  };
+
+  const removeRole = (roleToRemove: AppRole) => {
+    if (roleToRemove === "admin") {
+      toast({ title: "Admin role cannot be removed", variant: "destructive" });
+      return;
+    }
+    const next = roleCatalog.filter((role) => role !== roleToRemove);
+    void roleCatalogMutation.mutate(next);
+  };
+
   return (
     <section className="space-y-6">
       <header>
         <h1 className="text-3xl font-bold">User Management</h1>
         <p className="text-sm text-muted-foreground">Admin-only user CRUD and secure role assignment.</p>
       </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Roles Management</CardTitle>
+          <CardDescription>Add custom roles that become selectable in Create User.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 md:flex-row">
+            <Input
+              value={newRoleName}
+              onChange={(e) => setNewRoleName(e.target.value)}
+              placeholder="e.g. Data Collector"
+              disabled={roleCatalogMutation.isPending}
+            />
+            <Button type="button" onClick={addRole} disabled={roleCatalogMutation.isPending || !newRoleName.trim()}>
+              Add Role
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {roleCatalog.map((role) => (
+              <div key={role} className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+                <span>{role}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2"
+                  onClick={() => removeRole(role)}
+                  disabled={roleCatalogMutation.isPending || role === "admin"}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -118,7 +204,7 @@ const UsersPage = () => {
           </div>
           <div className="space-y-2">
             <Label>Role</Label>
-            <Select value={form.role} onValueChange={(value) => setForm((p) => ({ ...p, role: value as AppRole }))}>
+            <Select value={form.role} onValueChange={(value) => setForm((p) => ({ ...p, role: value }))}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -145,6 +231,7 @@ const UsersPage = () => {
         <CardContent className="space-y-4">
           <NavVisibilitySettingsEditor
             settings={navVisibility}
+            showHeader={false}
             disabled={settingsMutation.isPending}
             onChange={(next) => {
               queryClient.setQueryData(["app_settings", "nav_visibility"], next);
@@ -177,7 +264,7 @@ const UsersPage = () => {
                   <TableCell>
                     <Select
                       value={user.role}
-                      onValueChange={(value) => roleMutation.mutate({ userId: user.user_id, role: value as AppRole })}
+                      onValueChange={(value) => roleMutation.mutate({ userId: user.user_id, role: value })}
                     >
                       <SelectTrigger className="w-40">
                         <SelectValue />
