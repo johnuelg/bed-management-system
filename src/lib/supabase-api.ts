@@ -67,6 +67,22 @@ export const saveDepartment = async (roles: AppRole[], input: Partial<Department
   if (error) throw error;
 };
 
+export const updateDepartment = async (
+  roles: AppRole[],
+  id: string,
+  input: { name: string; code: string },
+) => {
+  requireRole(roles, ["admin"], "manage departments");
+  const { error } = await db.from("departments").update(input).eq("id", id);
+  if (error) throw error;
+};
+
+export const deleteDepartment = async (roles: AppRole[], id: string) => {
+  requireRole(roles, ["admin"], "manage departments");
+  const { error } = await db.from("departments").delete().eq("id", id);
+  if (error) throw error;
+};
+
 export const toggleDepartmentActive = async (roles: AppRole[], id: string, is_active: boolean) => {
   requireRole(roles, ["admin"], "manage departments");
   const { error } = await db.from("departments").update({ is_active }).eq("id", id);

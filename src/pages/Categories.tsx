@@ -8,12 +8,14 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
+  deleteDepartment,
   fetchBedTypes,
   fetchDepartments,
   saveBedType,
   saveDepartment,
   toggleBedTypeActive,
   toggleDepartmentActive,
+  updateDepartment,
 } from "@/lib/supabase-api";
 
 const CategoriesPage = () => {
@@ -21,6 +23,7 @@ const CategoriesPage = () => {
   const qc = useQueryClient();
   const [dept, setDept] = useState({ name: "", code: "" });
   const [bedType, setBedType] = useState({ name: "" });
+  const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
   const { data: bedTypes = [] } = useQuery({ queryKey: ["bed_types"], queryFn: fetchBedTypes });
@@ -31,13 +34,32 @@ const CategoriesPage = () => {
   };
 
   const deptMutation = useMutation({
-    mutationFn: () => saveDepartment(roles, { ...dept }),
+    mutationFn: () => {
+      if (editingDepartmentId) {
+        return updateDepartment(roles, editingDepartmentId, { ...dept });
+      }
+      return saveDepartment(roles, { ...dept });
+    },
     onSuccess: async () => {
       setDept({ name: "", code: "" });
-      toast({ title: "Department saved" });
+      setEditingDepartmentId(null);
+      toast({ title: editingDepartmentId ? "Department updated" : "Department saved" });
       await refresh();
     },
     onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
+  });
+
+  const deleteDepartmentMutation = useMutation({
+    mutationFn: (id: string) => deleteDepartment(roles, id),
+    onSuccess: async () => {
+      if (editingDepartmentId) {
+        setDept({ name: "", code: "" });
+        setEditingDepartmentId(null);
+      }
+      toast({ title: "Department deleted" });
+      await refresh();
+    },
+    onError: (error) => toast({ title: "Delete failed", description: (error as Error).message, variant: "destructive" }),
   });
 
   const bedMutation = useMutation({
@@ -73,7 +95,25 @@ const CategoriesPage = () => {
                 <Input value={dept.code} onChange={(e) => setDept((p) => ({ ...p, code: e.target.value.toUpperCase() }))} />
               </div>
             </div>
-            <Button onClick={() => deptMutation.mutate()}>Add / Update Department</Button>
+            {editingDepartmentId ? (
+              <p className="text-sm text-muted-foreground">Editing Department: Name and Code are loaded below.</p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => deptMutation.mutate()}>
+                {editingDepartmentId ? "Update Department" : "Add Department"}
+              </Button>
+              {editingDepartmentId ? (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEditingDepartmentId(null);
+                    setDept({ name: "", code: "" });
+                  }}
+                >
+                  Cancel Edit
+                </Button>
+              ) : null}
+            </div>
             <div className="space-y-3">
               {departments.map((item) => (
                 <div key={item.id} className="flex items-center justify-between rounded-md border p-3">
@@ -81,7 +121,25 @@ const CategoriesPage = () => {
                     <p className="font-semibold">{item.name}</p>
                     <p className="text-xs text-muted-foreground">{item.code}</p>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingDepartmentId(item.id);
+                        setDept({ name: item.name, code: item.code });
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => deleteDepartmentMutation.mutate(item.id)}
+                      disabled={deleteDepartmentMutation.isPending}
+                    >
+                      Delete
+                    </Button>
                     <span>{item.is_active ? "Active" : "Inactive"}</span>
                     <Switch
                       checked={item.is_active}
