@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ const LoginPage = () => {
 
   const redirectPath = (location.state as { from?: string } | null)?.from ?? "/dashboard";
 
-  const onSubmit = async (event: React.FormEvent) => {
+  const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const parsed = loginSchema.safeParse({ email, password });
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -189,7 +189,7 @@ const DataEntryPage = () => {
             <Input
               type="file"
               accept=".csv,.xlsx,.pdf,.doc,.png,.jpg,.jpeg"
-              onChange={(e) => {
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
                 void onUpload(e.target.files?.[0]);
               }}
             />

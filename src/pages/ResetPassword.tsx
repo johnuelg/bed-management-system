@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ const ResetPasswordPage = () => {
   const [loading, setLoading] = useState(false);
   const isRecovery = useMemo(() => window.location.hash.includes("type=recovery"), []);
 
-  const onReset = async (event: React.FormEvent) => {
+  const onReset = async (event: FormEvent) => {
     event.preventDefault();
     if (password.length < 8) {
       toast({ title: "Weak password", description: "Use at least 8 characters", variant: "destructive" });
