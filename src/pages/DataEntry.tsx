@@ -1,6 +1,7 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ import {
   deleteBedSubmission,
   fetchBedTypes,
   fetchDepartments,
+  fetchFormFields,
   fetchTodaySubmissions,
   getCurrentUserId,
   saveBedSubmission,
@@ -30,6 +32,7 @@ import {
 } from "@/lib/supabase-api";
 import { MAX_UPLOAD_SIZE } from "@/lib/file-upload";
 import { hasAnyRole } from "@/lib/rbac";
+import type { FormField } from "@/types/hospital";
 
 const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((file, ctx) => {
   if (file.size > MAX_UPLOAD_SIZE) {
@@ -50,6 +53,7 @@ const DataEntryPage = () => {
     occupied: 0,
     closed: 0,
     closure_reason: "",
+    custom_fields: {} as Record<string, unknown>,
   };
 
   const [form, setForm] = useState(initialForm);
@@ -58,7 +62,16 @@ const DataEntryPage = () => {
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
   const { data: bedTypes = [] } = useQuery({ queryKey: ["bed_types"], queryFn: fetchBedTypes });
+  const { data: formFields = [] } = useQuery({ queryKey: ["form_fields"], queryFn: fetchFormFields });
   const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
+
+  const dynamicFields = useMemo(
+    () => formFields.filter((field) => field.is_active && !field.is_system),
+    [formFields],
+  );
+
+  const canEditDynamicField = (field: FormField) =>
+    !field.is_readonly && (field.editable_roles.length === 0 || field.editable_roles.some((role) => roles.includes(role)));
 
   const departmentNameById = useMemo(
     () => Object.fromEntries(departments.map((department) => [department.id, department.name])),
@@ -93,7 +106,7 @@ const DataEntryPage = () => {
         closed: Number(form.closed),
         closure_reason: form.closed > 0 ? form.closure_reason.trim() : null,
         submitted_on: new Date().toISOString().slice(0, 10),
-        custom_fields: {},
+        custom_fields: form.custom_fields,
         calculated_fields: { vacant: computed.vacant, occupancy_rate: computed.occupancyRate },
         submitted_by: currentUserId,
         updated_by: currentUserId,
@@ -232,6 +245,104 @@ const DataEntryPage = () => {
             />
           </div>
 
+          {dynamicFields.map((field) => {
+            const editable = canEditDynamicField(field);
+            const currentValue = form.custom_fields[field.field_key] ?? field.default_value ?? "";
+
+            if (field.field_type === "formula") return null;
+
+            if (field.field_type === "textarea") {
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <Textarea
+                    disabled={!editable}
+                    value={String(currentValue)}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        custom_fields: { ...prev.custom_fields, [field.field_key]: e.target.value },
+                      }))
+                    }
+                  />
+                </div>
+              );
+            }
+
+            if (field.field_type === "select") {
+              const options = Array.isArray(field.options) ? field.options : [];
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <Select
+                    disabled={!editable}
+                    value={String(currentValue)}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        custom_fields: { ...prev.custom_fields, [field.field_key]: value },
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            }
+
+            if (field.field_type === "boolean") {
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      disabled={!editable}
+                      checked={Boolean(currentValue === true || currentValue === "true")}
+                      onCheckedChange={(checked) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          custom_fields: { ...prev.custom_fields, [field.field_key]: Boolean(checked) },
+                        }))
+                      }
+                    />
+                    <span className="text-muted-foreground">Enabled</span>
+                  </label>
+                </div>
+              );
+            }
+
+            const inputType = field.field_type === "number" ? "number" : field.field_type === "date" ? "date" : "text";
+
+            return (
+              <div key={field.id} className="space-y-2 md:col-span-2">
+                <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                <Input
+                  type={inputType}
+                  disabled={!editable}
+                  value={inputType === "number" ? Number(currentValue || 0) : String(currentValue)}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      custom_fields: {
+                        ...prev.custom_fields,
+                        [field.field_key]: inputType === "number" ? Number(e.target.value) : e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </div>
+            );
+          })}
+
           <div className="md:col-span-2">
             <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
               Save Entry
@@ -260,6 +371,7 @@ const DataEntryPage = () => {
                     occupied: row.occupied,
                     closed: row.closed,
                     closure_reason: row.closure_reason ?? "",
+                    custom_fields: (row.custom_fields as Record<string, unknown>) ?? {},
                   })
                 }
               >
