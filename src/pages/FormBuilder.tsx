@@ -27,6 +27,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchFormFields, replaceFormFieldOrder, saveFormField } from "@/lib/supabase-api";
@@ -64,9 +65,24 @@ const SortableFieldItem = ({
         <Button type="button" variant="outline" size="sm" onClick={() => onEdit(field)}>
           Edit
         </Button>
-        <Button type="button" variant="destructive" size="sm" onClick={() => onDelete(field)} disabled={isDeleting}>
-          Delete
-        </Button>
+        {field.is_system ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button type="button" variant="destructive" size="sm" disabled>
+                  Delete
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>System fields are required and cannot be deleted.</p>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button type="button" variant="destructive" size="sm" onClick={() => onDelete(field)} disabled={isDeleting}>
+            Delete
+          </Button>
+        )}
         <button type="button" className="rounded border p-2" {...attributes} {...listeners}>
           <GripVertical className="h-4 w-4" />
         </button>
@@ -158,6 +174,7 @@ const FormBuilderPage = () => {
   };
 
   const onDelete = (field: FormField) => {
+    if (field.is_system) return;
     setFieldToDelete(field);
   };
 
@@ -195,7 +212,8 @@ const FormBuilderPage = () => {
         <p className="text-sm text-muted-foreground">Drag, reorder, and role-scope custom fields.</p>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
+      <TooltipProvider>
+        <div className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
         <Card>
           <CardHeader>
             <CardTitle>{draft.id ? "Edit Field" : "Add Field"}</CardTitle>
@@ -311,6 +329,7 @@ const FormBuilderPage = () => {
           </CardContent>
         </Card>
       </div>
+      </TooltipProvider>
 
       <AlertDialog open={Boolean(fieldToDelete)} onOpenChange={(open) => !open && setFieldToDelete(null)}>
         <AlertDialogContent>
