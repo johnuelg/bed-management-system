@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCcw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -38,7 +39,7 @@ const KpiBuilderPage = () => {
 
   const formulaValues = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const formula of formulas.filter((f) => f.is_active)) {
+    for (const formula of formulas) {
       try {
         map[formula.id] = evaluateFormulaFromRow(formula.expression, {
           total_beds: sums.total_beds,
@@ -159,7 +160,7 @@ const KpiBuilderPage = () => {
                 <SelectContent>
                   {formulas.map((formula) => (
                     <SelectItem key={formula.id} value={formula.id}>
-                      {formula.name}
+                      {formula.name} {formula.is_system ? "(Default)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -171,6 +172,27 @@ const KpiBuilderPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>All Formulas</CardTitle>
+          <CardDescription>Includes custom and default formulas.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {formulas.map((formula) => (
+            <div key={formula.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold">{formula.name}</p>
+                <p className="text-xs text-muted-foreground">{formula.expression}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {formula.is_system && <Badge variant="secondary">Default</Badge>}
+                <Badge variant={formula.is_active ? "default" : "outline"}>{formula.is_active ? "Active" : "Inactive"}</Badge>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
