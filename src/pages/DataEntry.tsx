@@ -245,6 +245,104 @@ const DataEntryPage = () => {
             />
           </div>
 
+          {dynamicFields.map((field) => {
+            const editable = canEditDynamicField(field);
+            const currentValue = form.custom_fields[field.field_key] ?? field.default_value ?? "";
+
+            if (field.field_type === "formula") return null;
+
+            if (field.field_type === "textarea") {
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <Textarea
+                    disabled={!editable}
+                    value={String(currentValue)}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        custom_fields: { ...prev.custom_fields, [field.field_key]: e.target.value },
+                      }))
+                    }
+                  />
+                </div>
+              );
+            }
+
+            if (field.field_type === "select") {
+              const options = Array.isArray(field.options) ? field.options : [];
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <Select
+                    disabled={!editable}
+                    value={String(currentValue)}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        custom_fields: { ...prev.custom_fields, [field.field_key]: value },
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            }
+
+            if (field.field_type === "boolean") {
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      disabled={!editable}
+                      checked={Boolean(currentValue === true || currentValue === "true")}
+                      onCheckedChange={(checked) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          custom_fields: { ...prev.custom_fields, [field.field_key]: Boolean(checked) },
+                        }))
+                      }
+                    />
+                    <span className="text-muted-foreground">Enabled</span>
+                  </label>
+                </div>
+              );
+            }
+
+            const inputType = field.field_type === "number" ? "number" : field.field_type === "date" ? "date" : "text";
+
+            return (
+              <div key={field.id} className="space-y-2 md:col-span-2">
+                <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                <Input
+                  type={inputType}
+                  disabled={!editable}
+                  value={inputType === "number" ? Number(currentValue || 0) : String(currentValue)}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      custom_fields: {
+                        ...prev.custom_fields,
+                        [field.field_key]: inputType === "number" ? Number(e.target.value) : e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </div>
+            );
+          })}
+
           <div className="md:col-span-2">
             <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
               Save Entry
