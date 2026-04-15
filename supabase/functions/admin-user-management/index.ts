@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,19 +11,22 @@ const getEnv = (primary: string, fallback?: string) => {
   return value?.trim() || null;
 };
 
-type Action =
-  | {
-      action: "create_user";
-      email: string;
-      password: string;
-      display_name: string;
-      role: "admin" | "director" | "doctor" | "nurse" | "staff";
-    }
-  | {
-      action: "set_user_active";
-      user_id: string;
-      is_active: boolean;
-    };
+const ActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create_user"),
+    email: z.string().trim().email().max(255),
+    password: z.string().min(8).max(128),
+    display_name: z.string().trim().min(1).max(100),
+    role: z.enum(["admin", "director", "doctor", "nurse", "staff"]),
+  }),
+  z.object({
+    action: z.literal("set_user_active"),
+    user_id: z.string().uuid(),
+    is_active: z.boolean(),
+  }),
+]);
+
+type Action = z.infer<typeof ActionSchema>;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -83,7 +87,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body = (await req.json()) as Action;
+    let requestBody: unknown;
+    try {
+      requestBody = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const parsedBody = ActionSchema.safeParse(requestBody);
+    if (!parsedBody.success) {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid request body",
+          details: parsedBody.error.flatten(),
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const body: Action = parsedBody.data;
     const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     if (body.action === "create_user") {
