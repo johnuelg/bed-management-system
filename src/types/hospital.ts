@@ -73,3 +73,9 @@ export type KpiWidget = {
   display_order: number;
   refresh_seconds: number;
 };
+
+export type NavVisibilitySettings = {
+  dashboard: boolean;
+  data_entry: boolean;
+  kpi_builder: boolean;
+};
