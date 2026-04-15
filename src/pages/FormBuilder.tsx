@@ -20,12 +20,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchFormFields, replaceFormFieldOrder, saveFormField } from "@/lib/supabase-api";
+import { deleteFormField, updateFormField } from "@/lib/supabase-api";
 import type { AppRole, FormField } from "@/types/hospital";
 
 const roleOptions: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 const fieldTypes: FormField["field_type"][] = ["number", "text", "textarea", "select", "boolean", "date", "formula"];
 
-const SortableFieldItem = ({ field }: { field: FormField }) => {
+const SortableFieldItem = ({
+  field,
+  onEdit,
+  onDelete,
+  isDeleting,
+}: {
+  field: FormField;
+  onEdit: (field: FormField) => void;
+  onDelete: (field: FormField) => void;
+  isDeleting: boolean;
+}) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: field.id });
   return (
     <div
@@ -39,9 +50,17 @@ const SortableFieldItem = ({ field }: { field: FormField }) => {
           {field.field_key} • {field.field_type} • {field.is_readonly ? "read-only" : "editable"}
         </p>
       </div>
-      <button type="button" className="rounded border p-2" {...attributes} {...listeners}>
-        <GripVertical className="h-4 w-4" />
-      </button>
+      <div className="flex items-center gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => onEdit(field)}>
+          Edit
+        </Button>
+        <Button type="button" variant="destructive" size="sm" onClick={() => onDelete(field)} disabled={isDeleting}>
+          Delete
+        </Button>
+        <button type="button" className="rounded border p-2" {...attributes} {...listeners}>
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 };
@@ -52,6 +71,7 @@ const FormBuilderPage = () => {
   const sensors = useSensors(useSensor(PointerSensor));
 
   const [draft, setDraft] = useState<Partial<FormField>>({
+    id: undefined,
     field_key: "",
     label: "",
     field_type: "number",
@@ -66,7 +86,20 @@ const FormBuilderPage = () => {
 
   const saveMutation = useMutation({
     mutationFn: () =>
-      saveFormField(roles, {
+      (draft.id
+        ? updateFormField(roles, draft.id, {
+            field_key: String(draft.field_key || "").trim().toLowerCase().replace(/\s+/g, "_"),
+            label: String(draft.label || "").trim(),
+            field_type: (draft.field_type as FormField["field_type"]) || "number",
+            is_required: Boolean(draft.is_required),
+            is_readonly: Boolean(draft.is_readonly),
+            is_system: false,
+            is_active: true,
+            default_value: (draft.default_value as string) || null,
+            options: draft.options ?? [],
+            editable_roles: (draft.editable_roles as AppRole[]) || ["admin"],
+          })
+        : saveFormField(roles, {
         field_key: String(draft.field_key || "").trim().toLowerCase().replace(/\s+/g, "_"),
         label: String(draft.label || "").trim(),
         field_type: (draft.field_type as FormField["field_type"]) || "number",
@@ -78,14 +111,47 @@ const FormBuilderPage = () => {
         default_value: (draft.default_value as string) || null,
         options: draft.options ?? [],
         editable_roles: (draft.editable_roles as AppRole[]) || ["admin"],
-      }),
+      })),
     onSuccess: async () => {
-      toast({ title: "Field saved" });
-      setDraft({ field_key: "", label: "", field_type: "number", editable_roles: ["admin"], default_value: "", is_required: false, is_readonly: false });
+      toast({ title: draft.id ? "Field updated" : "Field saved" });
+      setDraft({ id: undefined, field_key: "", label: "", field_type: "number", editable_roles: ["admin"], default_value: "", is_required: false, is_readonly: false });
       await qc.invalidateQueries({ queryKey: ["form_fields"] });
     },
     onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteFormField(roles, id),
+    onSuccess: async () => {
+      toast({ title: "Field deleted" });
+      await qc.invalidateQueries({ queryKey: ["form_fields"] });
+    },
+    onError: (error) => toast({ title: "Delete failed", description: (error as Error).message, variant: "destructive" }),
+  });
+
+  const onEdit = (field: FormField) => {
+    setDraft({
+      id: field.id,
+      field_key: field.field_key,
+      label: field.label,
+      field_type: field.field_type,
+      editable_roles: field.editable_roles,
+      default_value: field.default_value ?? "",
+      options: field.options,
+      is_required: field.is_required,
+      is_readonly: field.is_readonly,
+      is_active: field.is_active,
+      is_system: field.is_system,
+      display_order: field.display_order,
+    });
+  };
+
+  const onDelete = (field: FormField) => {
+    deleteMutation.mutate(field.id);
+    if (draft.id === field.id) {
+      setDraft({ id: undefined, field_key: "", label: "", field_type: "number", editable_roles: ["admin"], default_value: "", is_required: false, is_readonly: false });
+    }
+  };
 
   const onDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -114,7 +180,7 @@ const FormBuilderPage = () => {
       <div className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Add Field</CardTitle>
+            <CardTitle>{draft.id ? "Edit Field" : "Add Field"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -187,9 +253,20 @@ const FormBuilderPage = () => {
               </label>
             </div>
 
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-              Save Field
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+                {draft.id ? "Update Field" : "Save Field"}
+              </Button>
+              {draft.id ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDraft({ id: undefined, field_key: "", label: "", field_type: "number", editable_roles: ["admin"], default_value: "", is_required: false, is_readonly: false })}
+                >
+                  Cancel Edit
+                </Button>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
 
@@ -202,7 +279,13 @@ const FormBuilderPage = () => {
               <SortableContext items={sortedFields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-3">
                   {sortedFields.map((field) => (
-                    <SortableFieldItem key={field.id} field={field} />
+                    <SortableFieldItem
+                      key={field.id}
+                      field={field}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      isDeleting={deleteMutation.isPending}
+                    />
                   ))}
                 </div>
               </SortableContext>
