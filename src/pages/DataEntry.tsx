@@ -7,6 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -43,6 +53,7 @@ const DataEntryPage = () => {
   };
 
   const [form, setForm] = useState(initialForm);
+  const [submissionToDelete, setSubmissionToDelete] = useState<{ id: string } | null>(null);
   const resetForm = () => setForm(initialForm);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
@@ -252,7 +263,7 @@ const DataEntryPage = () => {
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => deleteMutation.mutate(row.id)}
+                  onClick={() => setSubmissionToDelete({ id: row.id })}
                   disabled={deleteMutation.isPending}
                 >
                   Delete
@@ -262,6 +273,37 @@ const DataEntryPage = () => {
           ))}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={Boolean(submissionToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setSubmissionToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this submission?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected bed submission will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (!submissionToDelete) return;
+                deleteMutation.mutate(submissionToDelete.id, {
+                  onSettled: () => setSubmissionToDelete(null),
+                });
+              }}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 };
