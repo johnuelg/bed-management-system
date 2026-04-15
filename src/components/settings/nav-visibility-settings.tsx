@@ -5,6 +5,7 @@ import { Check, Circle } from "lucide-react";
 type Props = {
   settings: NavVisibilitySettings;
   disabled?: boolean;
+  showHeader?: boolean;
   onChange: (next: NavVisibilitySettings) => void;
 };
 
@@ -25,12 +26,14 @@ const settingRows: Array<{ key: keyof RoleMenuVisibility; label: string; descrip
   { key: "users", label: "Users", description: "Show or hide Users in the sidebar menu." },
 ];
 
-export const NavVisibilitySettingsEditor = ({ settings, disabled, onChange }: Props) => (
+export const NavVisibilitySettingsEditor = ({ settings, disabled, onChange, showHeader = true }: Props) => (
   <div className="space-y-4">
-    <div>
-      <h3 className="text-2xl font-bold">Navigation Permissions</h3>
-      <p className="text-sm text-muted-foreground">Control which navigation menu items each role can access</p>
-    </div>
+    {showHeader ? (
+      <div>
+        <h3 className="text-2xl font-bold">Navigation Permissions</h3>
+        <p className="text-sm text-muted-foreground">Control which navigation menu items each role can access</p>
+      </div>
+    ) : null}
 
     <div className="overflow-x-auto rounded-lg border bg-card">
       <table className="w-full min-w-[980px] border-collapse text-sm">

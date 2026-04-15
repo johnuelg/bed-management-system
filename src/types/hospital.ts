@@ -1,4 +1,6 @@
-export type AppRole = "admin" | "director" | "doctor" | "nurse" | "staff";
+export type SystemRole = "admin" | "director" | "doctor" | "nurse" | "staff";
+
+export type AppRole = string;
 
 export type Profile = {
   id: string;
@@ -85,6 +87,6 @@ export type RoleMenuVisibility = {
 
 export type ClinicalRole = "doctor" | "nurse" | "staff";
 
-export type NavRole = AppRole;
+export type NavRole = SystemRole;
 
 export type NavVisibilitySettings = Record<NavRole, RoleMenuVisibility>;
