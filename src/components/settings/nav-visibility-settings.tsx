@@ -20,7 +20,6 @@ const settingRows: Array<{ key: keyof RoleMenuVisibility; label: string; descrip
   { key: "dashboard", label: "Dashboard", description: "Show or hide Dashboard in the sidebar menu." },
   { key: "data_entry", label: "Bed Entry", description: "Show or hide Bed Entry in the sidebar menu." },
   { key: "kpi_builder", label: "KPI Builder", description: "Show or hide KPI Builder in the sidebar menu." },
-  { key: "settings", label: "Settings", description: "Show or hide Settings in the sidebar menu." },
   { key: "categories", label: "Categories", description: "Show or hide Categories in the sidebar menu." },
   { key: "form_builder", label: "Form Builder", description: "Show or hide Form Builder in the sidebar menu." },
   { key: "users", label: "Users", description: "Show or hide Users in the sidebar menu." },
