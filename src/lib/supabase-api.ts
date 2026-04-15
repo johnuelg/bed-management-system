@@ -179,7 +179,7 @@ export const aggregateSubmissionSums = (rows: Array<Pick<BedSubmission, "total_b
       closed: acc.closed + (Number(row.closed) || 0),
       vacant: acc.vacant + Math.max((Number(row.total_beds) || 0) - (Number(row.occupied) || 0) - (Number(row.closed) || 0), 0),
     }),
-    { total_beds: 0, occupied: 0, closed: 0, vacant: 0 },
+    { total_beds: 0, occupied: 0, closed: 0, vacant: 0 } as { total_beds: number; occupied: number; closed: number; vacant: number },
   );
 
 export const uploadDocument = async (userId: string, file: File) => {
