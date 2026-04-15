@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -30,6 +31,7 @@ const KpiBuilderPage = () => {
   const [selectedVariables, setSelectedVariables] = useState<string[]>(["occupied", "total_beds"]);
   const [widgetName, setWidgetName] = useState("");
   const [widgetFormulaId, setWidgetFormulaId] = useState("");
+  const [widgetIsVisible, setWidgetIsVisible] = useState(true);
 
   const { data: formulas = [] } = useQuery({ queryKey: ["kpi_formulas"], queryFn: fetchKpiFormulas });
   const { data: widgets = [] } = useQuery({ queryKey: ["kpi_widgets"], queryFn: fetchKpiWidgets });
@@ -76,13 +78,15 @@ const KpiBuilderPage = () => {
         name: widgetName,
         formula_id: widgetFormulaId,
         aggregation_scope: "department_sum",
-        is_visible: true,
+          is_visible: widgetIsVisible,
         display_order: widgets.length + 1,
         refresh_seconds: 30,
       }),
     onSuccess: async () => {
       toast({ title: "Widget saved" });
       setWidgetName("");
+      setWidgetFormulaId("");
+      setWidgetIsVisible(true);
       await qc.invalidateQueries({ queryKey: ["kpi_widgets"] });
     },
     onError: (error) => toast({ title: "Widget save failed", description: (error as Error).message, variant: "destructive" }),
@@ -165,6 +169,16 @@ const KpiBuilderPage = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <Label htmlFor="widget-active">Widget Active</Label>
+                <p className="text-xs text-muted-foreground">Inactive widgets are hidden on the dashboard main view.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{widgetIsVisible ? "Active" : "Not active"}</span>
+                <Switch id="widget-active" checked={widgetIsVisible} onCheckedChange={setWidgetIsVisible} />
+              </div>
             </div>
             <Button onClick={() => widgetMutation.mutate()} disabled={!widgetName || !widgetFormulaId || widgetMutation.isPending}>
               Save Widget
