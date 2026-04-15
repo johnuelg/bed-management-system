@@ -33,7 +33,7 @@ export const NavVisibilitySettingsEditor = ({ settings, roles, disabled, onChang
     new Set(roles.map((role) => role.trim()).filter(Boolean)),
   );
 
-  const columns = roleRows.includes("admin") ? roleRows : ["admin", ...roleRows];
+  const columns = roleRows.length > 0 ? roleRows : ["admin"];
 
   return (
     <div className="space-y-4">
