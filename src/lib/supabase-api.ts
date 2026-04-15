@@ -101,6 +101,22 @@ export const saveBedType = async (roles: AppRole[], input: Partial<BedType> & { 
   if (error) throw error;
 };
 
+export const updateBedType = async (
+  roles: AppRole[],
+  id: string,
+  input: { name: string },
+) => {
+  requireRole(roles, ["admin"], "manage bed types");
+  const { error } = await db.from("bed_types").update(input).eq("id", id);
+  if (error) throw error;
+};
+
+export const deleteBedType = async (roles: AppRole[], id: string) => {
+  requireRole(roles, ["admin"], "manage bed types");
+  const { error } = await db.from("bed_types").delete().eq("id", id);
+  if (error) throw error;
+};
+
 export const toggleBedTypeActive = async (roles: AppRole[], id: string, is_active: boolean) => {
   requireRole(roles, ["admin"], "manage bed types");
   const { error } = await db.from("bed_types").update({ is_active }).eq("id", id);
