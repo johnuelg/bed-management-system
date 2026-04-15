@@ -111,12 +111,7 @@ const DataEntryPage = () => {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle>Daily Entry Form</CardTitle>
-            <Button type="button" variant="default" size="lg" onClick={resetForm}>
-              New Entry
-            </Button>
-          </div>
+          <CardTitle>Daily Entry Form</CardTitle>
           <CardDescription>Closure Reason is mandatory only when Closed &gt; 0.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
