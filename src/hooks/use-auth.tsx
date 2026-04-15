@@ -59,12 +59,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: rolesData } = await db.from("user_roles").select("role").eq("user_id", currentUser.id);
 
-    const mappedRoles = (rolesData?.map((row: { role: AppRole }) => row.role) ?? []) as AppRole[];
+    const mappedRoles = (rolesData?.map((row: { role: string }) => row.role) ?? []) as AppRole[];
 
     if (mappedRoles.length === 0) {
       await db.from("user_roles").insert({ user_id: currentUser.id, role: "admin" });
       const { data: refreshedRoles } = await db.from("user_roles").select("role").eq("user_id", currentUser.id);
-      setRoles((refreshedRoles?.map((row: { role: AppRole }) => row.role) ?? []) as AppRole[]);
+      setRoles((refreshedRoles?.map((row: { role: string }) => row.role) ?? []) as AppRole[]);
     } else {
       setRoles(mappedRoles);
     }
