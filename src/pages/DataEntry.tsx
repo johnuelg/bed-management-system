@@ -65,6 +65,11 @@ const DataEntryPage = () => {
     [departments],
   );
 
+  const bedTypeNameById = useMemo(
+    () => Object.fromEntries(bedTypes.map((bedType) => [bedType.id, bedType.name])),
+    [bedTypes],
+  );
+
   const computed = useMemo(() => {
     const vacant = Math.max(0, Number(form.total_beds) - Number(form.occupied) - Number(form.closed));
     const occupancyRate = form.total_beds > 0 ? (Number(form.occupied) / Number(form.total_beds)) * 100 : 0;
@@ -259,6 +264,9 @@ const DataEntryPage = () => {
                 }
               >
                 <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
+                <p className="text-sm text-muted-foreground">
+                  Bed Type: {row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   Total {row.total_beds} • Occupied {row.occupied} • Closed {row.closed}
                 </p>
