@@ -89,4 +89,4 @@ export type ClinicalRole = "doctor" | "nurse" | "staff";
 
 export type NavRole = SystemRole;
 
-export type NavVisibilitySettings = Record<NavRole, RoleMenuVisibility>;
+export type NavVisibilitySettings = Record<string, RoleMenuVisibility>;
