@@ -53,12 +53,17 @@ const DataEntryPage = () => {
   };
 
   const [form, setForm] = useState(initialForm);
-  const [submissionToDelete, setSubmissionToDelete] = useState<{ id: string } | null>(null);
+  const [submissionToDelete, setSubmissionToDelete] = useState<{ id: string; departmentName: string } | null>(null);
   const resetForm = () => setForm(initialForm);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
   const { data: bedTypes = [] } = useQuery({ queryKey: ["bed_types"], queryFn: fetchBedTypes });
   const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
+
+  const departmentNameById = useMemo(
+    () => Object.fromEntries(departments.map((department) => [department.id, department.name])),
+    [departments],
+  );
 
   const computed = useMemo(() => {
     const vacant = Math.max(0, Number(form.total_beds) - Number(form.occupied) - Number(form.closed));
@@ -253,7 +258,7 @@ const DataEntryPage = () => {
                   })
                 }
               >
-                <p className="font-semibold">Department: {row.department_id}</p>
+                <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
                 <p className="text-sm text-muted-foreground">
                   Total {row.total_beds} • Occupied {row.occupied} • Closed {row.closed}
                 </p>
@@ -263,7 +268,12 @@ const DataEntryPage = () => {
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => setSubmissionToDelete({ id: row.id })}
+                  onClick={() =>
+                    setSubmissionToDelete({
+                      id: row.id,
+                      departmentName: departmentNameById[row.department_id] ?? "Unknown Department",
+                    })
+                  }
                   disabled={deleteMutation.isPending}
                 >
                   Delete
@@ -284,7 +294,7 @@ const DataEntryPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this submission?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The selected bed submission will be permanently removed.
+              This action cannot be undone. The submission for <span className="font-medium">{submissionToDelete?.departmentName}</span> will be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
