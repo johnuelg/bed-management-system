@@ -7,12 +7,12 @@ import type {
   AppRole,
   BedSubmission,
   BedType,
-  ClinicalRole,
   Department,
   FormField,
   KpiFormula,
   KpiWidget,
   NavVisibilitySettings,
+  NavRole,
   RoleMenuVisibility,
   Profile,
 } from "@/types/hospital";
@@ -23,14 +23,20 @@ const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   dashboard: true,
   data_entry: true,
   kpi_builder: true,
+  settings: true,
+  categories: true,
+  form_builder: true,
+  users: true,
 };
 const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
+  admin: { ...DEFAULT_ROLE_MENU_VISIBILITY },
+  director: { ...DEFAULT_ROLE_MENU_VISIBILITY },
   doctor: { ...DEFAULT_ROLE_MENU_VISIBILITY },
   nurse: { ...DEFAULT_ROLE_MENU_VISIBILITY },
   staff: { ...DEFAULT_ROLE_MENU_VISIBILITY },
 };
 
-const roleKeys: ClinicalRole[] = ["doctor", "nurse", "staff"];
+const roleKeys: NavRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 
 const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
   if (!value || typeof value !== "object") return { ...DEFAULT_ROLE_MENU_VISIBILITY };
@@ -39,6 +45,10 @@ const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
     dashboard: typeof source.dashboard === "boolean" ? source.dashboard : true,
     data_entry: typeof source.data_entry === "boolean" ? source.data_entry : true,
     kpi_builder: typeof source.kpi_builder === "boolean" ? source.kpi_builder : true,
+    settings: typeof source.settings === "boolean" ? source.settings : true,
+    categories: typeof source.categories === "boolean" ? source.categories : true,
+    form_builder: typeof source.form_builder === "boolean" ? source.form_builder : true,
+    users: typeof source.users === "boolean" ? source.users : true,
   };
 };
 
@@ -50,6 +60,8 @@ const normalizeNavVisibility = (value: unknown): NavVisibilitySettings => {
   if (!hasRoleShape) {
     const normalized = normalizeRoleMenuVisibility(source);
     return {
+      admin: { ...normalized },
+      director: { ...normalized },
       doctor: { ...normalized },
       nurse: { ...normalized },
       staff: { ...normalized },
@@ -57,6 +69,8 @@ const normalizeNavVisibility = (value: unknown): NavVisibilitySettings => {
   }
 
   return {
+    admin: normalizeRoleMenuVisibility(source.admin),
+    director: normalizeRoleMenuVisibility(source.director),
     doctor: normalizeRoleMenuVisibility(source.doctor),
     nurse: normalizeRoleMenuVisibility(source.nurse),
     staff: normalizeRoleMenuVisibility(source.staff),

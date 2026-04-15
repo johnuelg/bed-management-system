@@ -5,26 +5,38 @@ import { motion } from "framer-motion";
 import type { ComponentType } from "react";
 import logo from "@/assets/hospital-logo.png";
 import { useAuth } from "@/hooks/use-auth";
-import { canManageSystem, canManageUsers, getPrimaryClinicalRole, hasAnyRole } from "@/lib/rbac";
+import { getPrimaryNavRole, hasAnyRole } from "@/lib/rbac";
 import { fetchNavVisibilitySettings } from "@/lib/supabase-api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import type { RoleMenuVisibility } from "@/types/hospital";
 
 type NavItem = {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  settingKey: keyof RoleMenuVisibility;
   roles?: Array<"admin" | "director" | "doctor" | "nurse" | "staff">;
 };
 
+const defaultRoleVisibility: RoleMenuVisibility = {
+  dashboard: true,
+  data_entry: true,
+  kpi_builder: true,
+  settings: true,
+  categories: true,
+  form_builder: true,
+  users: true,
+};
+
 const navItems: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/data-entry", label: "Bed Entry", icon: ClipboardList },
-  { to: "/kpi-builder", label: "KPI Builder", icon: BarChart3, roles: ["admin", "director"] },
-  { to: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
-  { to: "/categories", label: "Categories", icon: Settings2, roles: ["admin"] },
-  { to: "/form-builder", label: "Form Builder", icon: FileCog, roles: ["admin"] },
-  { to: "/users", label: "Users", icon: Users2, roles: ["admin"] },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, settingKey: "dashboard" },
+  { to: "/data-entry", label: "Bed Entry", icon: ClipboardList, settingKey: "data_entry" },
+  { to: "/kpi-builder", label: "KPI Builder", icon: BarChart3, settingKey: "kpi_builder", roles: ["admin", "director"] },
+  { to: "/settings", label: "Settings", icon: Settings, settingKey: "settings", roles: ["admin"] },
+  { to: "/categories", label: "Categories", icon: Settings2, settingKey: "categories", roles: ["admin"] },
+  { to: "/form-builder", label: "Form Builder", icon: FileCog, settingKey: "form_builder", roles: ["admin"] },
+  { to: "/users", label: "Users", icon: Users2, settingKey: "users", roles: ["admin"] },
 ];
 
 export const AppShell = () => {
@@ -32,12 +44,8 @@ export const AppShell = () => {
   const location = useLocation();
   const { data: navVisibility } = useQuery({ queryKey: ["app_settings", "nav_visibility"], queryFn: fetchNavVisibilitySettings });
 
-  const canSystem = canManageSystem(roles);
-  const canUsers = canManageUsers(roles);
-  const primaryClinicalRole = getPrimaryClinicalRole(roles);
-  const roleVisibility = primaryClinicalRole
-    ? (navVisibility?.[primaryClinicalRole] ?? { dashboard: true, data_entry: true, kpi_builder: true })
-    : { dashboard: true, data_entry: true, kpi_builder: true };
+  const primaryNavRole = getPrimaryNavRole(roles);
+  const roleVisibility = primaryNavRole ? (navVisibility?.[primaryNavRole] ?? defaultRoleVisibility) : defaultRoleVisibility;
 
   return (
     <div className="flex min-h-screen">
@@ -55,11 +63,7 @@ export const AppShell = () => {
         <nav className="space-y-1 p-3">
           {navItems
             .filter((item) => !item.roles || hasAnyRole(roles, item.roles))
-            .filter((item) => (item.to !== "/kpi-builder" ? true : canSystem))
-            .filter((item) => (item.to !== "/users" ? true : canUsers))
-            .filter((item) => (item.to !== "/dashboard" ? true : roleVisibility.dashboard))
-            .filter((item) => (item.to !== "/data-entry" ? true : roleVisibility.data_entry))
-            .filter((item) => (item.to !== "/kpi-builder" ? true : roleVisibility.kpi_builder))
+            .filter((item) => roleVisibility[item.settingKey])
             .map((item) => (
               <NavLink
                 key={item.to}

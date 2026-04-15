@@ -9,9 +9,11 @@ import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibilit
 import type { NavVisibilitySettings } from "@/types/hospital";
 
 const defaultNavSettings: NavVisibilitySettings = {
-  doctor: { dashboard: true, data_entry: true, kpi_builder: true },
-  nurse: { dashboard: true, data_entry: true, kpi_builder: true },
-  staff: { dashboard: true, data_entry: true, kpi_builder: true },
+  admin: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
+  director: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
+  doctor: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
+  nurse: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
+  staff: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
 };
 
 const SettingsPage = () => {
@@ -48,7 +50,7 @@ const SettingsPage = () => {
       <Card>
         <CardHeader>
           <CardTitle>Navigation Visibility</CardTitle>
-          <CardDescription>Choose which menus are visible for users in the sidebar.</CardDescription>
+          <CardDescription>Choose which sidebar menus are visible for each role.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <NavVisibilitySettingsEditor

@@ -22,9 +22,11 @@ import type { AppRole, NavVisibilitySettings } from "@/types/hospital";
 
 const roleOptions: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 const defaultNavSettings: NavVisibilitySettings = {
-  doctor: { dashboard: true, data_entry: true, kpi_builder: true },
-  nurse: { dashboard: true, data_entry: true, kpi_builder: true },
-  staff: { dashboard: true, data_entry: true, kpi_builder: true },
+  admin: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
+  director: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
+  doctor: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
+  nurse: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
+  staff: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
 };
 
 const UsersPage = () => {
@@ -138,7 +140,7 @@ const UsersPage = () => {
       <Card>
         <CardHeader>
           <CardTitle>Menu Visibility Settings</CardTitle>
-          <CardDescription>Control Dashboard, Bed Entry, and KPI Builder visibility from here.</CardDescription>
+          <CardDescription>Control all dashboard sidebar menus by role from here.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <NavVisibilitySettingsEditor
