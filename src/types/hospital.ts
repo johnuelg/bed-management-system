@@ -78,8 +78,14 @@ export type RoleMenuVisibility = {
   dashboard: boolean;
   data_entry: boolean;
   kpi_builder: boolean;
+  settings: boolean;
+  categories: boolean;
+  form_builder: boolean;
+  users: boolean;
 };
 
 export type ClinicalRole = "doctor" | "nurse" | "staff";
 
-export type NavVisibilitySettings = Record<ClinicalRole, RoleMenuVisibility>;
+export type NavRole = AppRole;
+
+export type NavVisibilitySettings = Record<NavRole, RoleMenuVisibility>;
