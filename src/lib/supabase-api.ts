@@ -172,7 +172,7 @@ export const saveKpiWidget = async (roles: AppRole[], widget: Omit<KpiWidget, "i
 export const evaluateFormulaFromRow = (expression: string, row: Record<string, number>) => evaluateSafeExpression(expression, row);
 
 export const aggregateSubmissionSums = (rows: Array<Pick<BedSubmission, "total_beds" | "occupied" | "closed">>) =>
-  rows.reduce(
+  rows.reduce<{ total_beds: number; occupied: number; closed: number; vacant: number }>(
     (acc, row) => ({
       total_beds: acc.total_beds + (Number(row.total_beds) || 0),
       occupied: acc.occupied + (Number(row.occupied) || 0),
