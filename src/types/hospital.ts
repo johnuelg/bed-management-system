@@ -74,8 +74,12 @@ export type KpiWidget = {
   refresh_seconds: number;
 };
 
-export type NavVisibilitySettings = {
+export type RoleMenuVisibility = {
   dashboard: boolean;
   data_entry: boolean;
   kpi_builder: boolean;
 };
+
+export type ClinicalRole = "doctor" | "nurse" | "staff";
+
+export type NavVisibilitySettings = Record<ClinicalRole, RoleMenuVisibility>;

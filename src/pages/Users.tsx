@@ -18,9 +18,14 @@ import {
   setUserRole,
 } from "@/lib/supabase-api";
 import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibility-settings";
-import type { AppRole } from "@/types/hospital";
+import type { AppRole, NavVisibilitySettings } from "@/types/hospital";
 
 const roleOptions: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
+const defaultNavSettings: NavVisibilitySettings = {
+  doctor: { dashboard: true, data_entry: true, kpi_builder: true },
+  nurse: { dashboard: true, data_entry: true, kpi_builder: true },
+  staff: { dashboard: true, data_entry: true, kpi_builder: true },
+};
 
 const UsersPage = () => {
   const { roles, user } = useAuth();
@@ -29,7 +34,7 @@ const UsersPage = () => {
 
   const { data: profiles = [] } = useQuery({ queryKey: ["profiles"], queryFn: fetchProfiles });
   const { data: roleMap = {} } = useQuery({ queryKey: ["user_roles"], queryFn: () => fetchUserRoles() });
-  const { data: navVisibility = { dashboard: true, data_entry: true, kpi_builder: true } } = useQuery({
+  const { data: navVisibility = defaultNavSettings } = useQuery({
     queryKey: ["app_settings", "nav_visibility"],
     queryFn: fetchNavVisibilitySettings,
   });
@@ -73,7 +78,7 @@ const UsersPage = () => {
   });
 
   const settingsMutation = useMutation({
-    mutationFn: (settings: { dashboard: boolean; data_entry: boolean; kpi_builder: boolean }) => {
+    mutationFn: (settings: NavVisibilitySettings) => {
       if (!user?.id) throw new Error("You must be signed in to save settings.");
       return saveNavVisibilitySettings(roles, settings, user.id);
     },

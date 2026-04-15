@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import type { ComponentType } from "react";
 import logo from "@/assets/hospital-logo.png";
 import { useAuth } from "@/hooks/use-auth";
-import { canManageSystem, canManageUsers, hasAnyRole } from "@/lib/rbac";
+import { canManageSystem, canManageUsers, getPrimaryClinicalRole, hasAnyRole } from "@/lib/rbac";
 import { fetchNavVisibilitySettings } from "@/lib/supabase-api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,10 @@ export const AppShell = () => {
 
   const canSystem = canManageSystem(roles);
   const canUsers = canManageUsers(roles);
+  const primaryClinicalRole = getPrimaryClinicalRole(roles);
+  const roleVisibility = primaryClinicalRole
+    ? (navVisibility?.[primaryClinicalRole] ?? { dashboard: true, data_entry: true, kpi_builder: true })
+    : { dashboard: true, data_entry: true, kpi_builder: true };
 
   return (
     <div className="flex min-h-screen">
@@ -53,9 +57,9 @@ export const AppShell = () => {
             .filter((item) => !item.roles || hasAnyRole(roles, item.roles))
             .filter((item) => (item.to !== "/kpi-builder" ? true : canSystem))
             .filter((item) => (item.to !== "/users" ? true : canUsers))
-            .filter((item) => (item.to !== "/dashboard" ? true : navVisibility?.dashboard ?? true))
-            .filter((item) => (item.to !== "/data-entry" ? true : navVisibility?.data_entry ?? true))
-            .filter((item) => (item.to !== "/kpi-builder" ? true : navVisibility?.kpi_builder ?? true))
+            .filter((item) => (item.to !== "/dashboard" ? true : roleVisibility.dashboard))
+            .filter((item) => (item.to !== "/data-entry" ? true : roleVisibility.data_entry))
+            .filter((item) => (item.to !== "/kpi-builder" ? true : roleVisibility.kpi_builder))
             .map((item) => (
               <NavLink
                 key={item.to}
