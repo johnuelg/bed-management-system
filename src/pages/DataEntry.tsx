@@ -1,11 +1,15 @@
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -32,6 +36,7 @@ import {
 } from "@/lib/supabase-api";
 import { MAX_UPLOAD_SIZE } from "@/lib/file-upload";
 import { hasAnyRole } from "@/lib/rbac";
+import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
 
 const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((file, ctx) => {
@@ -39,6 +44,24 @@ const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((fil
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "File must be <= 2MB" });
   }
 });
+
+const toLocalDateString = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const toLocalTimeString = (value: Date) => {
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
+const getCurrentDateTimeValue = () => {
+  const now = new Date();
+  return `${toLocalDateString(now)}T${toLocalTimeString(now)}`;
+};
 
 const DataEntryPage = () => {
   const { roles } = useAuth();
