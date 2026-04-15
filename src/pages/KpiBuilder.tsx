@@ -9,10 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/hooks/use-toast";
 import {
   aggregateSubmissionSums,
+  deleteKpiWidget,
   evaluateFormulaFromRow,
   fetchKpiFormulas,
   fetchKpiWidgets,
@@ -32,6 +43,7 @@ const KpiBuilderPage = () => {
   const [widgetName, setWidgetName] = useState("");
   const [widgetFormulaId, setWidgetFormulaId] = useState("");
   const [widgetIsVisible, setWidgetIsVisible] = useState(true);
+  const [widgetToDelete, setWidgetToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const { data: formulas = [] } = useQuery({ queryKey: ["kpi_formulas"], queryFn: fetchKpiFormulas });
   const { data: widgets = [] } = useQuery({ queryKey: ["kpi_widgets"], queryFn: fetchKpiWidgets });
@@ -90,6 +102,15 @@ const KpiBuilderPage = () => {
       await qc.invalidateQueries({ queryKey: ["kpi_widgets"] });
     },
     onError: (error) => toast({ title: "Widget save failed", description: (error as Error).message, variant: "destructive" }),
+  });
+
+  const deleteWidgetMutation = useMutation({
+    mutationFn: (id: string) => deleteKpiWidget(roles, id),
+    onSuccess: async () => {
+      toast({ title: "Widget deleted" });
+      await qc.invalidateQueries({ queryKey: ["kpi_widgets"] });
+    },
+    onError: (error) => toast({ title: "Widget delete failed", description: (error as Error).message, variant: "destructive" }),
   });
 
   return (
@@ -227,6 +248,56 @@ const KpiBuilderPage = () => {
           })}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Widgets</CardTitle>
+          <CardDescription>Delete widgets you no longer need.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {widgets.map((widget) => (
+            <div key={widget.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <p className="text-sm font-semibold">{widget.name}</p>
+                <p className="text-xs text-muted-foreground">{widget.is_visible ? "Active" : "Not active"}</p>
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setWidgetToDelete({ id: widget.id, name: widget.name })}
+                disabled={deleteWidgetMutation.isPending}
+              >
+                Delete
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={Boolean(widgetToDelete)} onOpenChange={(open) => !open && setWidgetToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete widget?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove <span className="font-semibold">{widgetToDelete?.name}</span>. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (widgetToDelete) {
+                  deleteWidgetMutation.mutate(widgetToDelete.id);
+                }
+                setWidgetToDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 };
