@@ -12,7 +12,6 @@ import type {
   KpiFormula,
   KpiWidget,
   NavVisibilitySettings,
-  NavRole,
   RoleMenuVisibility,
   Profile,
 } from "@/types/hospital";
@@ -37,8 +36,6 @@ const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
   staff: { ...DEFAULT_ROLE_MENU_VISIBILITY },
 };
 
-const roleKeys: NavRole[] = ["admin", "director", "doctor", "nurse", "staff"];
-
 const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
   if (!value || typeof value !== "object") return { ...DEFAULT_ROLE_MENU_VISIBILITY };
   const source = value as Partial<Record<keyof RoleMenuVisibility, unknown>>;
@@ -56,24 +53,25 @@ const normalizeNavVisibility = (value: unknown): NavVisibilitySettings => {
   if (!value || typeof value !== "object") return DEFAULT_NAV_VISIBILITY;
   const source = value as Record<string, unknown>;
 
-  const hasRoleShape = roleKeys.some((role) => role in source);
-  if (!hasRoleShape) {
-    const normalized = normalizeRoleMenuVisibility(source);
-    return {
-      admin: { ...normalized },
-      director: { ...normalized },
-      doctor: { ...normalized },
-      nurse: { ...normalized },
-      staff: { ...normalized },
-    };
+  const normalizedEntries = Object.entries(source)
+    .filter(([role]) => role.trim().length > 0)
+    .map(([role, roleValue]) => [role, normalizeRoleMenuVisibility(roleValue)] as const);
+
+  const base = {
+    admin: { ...DEFAULT_ROLE_MENU_VISIBILITY },
+    director: { ...DEFAULT_ROLE_MENU_VISIBILITY },
+    doctor: { ...DEFAULT_ROLE_MENU_VISIBILITY },
+    nurse: { ...DEFAULT_ROLE_MENU_VISIBILITY },
+    staff: { ...DEFAULT_ROLE_MENU_VISIBILITY },
+  };
+
+  if (normalizedEntries.length === 0) {
+    return base;
   }
 
   return {
-    admin: normalizeRoleMenuVisibility(source.admin),
-    director: normalizeRoleMenuVisibility(source.director),
-    doctor: normalizeRoleMenuVisibility(source.doctor),
-    nurse: normalizeRoleMenuVisibility(source.nurse),
-    staff: normalizeRoleMenuVisibility(source.staff),
+    ...base,
+    ...Object.fromEntries(normalizedEntries),
   };
 };
 

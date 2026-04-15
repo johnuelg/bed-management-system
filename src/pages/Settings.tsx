@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { fetchNavVisibilitySettings, saveNavVisibilitySettings } from "@/lib/supabase-api";
+import { fetchNavVisibilitySettings, fetchRoleCatalog, saveNavVisibilitySettings } from "@/lib/supabase-api";
 import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibility-settings";
 import type { NavVisibilitySettings } from "@/types/hospital";
 
@@ -22,6 +22,10 @@ const SettingsPage = () => {
   const { data: serverSettings } = useQuery({
     queryKey: ["app_settings", "nav_visibility"],
     queryFn: fetchNavVisibilitySettings,
+  });
+  const { data: roleCatalog = ["admin", "director", "doctor", "nurse", "staff"] } = useQuery({
+    queryKey: ["app_settings", "role_catalog"],
+    queryFn: fetchRoleCatalog,
   });
 
   const [draft, setDraft] = useState<NavVisibilitySettings>(defaultNavSettings);
@@ -55,6 +59,7 @@ const SettingsPage = () => {
         <CardContent className="space-y-4">
           <NavVisibilitySettingsEditor
             settings={current}
+            roles={roleCatalog}
             onChange={(next) => {
               setDraft(next);
               if (serverSettings) {

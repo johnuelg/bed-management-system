@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import type { ComponentType } from "react";
 import logo from "@/assets/hospital-logo.png";
 import { useAuth } from "@/hooks/use-auth";
-import { getPrimaryNavRole, hasAnyRole } from "@/lib/rbac";
+import { getPrimaryRole, hasAnyRole } from "@/lib/rbac";
 import { fetchNavVisibilitySettings } from "@/lib/supabase-api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -42,8 +42,8 @@ export const AppShell = () => {
   const location = useLocation();
   const { data: navVisibility } = useQuery({ queryKey: ["app_settings", "nav_visibility"], queryFn: fetchNavVisibilitySettings });
 
-  const primaryNavRole = getPrimaryNavRole(roles);
-  const roleVisibility = primaryNavRole ? (navVisibility?.[primaryNavRole] ?? defaultRoleVisibility) : defaultRoleVisibility;
+  const primaryRole = getPrimaryRole(roles);
+  const roleVisibility = primaryRole ? (navVisibility?.[primaryRole] ?? defaultRoleVisibility) : defaultRoleVisibility;
 
   return (
     <div className="flex min-h-screen">
