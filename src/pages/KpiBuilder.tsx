@@ -170,7 +170,7 @@ const KpiBuilderPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Widget Name</Label>
+              <Label>KPI Name</Label>
               <Input value={widgetName} onChange={(e) => setWidgetName(e.target.value)} placeholder="Main Occupancy KPI" />
             </div>
             <div className="space-y-2">
@@ -189,7 +189,7 @@ const KpiBuilderPage = () => {
               </Select>
             </div>
             <Button onClick={() => widgetMutation.mutate()} disabled={!widgetName || !widgetFormulaId || widgetMutation.isPending}>
-              Save Widget
+              Save KPI
             </Button>
           </CardContent>
         </Card>
@@ -219,7 +219,7 @@ const KpiBuilderPage = () => {
       <Card>
         <CardHeader>
           <CardTitle>Manage KPIs</CardTitle>
-          <CardDescription>Delete widgets you no longer need.</CardDescription>
+          <CardDescription>Delete KPI you no longer need.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {widgets.map((widget) => (
