@@ -1,6 +1,7 @@
 import { BarChart3, ClipboardList, FileCog, LayoutDashboard, LogOut, Settings2, Users2 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import type { ComponentType } from "react";
 import logo from "@/assets/hospital-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { canManageSystem, canManageUsers, hasAnyRole } from "@/lib/rbac";
@@ -10,7 +11,7 @@ import { cn } from "@/lib/utils";
 type NavItem = {
   to: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   roles?: Array<"admin" | "director" | "doctor" | "nurse" | "staff">;
 };
 
