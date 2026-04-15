@@ -1,6 +1,6 @@
-import type { AppRole, NavRole } from "@/types/hospital";
+import type { AppRole, NavRole, SystemRole } from "@/types/hospital";
 
-export const roleRank: Record<AppRole, number> = {
+export const roleRank: Record<SystemRole, number> = {
   admin: 5,
   director: 4,
   doctor: 3,
