@@ -168,7 +168,8 @@ export const fetchRoleCatalog = async (): Promise<AppRole[]> => {
     .map((value) => (typeof value === "string" ? value.trim() : ""))
     .filter(Boolean);
 
-  return cleaned.length > 0 ? Array.from(new Set(cleaned)) : DEFAULT_ROLE_CATALOG;
+  const deduped = cleaned.length > 0 ? Array.from(new Set(cleaned)) : DEFAULT_ROLE_CATALOG;
+  return deduped.includes("admin") ? deduped : ["admin", ...deduped];
 };
 
 export const saveRoleCatalog = async (roles: AppRole[], roleCatalog: AppRole[], userId: string) => {
@@ -182,7 +183,8 @@ export const saveRoleCatalog = async (roles: AppRole[], roleCatalog: AppRole[], 
     ),
   );
 
-  const finalCatalog = cleaned.length > 0 ? cleaned : DEFAULT_ROLE_CATALOG;
+  const baseCatalog = cleaned.length > 0 ? cleaned : DEFAULT_ROLE_CATALOG;
+  const finalCatalog = baseCatalog.includes("admin") ? baseCatalog : ["admin", ...baseCatalog];
 
   const { error } = await db.from("app_settings").upsert(
     {
