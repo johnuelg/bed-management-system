@@ -30,8 +30,7 @@ const DataEntryPage = () => {
   const { roles } = useAuth();
   const qc = useQueryClient();
   const canManageTotals = hasAnyRole(roles, ["admin", "director"]);
-
-  const [form, setForm] = useState({
+  const initialForm = {
     id: "",
     department_id: "",
     bed_type_id: "",
@@ -39,7 +38,10 @@ const DataEntryPage = () => {
     occupied: 0,
     closed: 0,
     closure_reason: "",
-  });
+  };
+
+  const [form, setForm] = useState(initialForm);
+  const resetForm = () => setForm(initialForm);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
   const { data: bedTypes = [] } = useQuery({ queryKey: ["bed_types"], queryFn: fetchBedTypes });
@@ -76,7 +78,7 @@ const DataEntryPage = () => {
     },
     onSuccess: async () => {
       toast({ title: "Submission saved" });
-      setForm({ id: "", department_id: "", bed_type_id: "", total_beds: 0, occupied: 0, closed: 0, closure_reason: "" });
+      resetForm();
       await qc.invalidateQueries({ queryKey: ["bed_submissions_today"] });
     },
     onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
@@ -109,7 +111,12 @@ const DataEntryPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Daily Entry Form</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle>Daily Entry Form</CardTitle>
+            <Button type="button" variant="default" size="lg" onClick={resetForm}>
+              New Entry
+            </Button>
+          </div>
           <CardDescription>Closure Reason is mandatory only when Closed &gt; 0.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
