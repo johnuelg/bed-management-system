@@ -89,9 +89,33 @@ const DataEntryPage = () => {
   const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
 
   const dynamicFields = useMemo(
-    () => formFields.filter((field) => field.is_active && !field.is_system),
+    () => formFields.filter((field) => field.is_active && !field.is_system).sort((a, b) => a.display_order - b.display_order),
     [formFields],
   );
+
+  useEffect(() => {
+    if (dynamicFields.length === 0) return;
+
+    setForm((prev) => {
+      const nextCustomFields = { ...prev.custom_fields };
+
+      dynamicFields.forEach((field) => {
+        const existing = nextCustomFields[field.field_key];
+        if (existing !== undefined && existing !== null && String(existing) !== "") return;
+
+        if (field.field_type === "date") {
+          nextCustomFields[field.field_key] = getCurrentDateTimeValue();
+          return;
+        }
+
+        if (field.default_value !== null) {
+          nextCustomFields[field.field_key] = field.default_value;
+        }
+      });
+
+      return { ...prev, custom_fields: nextCustomFields };
+    });
+  }, [dynamicFields]);
 
   const canEditDynamicField = (field: FormField) =>
     !field.is_readonly && (field.editable_roles.length === 0 || field.editable_roles.some((role) => roles.includes(role)));
