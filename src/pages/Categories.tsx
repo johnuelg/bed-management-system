@@ -5,6 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -24,6 +34,7 @@ const CategoriesPage = () => {
   const [dept, setDept] = useState({ name: "", code: "" });
   const [bedType, setBedType] = useState({ name: "" });
   const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
+  const [departmentToDelete, setDepartmentToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
   const { data: bedTypes = [] } = useQuery({ queryKey: ["bed_types"], queryFn: fetchBedTypes });
@@ -135,7 +146,7 @@ const CategoriesPage = () => {
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => deleteDepartmentMutation.mutate(item.id)}
+                      onClick={() => setDepartmentToDelete({ id: item.id, name: item.name })}
                       disabled={deleteDepartmentMutation.isPending}
                     >
                       Delete
@@ -183,6 +194,31 @@ const CategoriesPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={Boolean(departmentToDelete)} onOpenChange={(open) => !open && setDepartmentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete department?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove <span className="font-semibold">{departmentToDelete?.name}</span>. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (departmentToDelete) {
+                  deleteDepartmentMutation.mutate(departmentToDelete.id);
+                }
+                setDepartmentToDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 };
