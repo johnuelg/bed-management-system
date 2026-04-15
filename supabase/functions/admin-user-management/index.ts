@@ -5,9 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const getEnv = (primary: string, fallback?: string) => {
+  const value = Deno.env.get(primary) ?? (fallback ? Deno.env.get(fallback) : undefined);
+  return value?.trim() || null;
+};
 
 type Action =
   | {
@@ -29,6 +30,23 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = getEnv("SUPABASE_URL");
+    const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY", "SUPABASE_PUBLISHABLE_KEY");
+    const supabaseServiceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
+      console.error("Missing Supabase environment variables", {
+        hasUrl: Boolean(supabaseUrl),
+        hasAnonKey: Boolean(supabaseAnonKey),
+        hasServiceRoleKey: Boolean(supabaseServiceRoleKey),
+      });
+
+      return new Response(JSON.stringify({ error: "Server configuration error: missing Supabase credentials" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
@@ -37,7 +55,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const callerClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
@@ -66,7 +84,7 @@ Deno.serve(async (req) => {
     }
 
     const body = (await req.json()) as Action;
-    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     if (body.action === "create_user") {
       const { data: created, error: createError } = await adminClient.auth.admin.createUser({
