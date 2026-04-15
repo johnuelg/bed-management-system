@@ -41,11 +41,12 @@ const DashboardPage = () => {
         <p className="text-sm text-muted-foreground">Realtime, free-tier-safe metrics with manual refresh support.</p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {[
           { name: "Total Beds", value: sums.total_beds },
           { name: "Occupied", value: sums.occupied },
           { name: "Closed", value: sums.closed },
+          { name: "Vacant Total", value: sums.vacant },
           { name: "Occupancy Rate", value: `${occupancyRate.toFixed(1)}%` },
         ].map((metric, index) => (
           <motion.div
