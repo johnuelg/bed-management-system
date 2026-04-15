@@ -1,5 +1,4 @@
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import type { NavRole, NavVisibilitySettings, RoleMenuVisibility } from "@/types/hospital";
 import { Check, Circle } from "lucide-react";
 
@@ -61,30 +60,29 @@ export const NavVisibilitySettingsEditor = ({ settings, disabled, onChange }: Pr
               {roleRows.map((roleRow) => (
                 <td key={`${row.key}-${roleRow.key}`} className="px-4 py-5 align-middle">
                   <div className="flex items-center justify-start">
-                    <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-full border ${
-                        settings[roleRow.key][row.key]
-                          ? "border-primary text-primary"
-                          : "border-border text-muted-foreground/40"
-                      }`}
-                    >
-                      <Check className="h-4 w-4" />
-                    </div>
-                    <Switch
-                      className="sr-only"
-                      checked={settings[roleRow.key][row.key]}
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={settings[roleRow.key][row.key]}
+                      aria-label={`Toggle ${row.label} menu for ${roleRow.label}`}
                       disabled={disabled}
-                      onCheckedChange={(checked) =>
+                      onClick={() =>
                         onChange({
                           ...settings,
                           [roleRow.key]: {
                             ...settings[roleRow.key],
-                            [row.key]: checked,
+                            [row.key]: !settings[roleRow.key][row.key],
                           },
                         })
                       }
-                      aria-label={`Toggle ${row.label} menu for ${roleRow.label}`}
-                    />
+                      className={`flex h-9 w-9 items-center justify-center rounded-full border ${
+                        settings[roleRow.key][row.key]
+                          ? "border-primary text-primary"
+                          : "border-border text-muted-foreground/40"
+                      } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-primary/70"}`}
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
                   </div>
                 </td>
               ))}
