@@ -201,6 +201,12 @@ export const saveKpiWidget = async (roles: AppRole[], widget: Omit<KpiWidget, "i
   if (error) throw error;
 };
 
+export const deleteKpiWidget = async (roles: AppRole[], id: string) => {
+  requireRole(roles, ["admin", "director"], "manage KPI widgets");
+  const { error } = await db.from("kpi_widgets").delete().eq("id", id);
+  if (error) throw error;
+};
+
 export const evaluateFormulaFromRow = (expression: string, row: Record<string, number>) => evaluateSafeExpression(expression, row);
 
 export const aggregateSubmissionSums = (rows: Array<Pick<BedSubmission, "total_beds" | "occupied" | "closed">>) =>
