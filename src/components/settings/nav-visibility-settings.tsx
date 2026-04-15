@@ -11,7 +11,7 @@ type Props = {
 
 const roleRows: Array<{ key: NavRole; label: string; dotClass: string }> = [
   { key: "director", label: "Director", dotClass: "text-secondary-foreground" },
-  { key: "doctor", label: "Doctor" },
+  { key: "doctor", label: "Doctor", dotClass: "text-primary" },
   { key: "nurse", label: "Nurse", dotClass: "text-primary" },
   { key: "staff", label: "Data Collector", dotClass: "text-accent-foreground" },
   { key: "admin", label: "Administrator", dotClass: "text-ring" },
