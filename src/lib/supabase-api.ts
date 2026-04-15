@@ -172,14 +172,14 @@ export const saveKpiWidget = async (roles: AppRole[], widget: Omit<KpiWidget, "i
 export const evaluateFormulaFromRow = (expression: string, row: Record<string, number>) => evaluateSafeExpression(expression, row);
 
 export const aggregateSubmissionSums = (rows: Array<Pick<BedSubmission, "total_beds" | "occupied" | "closed">>) =>
-  rows.reduce(
+  rows.reduce<{ total_beds: number; occupied: number; closed: number; vacant: number }>(
     (acc, row) => ({
       total_beds: acc.total_beds + (Number(row.total_beds) || 0),
       occupied: acc.occupied + (Number(row.occupied) || 0),
       closed: acc.closed + (Number(row.closed) || 0),
       vacant: acc.vacant + Math.max((Number(row.total_beds) || 0) - (Number(row.occupied) || 0) - (Number(row.closed) || 0), 0),
     }),
-    { total_beds: 0, occupied: 0, closed: 0, vacant: 0 } as { total_beds: number; occupied: number; closed: number; vacant: number },
+    { total_beds: 0, occupied: 0, closed: 0, vacant: 0 },
   );
 
 export const uploadDocument = async (userId: string, file: File) => {
