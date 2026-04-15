@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, FileCog, LayoutDashboard, LogOut, Settings2, Users2 } from "lucide-react";
+import { BarChart3, ClipboardList, FileCog, LayoutDashboard, LogOut, Settings, Settings2, Users2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -21,6 +21,7 @@ const navItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/data-entry", label: "Bed Entry", icon: ClipboardList },
   { to: "/kpi-builder", label: "KPI Builder", icon: BarChart3, roles: ["admin", "director"] },
+  { to: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
   { to: "/categories", label: "Categories", icon: Settings2, roles: ["admin"] },
   { to: "/form-builder", label: "Form Builder", icon: FileCog, roles: ["admin"] },
   { to: "/users", label: "Users", icon: Users2, roles: ["admin"] },
