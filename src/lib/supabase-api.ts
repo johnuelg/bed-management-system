@@ -135,6 +135,22 @@ export const saveFormField = async (roles: AppRole[], field: Partial<FormField> 
   if (error) throw error;
 };
 
+export const updateFormField = async (
+  roles: AppRole[],
+  id: string,
+  field: Partial<FormField> & { field_key: string; label: string; field_type: FormField["field_type"] },
+) => {
+  requireRole(roles, ["admin"], "manage form builder");
+  const { error } = await db.from("form_fields").update(field).eq("id", id);
+  if (error) throw error;
+};
+
+export const deleteFormField = async (roles: AppRole[], id: string) => {
+  requireRole(roles, ["admin"], "manage form builder");
+  const { error } = await db.from("form_fields").delete().eq("id", id);
+  if (error) throw error;
+};
+
 export const replaceFormFieldOrder = async (roles: AppRole[], orderedIds: string[]) => {
   requireRole(roles, ["admin"], "reorder form fields");
   await Promise.all(
