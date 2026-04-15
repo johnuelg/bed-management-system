@@ -3,9 +3,35 @@ import { requireRole } from "@/lib/api-guard";
 import { compressImageIfNeeded, MAX_UPLOAD_SIZE, validateFileType } from "@/lib/file-upload";
 import { evaluateSafeExpression } from "@/lib/math-eval";
 import { bedSubmissionSchema, formulaSchema } from "@/lib/validation";
-import type { AppRole, BedSubmission, BedType, Department, FormField, KpiFormula, KpiWidget, Profile } from "@/types/hospital";
+import type {
+  AppRole,
+  BedSubmission,
+  BedType,
+  Department,
+  FormField,
+  KpiFormula,
+  KpiWidget,
+  NavVisibilitySettings,
+  Profile,
+} from "@/types/hospital";
 
 const db = supabase as any;
+const NAV_VISIBILITY_KEY = "nav_visibility";
+const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
+  dashboard: true,
+  data_entry: true,
+  kpi_builder: true,
+};
+
+const normalizeNavVisibility = (value: unknown): NavVisibilitySettings => {
+  if (!value || typeof value !== "object") return DEFAULT_NAV_VISIBILITY;
+  const source = value as Partial<Record<keyof NavVisibilitySettings, unknown>>;
+  return {
+    dashboard: typeof source.dashboard === "boolean" ? source.dashboard : true,
+    data_entry: typeof source.data_entry === "boolean" ? source.data_entry : true,
+    kpi_builder: typeof source.kpi_builder === "boolean" ? source.kpi_builder : true,
+  };
+};
 
 export const getCurrentUserId = async () => {
   const { data } = await supabase.auth.getUser();
@@ -53,6 +79,33 @@ export const deactivateUserByAdmin = async (roles: AppRole[], user_id: string, i
   });
   if (error) throw error;
   return data;
+};
+
+export const fetchNavVisibilitySettings = async (): Promise<NavVisibilitySettings> => {
+  const { data, error } = await db
+    .from("app_settings")
+    .select("setting_value")
+    .eq("setting_key", NAV_VISIBILITY_KEY)
+    .maybeSingle();
+  if (error) throw error;
+  return normalizeNavVisibility(data?.setting_value);
+};
+
+export const saveNavVisibilitySettings = async (
+  roles: AppRole[],
+  settings: NavVisibilitySettings,
+  userId: string,
+) => {
+  requireRole(roles, ["admin"], "manage navigation settings");
+  const { error } = await db.from("app_settings").upsert(
+    {
+      setting_key: NAV_VISIBILITY_KEY,
+      setting_value: settings,
+      updated_by: userId,
+    },
+    { onConflict: "setting_key" },
+  );
+  if (error) throw error;
 };
 
 export const fetchDepartments = async (): Promise<Department[]> => {
