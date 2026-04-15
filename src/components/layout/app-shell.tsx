@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, FileCog, LayoutDashboard, LogOut, Settings, Settings2, Users2 } from "lucide-react";
+import { BarChart3, ClipboardList, FileCog, LayoutDashboard, LogOut, Settings2, Users2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -23,7 +23,6 @@ const defaultRoleVisibility: RoleMenuVisibility = {
   dashboard: true,
   data_entry: true,
   kpi_builder: true,
-  settings: true,
   categories: true,
   form_builder: true,
   users: true,
@@ -33,7 +32,6 @@ const navItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, settingKey: "dashboard" },
   { to: "/data-entry", label: "Bed Entry", icon: ClipboardList, settingKey: "data_entry" },
   { to: "/kpi-builder", label: "KPI Builder", icon: BarChart3, settingKey: "kpi_builder", roles: ["admin", "director"] },
-  { to: "/settings", label: "Settings", icon: Settings, settingKey: "settings", roles: ["admin"] },
   { to: "/categories", label: "Categories", icon: Settings2, settingKey: "categories", roles: ["admin"] },
   { to: "/form-builder", label: "Form Builder", icon: FileCog, settingKey: "form_builder", roles: ["admin"] },
   { to: "/users", label: "Users", icon: Users2, settingKey: "users", roles: ["admin"] },

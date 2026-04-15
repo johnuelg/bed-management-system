@@ -9,11 +9,11 @@ import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibilit
 import type { NavVisibilitySettings } from "@/types/hospital";
 
 const defaultNavSettings: NavVisibilitySettings = {
-  admin: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
-  director: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
-  doctor: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
-  nurse: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
-  staff: { dashboard: true, data_entry: true, kpi_builder: true, settings: true, categories: true, form_builder: true, users: true },
+  admin: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
+  director: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
+  doctor: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
+  nurse: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
+  staff: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
 };
 
 const SettingsPage = () => {

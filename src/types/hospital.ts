@@ -78,7 +78,6 @@ export type RoleMenuVisibility = {
   dashboard: boolean;
   data_entry: boolean;
   kpi_builder: boolean;
-  settings: boolean;
   categories: boolean;
   form_builder: boolean;
   users: boolean;
