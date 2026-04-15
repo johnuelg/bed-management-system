@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -132,6 +133,18 @@ const UsersPage = () => {
     setNewRoleName("");
   };
 
+  const moveRole = (role: AppRole, direction: "up" | "down") => {
+    const index = roleCatalog.findIndex((entry) => entry === role);
+    if (index === -1) return;
+
+    const nextIndex = direction === "up" ? index - 1 : index + 1;
+    if (nextIndex < 0 || nextIndex >= roleCatalog.length) return;
+
+    const nextCatalog = [...roleCatalog];
+    [nextCatalog[index], nextCatalog[nextIndex]] = [nextCatalog[nextIndex], nextCatalog[index]];
+    void roleCatalogMutation.mutate(nextCatalog);
+  };
+
   const removeRole = (roleToRemove: AppRole) => {
     if (roleToRemove === "admin") {
       toast({ title: "Admin role cannot be removed", variant: "destructive" });
@@ -166,9 +179,27 @@ const UsersPage = () => {
             </Button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {roleCatalog.map((role) => (
+            {roleCatalog.map((role, index) => (
               <div key={role} className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
                 <span>{role}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2"
+                  onClick={() => moveRole(role, "up")}
+                  disabled={roleCatalogMutation.isPending || index === 0}
+                >
+                  <ArrowUp className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2"
+                  onClick={() => moveRole(role, "down")}
+                  disabled={roleCatalogMutation.isPending || index === roleCatalog.length - 1}
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                </Button>
                 <Button
                   size="sm"
                   variant="ghost"
