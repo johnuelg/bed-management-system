@@ -169,7 +169,7 @@ const KpiBuilderPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Create Widget</CardTitle>
+            <CardTitle>Create KPI</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -231,27 +231,7 @@ const KpiBuilderPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Live KPI Preview</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {widgets.filter((w) => w.is_visible).map((widget) => {
-            const value = formulaValues[widget.formula_id ?? ""];
-            return (
-              <div key={widget.id} className="hospital-glass rounded-lg p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{widget.aggregation_scope}</p>
-                <p className="mt-2 text-sm font-semibold">{widget.name}</p>
-                <p className="mt-1 text-3xl font-bold">
-                  {Number.isFinite(value) ? value.toFixed(2) : "--"}
-                </p>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Manage Widgets</CardTitle>
+          <CardTitle>Manage KPIs</CardTitle>
           <CardDescription>Delete widgets you no longer need.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
