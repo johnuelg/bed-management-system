@@ -20,12 +20,12 @@ type NavItem = {
 };
 
 const defaultRoleVisibility: RoleMenuVisibility = {
-  dashboard: true,
-  data_entry: true,
-  kpi_builder: true,
-  categories: true,
-  form_builder: true,
-  users: true,
+  dashboard: false,
+  data_entry: false,
+  kpi_builder: false,
+  categories: false,
+  form_builder: false,
+  users: false,
 };
 
 const navItems: NavItem[] = [
