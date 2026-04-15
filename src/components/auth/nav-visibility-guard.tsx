@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchNavVisibilitySettings } from "@/lib/supabase-api";
-import { getPrimaryNavRole } from "@/lib/rbac";
+import { getPrimaryRole } from "@/lib/rbac";
 import type { RoleMenuVisibility } from "@/types/hospital";
 
 const defaultRoleVisibility: RoleMenuVisibility = {
@@ -29,10 +29,10 @@ export const NavVisibilityGuard = ({ settingKey }: NavVisibilityGuardProps) => {
     return null;
   }
 
-  const primaryNavRole = getPrimaryNavRole(roles);
+  const primaryRole = getPrimaryRole(roles);
   const canAccess =
-    primaryNavRole &&
-    (navVisibility?.[primaryNavRole] ?? defaultRoleVisibility)[settingKey];
+    primaryRole &&
+    (navVisibility?.[primaryRole] ?? defaultRoleVisibility)[settingKey];
 
   if (!canAccess) {
     return <Navigate to="/dashboard" replace />;

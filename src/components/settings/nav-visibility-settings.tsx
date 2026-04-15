@@ -1,21 +1,23 @@
 import { Label } from "@/components/ui/label";
-import type { NavRole, NavVisibilitySettings, RoleMenuVisibility } from "@/types/hospital";
-import { Check, Circle } from "lucide-react";
+import type { NavVisibilitySettings, RoleMenuVisibility } from "@/types/hospital";
+import { Check } from "lucide-react";
 
 type Props = {
   settings: NavVisibilitySettings;
+  roles: string[];
   disabled?: boolean;
   showHeader?: boolean;
   onChange: (next: NavVisibilitySettings) => void;
 };
 
-const roleRows: Array<{ key: NavRole; label: string; dotClass: string }> = [
-  { key: "director", label: "Director", dotClass: "text-secondary-foreground" },
-  { key: "doctor", label: "Doctor", dotClass: "text-primary" },
-  { key: "nurse", label: "Nurse", dotClass: "text-primary" },
-  { key: "staff", label: "Data Collector", dotClass: "text-accent-foreground" },
-  { key: "admin", label: "Administrator", dotClass: "text-ring" },
-];
+const defaultRoleVisibility: RoleMenuVisibility = {
+  dashboard: false,
+  data_entry: false,
+  kpi_builder: false,
+  categories: false,
+  form_builder: false,
+  users: false,
+};
 
 const settingRows: Array<{ key: keyof RoleMenuVisibility; label: string; description: string }> = [
   { key: "dashboard", label: "Dashboard", description: "Show or hide Dashboard in the sidebar menu." },
@@ -26,8 +28,15 @@ const settingRows: Array<{ key: keyof RoleMenuVisibility; label: string; descrip
   { key: "users", label: "Users", description: "Show or hide Users in the sidebar menu." },
 ];
 
-export const NavVisibilitySettingsEditor = ({ settings, disabled, onChange, showHeader = true }: Props) => (
-  <div className="space-y-4">
+export const NavVisibilitySettingsEditor = ({ settings, roles, disabled, onChange, showHeader = true }: Props) => {
+  const roleRows = Array.from(
+    new Set(roles.map((role) => role.trim()).filter(Boolean)),
+  );
+
+  const columns = roleRows.includes("admin") ? roleRows : ["admin", ...roleRows];
+
+  return (
+    <div className="space-y-4">
     {showHeader ? (
       <div>
         <h3 className="text-2xl font-bold">Navigation Permissions</h3>
@@ -40,12 +49,9 @@ export const NavVisibilitySettingsEditor = ({ settings, disabled, onChange, show
         <thead>
           <tr className="border-b bg-muted/40">
             <th className="px-4 py-4 text-left text-base font-semibold text-muted-foreground">Navigation Item</th>
-            {roleRows.map((roleRow) => (
-              <th key={roleRow.key} className="px-4 py-4 text-left text-base font-semibold">
-                <div className="inline-flex items-center gap-2">
-                  <Circle className={`h-3.5 w-3.5 fill-current ${roleRow.dotClass ?? "text-primary"}`} />
-                  <span>{roleRow.label}</span>
-                </div>
+            {columns.map((role) => (
+              <th key={role} className="px-4 py-4 text-left text-base font-semibold capitalize">
+                {role}
               </th>
             ))}
           </tr>
@@ -59,32 +65,37 @@ export const NavVisibilitySettingsEditor = ({ settings, disabled, onChange, show
                   <p className="text-xs text-muted-foreground">{row.description}</p>
                 </div>
               </td>
-              {roleRows.map((roleRow) => (
-                <td key={`${row.key}-${roleRow.key}`} className="px-4 py-5 align-middle">
+              {columns.map((role) => (
+                <td key={`${row.key}-${role}`} className="px-4 py-5 align-middle">
                   <div className="flex items-center justify-start">
+                    {(() => {
+                      const roleSettings = settings[role] ?? defaultRoleVisibility;
+                      return (
                     <button
                       type="button"
                       role="checkbox"
-                      aria-checked={settings[roleRow.key][row.key]}
-                      aria-label={`Toggle ${row.label} menu for ${roleRow.label}`}
+                      aria-checked={roleSettings[row.key]}
+                      aria-label={`Toggle ${row.label} menu for ${role}`}
                       disabled={disabled}
                       onClick={() =>
                         onChange({
                           ...settings,
-                          [roleRow.key]: {
-                            ...settings[roleRow.key],
-                            [row.key]: !settings[roleRow.key][row.key],
+                          [role]: {
+                            ...roleSettings,
+                            [row.key]: !roleSettings[row.key],
                           },
                         })
                       }
                       className={`flex h-9 w-9 items-center justify-center rounded-full border ${
-                        settings[roleRow.key][row.key]
+                        roleSettings[row.key]
                           ? "border-primary text-primary"
                           : "border-border text-muted-foreground/40"
                       } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-primary/70"}`}
                     >
                       <Check className="h-4 w-4" />
                     </button>
+                      );
+                    })()}
                   </div>
                 </td>
               ))}
@@ -94,4 +105,5 @@ export const NavVisibilitySettingsEditor = ({ settings, disabled, onChange, show
       </table>
     </div>
   </div>
-);
+  );
+};

@@ -231,6 +231,7 @@ const UsersPage = () => {
         <CardContent className="space-y-4">
           <NavVisibilitySettingsEditor
             settings={navVisibility}
+            roles={roleOptions}
             showHeader={false}
             disabled={settingsMutation.isPending}
             onChange={(next) => {
