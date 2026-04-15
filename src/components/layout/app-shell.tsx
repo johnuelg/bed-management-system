@@ -1,10 +1,12 @@
 import { BarChart3, ClipboardList, FileCog, LayoutDashboard, LogOut, Settings2, Users2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import type { ComponentType } from "react";
 import logo from "@/assets/hospital-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { canManageSystem, canManageUsers, hasAnyRole } from "@/lib/rbac";
+import { fetchNavVisibilitySettings } from "@/lib/supabase-api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +29,7 @@ const navItems: NavItem[] = [
 export const AppShell = () => {
   const { roles, signOut, profile } = useAuth();
   const location = useLocation();
+  const { data: navVisibility } = useQuery({ queryKey: ["app_settings", "nav_visibility"], queryFn: fetchNavVisibilitySettings });
 
   const canSystem = canManageSystem(roles);
   const canUsers = canManageUsers(roles);
@@ -49,6 +52,9 @@ export const AppShell = () => {
             .filter((item) => !item.roles || hasAnyRole(roles, item.roles))
             .filter((item) => (item.to !== "/kpi-builder" ? true : canSystem))
             .filter((item) => (item.to !== "/users" ? true : canUsers))
+            .filter((item) => (item.to !== "/dashboard" ? true : navVisibility?.dashboard ?? true))
+            .filter((item) => (item.to !== "/data-entry" ? true : navVisibility?.data_entry ?? true))
+            .filter((item) => (item.to !== "/kpi-builder" ? true : navVisibility?.kpi_builder ?? true))
             .map((item) => (
               <NavLink
                 key={item.to}
