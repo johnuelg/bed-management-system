@@ -8,18 +8,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { createUserByAdmin, deactivateUserByAdmin, fetchProfiles, fetchUserRoles, setUserRole } from "@/lib/supabase-api";
+import {
+  createUserByAdmin,
+  deactivateUserByAdmin,
+  fetchNavVisibilitySettings,
+  fetchProfiles,
+  fetchUserRoles,
+  saveNavVisibilitySettings,
+  setUserRole,
+} from "@/lib/supabase-api";
+import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibility-settings";
 import type { AppRole } from "@/types/hospital";
 
 const roleOptions: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 
 const UsersPage = () => {
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ email: "", password: "", display_name: "", role: "staff" as AppRole });
 
   const { data: profiles = [] } = useQuery({ queryKey: ["profiles"], queryFn: fetchProfiles });
   const { data: roleMap = {} } = useQuery({ queryKey: ["user_roles"], queryFn: () => fetchUserRoles() });
+  const { data: navVisibility = { dashboard: true, data_entry: true, kpi_builder: true } } = useQuery({
+    queryKey: ["app_settings", "nav_visibility"],
+    queryFn: fetchNavVisibilitySettings,
+  });
 
   const users = useMemo(
     () =>
@@ -57,6 +70,18 @@ const UsersPage = () => {
       await queryClient.invalidateQueries({ queryKey: ["profiles"] });
     },
     onError: (error) => toast({ title: "Status update failed", description: (error as Error).message, variant: "destructive" }),
+  });
+
+  const settingsMutation = useMutation({
+    mutationFn: (settings: { dashboard: boolean; data_entry: boolean; kpi_builder: boolean }) => {
+      if (!user?.id) throw new Error("You must be signed in to save settings.");
+      return saveNavVisibilitySettings(roles, settings, user.id);
+    },
+    onSuccess: async () => {
+      toast({ title: "Menu settings saved" });
+      await queryClient.invalidateQueries({ queryKey: ["app_settings", "nav_visibility"] });
+    },
+    onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
   });
 
   return (
@@ -101,6 +126,25 @@ const UsersPage = () => {
           </div>
           <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
             Create User
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Menu Visibility Settings</CardTitle>
+          <CardDescription>Control Dashboard, Bed Entry, and KPI Builder visibility from here.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <NavVisibilitySettingsEditor
+            settings={navVisibility}
+            disabled={settingsMutation.isPending}
+            onChange={(next) => {
+              queryClient.setQueryData(["app_settings", "nav_visibility"], next);
+            }}
+          />
+          <Button onClick={() => settingsMutation.mutate(navVisibility)} disabled={settingsMutation.isPending}>
+            Save Menu Settings
           </Button>
         </CardContent>
       </Card>

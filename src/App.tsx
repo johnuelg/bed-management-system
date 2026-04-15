@@ -15,6 +15,7 @@ import CategoriesPage from "./pages/Categories";
 import FormBuilderPage from "./pages/FormBuilder";
 import KpiBuilderPage from "./pages/KpiBuilder";
 import UsersPage from "./pages/Users";
+import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
 
                 <Route element={<RoleGuard allow={["admin"]} />}>
                   <Route path="/users" element={<UsersPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/categories" element={<CategoriesPage />} />
                   <Route path="/form-builder" element={<FormBuilderPage />} />
                 </Route>
