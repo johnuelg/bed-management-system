@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { AppShell } from "@/components/layout/app-shell";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { RoleGuard } from "@/components/auth/role-guard";
+import { NavVisibilityGuard } from "@/components/auth/nav-visibility-guard";
 import LoginPage from "./pages/Login";
 import ResetPasswordPage from "./pages/ResetPassword";
 import DashboardPage from "./pages/Dashboard";
@@ -34,18 +35,30 @@ const App = () => (
             <Route element={<ProtectedRoute />}>
               <Route element={<AppShell />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/data-entry" element={<DataEntryPage />} />
+                <Route element={<NavVisibilityGuard settingKey="dashboard" />}>
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                </Route>
+                <Route element={<NavVisibilityGuard settingKey="data_entry" />}>
+                  <Route path="/data-entry" element={<DataEntryPage />} />
+                </Route>
 
                 <Route element={<RoleGuard allow={["admin"]} />}>
-                  <Route path="/users" element={<UsersPage />} />
+                  <Route element={<NavVisibilityGuard settingKey="users" />}>
+                    <Route path="/users" element={<UsersPage />} />
+                  </Route>
                   <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/categories" element={<CategoriesPage />} />
-                  <Route path="/form-builder" element={<FormBuilderPage />} />
+                  <Route element={<NavVisibilityGuard settingKey="categories" />}>
+                    <Route path="/categories" element={<CategoriesPage />} />
+                  </Route>
+                  <Route element={<NavVisibilityGuard settingKey="form_builder" />}>
+                    <Route path="/form-builder" element={<FormBuilderPage />} />
+                  </Route>
                 </Route>
 
                 <Route element={<RoleGuard allow={["admin", "director"]} />}>
-                  <Route path="/kpi-builder" element={<KpiBuilderPage />} />
+                  <Route element={<NavVisibilityGuard settingKey="kpi_builder" />}>
+                    <Route path="/kpi-builder" element={<KpiBuilderPage />} />
+                  </Route>
                 </Route>
               </Route>
             </Route>
