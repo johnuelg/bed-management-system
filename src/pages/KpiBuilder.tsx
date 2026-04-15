@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -21,12 +21,9 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/hooks/use-toast";
 import {
-  aggregateSubmissionSums,
   deleteKpiWidget,
-  evaluateFormulaFromRow,
   fetchKpiFormulas,
   fetchKpiWidgets,
-  fetchTodaySubmissions,
   saveKpiFormula,
   saveKpiWidget,
 } from "@/lib/supabase-api";
@@ -45,26 +42,6 @@ const KpiBuilderPage = () => {
 
   const { data: formulas = [] } = useQuery({ queryKey: ["kpi_formulas"], queryFn: fetchKpiFormulas });
   const { data: widgets = [] } = useQuery({ queryKey: ["kpi_widgets"], queryFn: fetchKpiWidgets });
-  const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
-
-  const sums = useMemo(() => aggregateSubmissionSums(rows), [rows]);
-
-  const formulaValues = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const formula of formulas) {
-      try {
-        map[formula.id] = evaluateFormulaFromRow(formula.expression, {
-          total_beds: sums.total_beds,
-          occupied: sums.occupied,
-          closed: sums.closed,
-          vacant: sums.vacant,
-        });
-      } catch {
-        map[formula.id] = Number.NaN;
-      }
-    }
-    return map;
-  }, [formulas, sums]);
 
   const formulaMutation = useMutation({
     mutationFn: () =>
@@ -117,7 +94,7 @@ const KpiBuilderPage = () => {
           <h1 className="text-3xl font-bold">KPI Formula Builder</h1>
           <p className="text-sm text-muted-foreground">Secure mathjs evaluation with SUM-based aggregation defaults.</p>
         </div>
-        <Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["bed_submissions_today"] })}>
+        <Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["kpi_widgets"] })}>
           <RefreshCcw className="mr-2 h-4 w-4" /> Manual Refresh
         </Button>
       </header>
