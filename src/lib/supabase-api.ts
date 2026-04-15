@@ -7,29 +7,59 @@ import type {
   AppRole,
   BedSubmission,
   BedType,
+  ClinicalRole,
   Department,
   FormField,
   KpiFormula,
   KpiWidget,
   NavVisibilitySettings,
+  RoleMenuVisibility,
   Profile,
 } from "@/types/hospital";
 
 const db = supabase as any;
 const NAV_VISIBILITY_KEY = "nav_visibility";
-const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
+const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   dashboard: true,
   data_entry: true,
   kpi_builder: true,
 };
+const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
+  doctor: { ...DEFAULT_ROLE_MENU_VISIBILITY },
+  nurse: { ...DEFAULT_ROLE_MENU_VISIBILITY },
+  staff: { ...DEFAULT_ROLE_MENU_VISIBILITY },
+};
 
-const normalizeNavVisibility = (value: unknown): NavVisibilitySettings => {
-  if (!value || typeof value !== "object") return DEFAULT_NAV_VISIBILITY;
-  const source = value as Partial<Record<keyof NavVisibilitySettings, unknown>>;
+const roleKeys: ClinicalRole[] = ["doctor", "nurse", "staff"];
+
+const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
+  if (!value || typeof value !== "object") return { ...DEFAULT_ROLE_MENU_VISIBILITY };
+  const source = value as Partial<Record<keyof RoleMenuVisibility, unknown>>;
   return {
     dashboard: typeof source.dashboard === "boolean" ? source.dashboard : true,
     data_entry: typeof source.data_entry === "boolean" ? source.data_entry : true,
     kpi_builder: typeof source.kpi_builder === "boolean" ? source.kpi_builder : true,
+  };
+};
+
+const normalizeNavVisibility = (value: unknown): NavVisibilitySettings => {
+  if (!value || typeof value !== "object") return DEFAULT_NAV_VISIBILITY;
+  const source = value as Record<string, unknown>;
+
+  const hasRoleShape = roleKeys.some((role) => role in source);
+  if (!hasRoleShape) {
+    const normalized = normalizeRoleMenuVisibility(source);
+    return {
+      doctor: { ...normalized },
+      nurse: { ...normalized },
+      staff: { ...normalized },
+    };
+  }
+
+  return {
+    doctor: normalizeRoleMenuVisibility(source.doctor),
+    nurse: normalizeRoleMenuVisibility(source.nurse),
+    staff: normalizeRoleMenuVisibility(source.staff),
   };
 };
 

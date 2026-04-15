@@ -6,6 +6,13 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchNavVisibilitySettings, saveNavVisibilitySettings } from "@/lib/supabase-api";
 import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibility-settings";
+import type { NavVisibilitySettings } from "@/types/hospital";
+
+const defaultNavSettings: NavVisibilitySettings = {
+  doctor: { dashboard: true, data_entry: true, kpi_builder: true },
+  nurse: { dashboard: true, data_entry: true, kpi_builder: true },
+  staff: { dashboard: true, data_entry: true, kpi_builder: true },
+};
 
 const SettingsPage = () => {
   const { roles, user } = useAuth();
@@ -15,16 +22,12 @@ const SettingsPage = () => {
     queryFn: fetchNavVisibilitySettings,
   });
 
-  const [draft, setDraft] = useState({
-    dashboard: true,
-    data_entry: true,
-    kpi_builder: true,
-  });
+  const [draft, setDraft] = useState<NavVisibilitySettings>(defaultNavSettings);
 
   const current = serverSettings ?? draft;
 
   const saveMutation = useMutation({
-    mutationFn: (next: typeof draft) => {
+    mutationFn: (next: NavVisibilitySettings) => {
       if (!user?.id) throw new Error("You must be signed in to save settings.");
       return saveNavVisibilitySettings(roles, next, user.id);
     },
