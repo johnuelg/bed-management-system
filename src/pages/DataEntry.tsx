@@ -1,11 +1,15 @@
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -32,6 +36,7 @@ import {
 } from "@/lib/supabase-api";
 import { MAX_UPLOAD_SIZE } from "@/lib/file-upload";
 import { hasAnyRole } from "@/lib/rbac";
+import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
 
 const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((file, ctx) => {
@@ -39,6 +44,24 @@ const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((fil
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "File must be <= 2MB" });
   }
 });
+
+const toLocalDateString = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const toLocalTimeString = (value: Date) => {
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
+const getCurrentDateTimeValue = () => {
+  const now = new Date();
+  return `${toLocalDateString(now)}T${toLocalTimeString(now)}`;
+};
 
 const DataEntryPage = () => {
   const { roles } = useAuth();
@@ -66,9 +89,33 @@ const DataEntryPage = () => {
   const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
 
   const dynamicFields = useMemo(
-    () => formFields.filter((field) => field.is_active && !field.is_system),
+    () => formFields.filter((field) => field.is_active && !field.is_system).sort((a, b) => a.display_order - b.display_order),
     [formFields],
   );
+
+  useEffect(() => {
+    if (dynamicFields.length === 0) return;
+
+    setForm((prev) => {
+      const nextCustomFields = { ...prev.custom_fields };
+
+      dynamicFields.forEach((field) => {
+        const existing = nextCustomFields[field.field_key];
+        if (existing !== undefined && existing !== null && String(existing) !== "") return;
+
+        if (field.field_type === "date") {
+          nextCustomFields[field.field_key] = getCurrentDateTimeValue();
+          return;
+        }
+
+        if (field.default_value !== null) {
+          nextCustomFields[field.field_key] = field.default_value;
+        }
+      });
+
+      return { ...prev, custom_fields: nextCustomFields };
+    });
+  }, [dynamicFields]);
 
   const canEditDynamicField = (field: FormField) =>
     !field.is_readonly && (field.editable_roles.length === 0 || field.editable_roles.some((role) => roles.includes(role)));
@@ -320,7 +367,75 @@ const DataEntryPage = () => {
               );
             }
 
-            const inputType = field.field_type === "number" ? "number" : field.field_type === "date" ? "date" : "text";
+            if (field.field_type === "date") {
+              const raw = String(currentValue || "");
+              const [datePart, timePart] = raw.includes("T")
+                ? raw.split("T")
+                : [raw || toLocalDateString(new Date()), toLocalTimeString(new Date())];
+
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <div className="grid gap-2 sm:grid-cols-[1fr_140px]">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={!editable}
+                          className={cn(
+                            "justify-start text-left font-normal",
+                            !datePart && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {datePart ? format(new Date(`${datePart}T00:00:00`), "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={datePart ? new Date(`${datePart}T00:00:00`) : undefined}
+                          onSelect={(selected) => {
+                            if (!selected) return;
+                            const nextDate = toLocalDateString(selected);
+                            const safeTime = timePart || toLocalTimeString(new Date());
+                            setForm((prev) => ({
+                              ...prev,
+                              custom_fields: {
+                                ...prev.custom_fields,
+                                [field.field_key]: `${nextDate}T${safeTime}`,
+                              },
+                            }));
+                          }}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+
+                    <Input
+                      type="time"
+                      step={60}
+                      disabled={!editable}
+                      value={timePart || toLocalTimeString(new Date())}
+                      onChange={(e) => {
+                        const safeDate = datePart || toLocalDateString(new Date());
+                        setForm((prev) => ({
+                          ...prev,
+                          custom_fields: {
+                            ...prev.custom_fields,
+                            [field.field_key]: `${safeDate}T${e.target.value}`,
+                          },
+                        }));
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            }
+
+            const inputType = field.field_type === "number" ? "number" : "text";
 
             return (
               <div key={field.id} className="space-y-2 md:col-span-2">
