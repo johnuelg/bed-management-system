@@ -367,7 +367,75 @@ const DataEntryPage = () => {
               );
             }
 
-            const inputType = field.field_type === "number" ? "number" : field.field_type === "date" ? "date" : "text";
+            if (field.field_type === "date") {
+              const raw = String(currentValue || "");
+              const [datePart, timePart] = raw.includes("T")
+                ? raw.split("T")
+                : [raw || toLocalDateString(new Date()), toLocalTimeString(new Date())];
+
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <div className="grid gap-2 sm:grid-cols-[1fr_140px]">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={!editable}
+                          className={cn(
+                            "justify-start text-left font-normal",
+                            !datePart && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {datePart ? format(new Date(`${datePart}T00:00:00`), "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={datePart ? new Date(`${datePart}T00:00:00`) : undefined}
+                          onSelect={(selected) => {
+                            if (!selected) return;
+                            const nextDate = toLocalDateString(selected);
+                            const safeTime = timePart || toLocalTimeString(new Date());
+                            setForm((prev) => ({
+                              ...prev,
+                              custom_fields: {
+                                ...prev.custom_fields,
+                                [field.field_key]: `${nextDate}T${safeTime}`,
+                              },
+                            }));
+                          }}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+
+                    <Input
+                      type="time"
+                      step={60}
+                      disabled={!editable}
+                      value={timePart || toLocalTimeString(new Date())}
+                      onChange={(e) => {
+                        const safeDate = datePart || toLocalDateString(new Date());
+                        setForm((prev) => ({
+                          ...prev,
+                          custom_fields: {
+                            ...prev.custom_fields,
+                            [field.field_key]: `${safeDate}T${e.target.value}`,
+                          },
+                        }));
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            }
+
+            const inputType = field.field_type === "number" ? "number" : "text";
 
             return (
               <div key={field.id} className="space-y-2 md:col-span-2">
