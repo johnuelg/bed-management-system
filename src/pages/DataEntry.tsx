@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
+  deleteBedSubmission,
   fetchBedTypes,
   fetchDepartments,
   fetchTodaySubmissions,
@@ -30,6 +31,7 @@ const DataEntryPage = () => {
   const { roles } = useAuth();
   const qc = useQueryClient();
   const canManageTotals = hasAnyRole(roles, ["admin", "director"]);
+  const canDeleteSubmissions = hasAnyRole(roles, ["admin", "director"]);
   const initialForm = {
     id: "",
     department_id: "",
@@ -82,6 +84,18 @@ const DataEntryPage = () => {
       await qc.invalidateQueries({ queryKey: ["bed_submissions_today"] });
     },
     onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteBedSubmission(roles, id),
+    onSuccess: async () => {
+      toast({ title: "Submission deleted" });
+      await qc.invalidateQueries({ queryKey: ["bed_submissions_today"] });
+      if (form.id) {
+        resetForm();
+      }
+    },
+    onError: (error) => toast({ title: "Delete failed", description: (error as Error).message, variant: "destructive" }),
   });
 
   const onUpload = async (file?: File) => {
@@ -212,27 +226,39 @@ const DataEntryPage = () => {
         <CardContent className="space-y-2">
           {rows.length === 0 && <p className="text-sm text-muted-foreground">No submissions yet.</p>}
           {rows.map((row) => (
-            <button
-              type="button"
-              key={row.id}
-              className="hospital-transition w-full rounded-md border p-3 text-left hover:bg-muted"
-              onClick={() =>
-                setForm({
-                  id: row.id,
-                  department_id: row.department_id,
-                  bed_type_id: row.bed_type_id ?? "",
-                  total_beds: row.total_beds,
-                  occupied: row.occupied,
-                  closed: row.closed,
-                  closure_reason: row.closure_reason ?? "",
-                })
-              }
-            >
-              <p className="font-semibold">Department: {row.department_id}</p>
-              <p className="text-sm text-muted-foreground">
-                Total {row.total_beds} • Occupied {row.occupied} • Closed {row.closed}
-              </p>
-            </button>
+            <div key={row.id} className="flex items-start justify-between gap-3 rounded-md border p-3">
+              <button
+                type="button"
+                className="hospital-transition flex-1 text-left hover:bg-muted"
+                onClick={() =>
+                  setForm({
+                    id: row.id,
+                    department_id: row.department_id,
+                    bed_type_id: row.bed_type_id ?? "",
+                    total_beds: row.total_beds,
+                    occupied: row.occupied,
+                    closed: row.closed,
+                    closure_reason: row.closure_reason ?? "",
+                  })
+                }
+              >
+                <p className="font-semibold">Department: {row.department_id}</p>
+                <p className="text-sm text-muted-foreground">
+                  Total {row.total_beds} • Occupied {row.occupied} • Closed {row.closed}
+                </p>
+              </button>
+
+              {canDeleteSubmissions ? (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => deleteMutation.mutate(row.id)}
+                  disabled={deleteMutation.isPending}
+                >
+                  Delete
+                </Button>
+              ) : null}
+            </div>
           ))}
         </CardContent>
       </Card>

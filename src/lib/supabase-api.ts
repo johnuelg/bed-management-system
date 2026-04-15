@@ -176,6 +176,12 @@ export const saveBedSubmission = async (
   if (error) throw error;
 };
 
+export const deleteBedSubmission = async (roles: AppRole[], id: string) => {
+  requireRole(roles, ["admin", "director"], "delete bed submissions");
+  const { error } = await db.from("bed_submissions").delete().eq("id", id);
+  if (error) throw error;
+};
+
 export const fetchKpiFormulas = async (): Promise<KpiFormula[]> => {
   const { data, error } = await db.from("kpi_formulas").select("*").order("name", { ascending: true });
   if (error) throw error;
