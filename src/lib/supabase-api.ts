@@ -19,6 +19,8 @@ import type {
 
 const db = supabase as any;
 const NAV_VISIBILITY_KEY = "nav_visibility";
+const ROLE_CATALOG_KEY = "role_catalog";
+const DEFAULT_ROLE_CATALOG: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   dashboard: true,
   data_entry: true,
@@ -92,7 +94,7 @@ export const fetchUserRoles = async (userId?: string): Promise<Record<string, Ap
   const { data, error } = await query;
   if (error) throw error;
 
-  return (data ?? []).reduce((acc: Record<string, AppRole[]>, row: { user_id: string; role: AppRole }) => {
+  return (data ?? []).reduce((acc: Record<string, AppRole[]>, row: { user_id: string; role: string }) => {
     acc[row.user_id] = [...(acc[row.user_id] ?? []), row.role];
     return acc;
   }, {});
@@ -147,6 +149,50 @@ export const saveNavVisibilitySettings = async (
     },
     { onConflict: "setting_key" },
   );
+  if (error) throw error;
+};
+
+export const fetchRoleCatalog = async (): Promise<AppRole[]> => {
+  const { data, error } = await db
+    .from("app_settings")
+    .select("setting_value")
+    .eq("setting_key", ROLE_CATALOG_KEY)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const values = data?.setting_value;
+  if (!Array.isArray(values)) return DEFAULT_ROLE_CATALOG;
+
+  const cleaned = values
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+
+  return cleaned.length > 0 ? Array.from(new Set(cleaned)) : DEFAULT_ROLE_CATALOG;
+};
+
+export const saveRoleCatalog = async (roles: AppRole[], roleCatalog: AppRole[], userId: string) => {
+  requireRole(roles, ["admin"], "manage roles catalog");
+
+  const cleaned = Array.from(
+    new Set(
+      roleCatalog
+        .map((role) => role.trim())
+        .filter(Boolean),
+    ),
+  );
+
+  const finalCatalog = cleaned.length > 0 ? cleaned : DEFAULT_ROLE_CATALOG;
+
+  const { error } = await db.from("app_settings").upsert(
+    {
+      setting_key: ROLE_CATALOG_KEY,
+      setting_value: finalCatalog,
+      updated_by: userId,
+    },
+    { onConflict: "setting_key" },
+  );
+
   if (error) throw error;
 };
 
