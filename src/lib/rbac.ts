@@ -1,4 +1,4 @@
-import type { AppRole, ClinicalRole } from "@/types/hospital";
+import type { AppRole, NavRole } from "@/types/hospital";
 
 export const roleRank: Record<AppRole, number> = {
   admin: 5,
@@ -15,7 +15,9 @@ export const canManageSystem = (roles: AppRole[]) => hasAnyRole(roles, ["admin",
 
 export const canManageUsers = (roles: AppRole[]) => hasAnyRole(roles, ["admin"]);
 
-export const getPrimaryClinicalRole = (roles: AppRole[]): ClinicalRole | null => {
+export const getPrimaryNavRole = (roles: AppRole[]): NavRole | null => {
+  if (roles.includes("admin")) return "admin";
+  if (roles.includes("director")) return "director";
   if (roles.includes("doctor")) return "doctor";
   if (roles.includes("nurse")) return "nurse";
   if (roles.includes("staff")) return "staff";
