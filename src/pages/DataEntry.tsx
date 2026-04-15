@@ -88,6 +88,11 @@ const DataEntryPage = () => {
   const { data: formFields = [] } = useQuery({ queryKey: ["form_fields"], queryFn: fetchFormFields });
   const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
 
+  const orderedActiveFields = useMemo(
+    () => formFields.filter((field) => field.is_active).sort((a, b) => a.display_order - b.display_order),
+    [formFields],
+  );
+
   const dynamicFields = useMemo(
     () => formFields.filter((field) => field.is_active && !field.is_system).sort((a, b) => a.display_order - b.display_order),
     [formFields],
@@ -210,89 +215,94 @@ const DataEntryPage = () => {
           <CardDescription>Closure Reason is mandatory only when Closed &gt; 0.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Department</Label>
-            <Select value={form.department_id} onValueChange={(value) => setForm((p) => ({ ...p, department_id: value }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.filter((d) => d.is_active).map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {orderedActiveFields.map((field) => {
+            if (field.field_key === "department_id") {
+              return (
+                <div key={field.id} className="space-y-2">
+                  <Label>{field.label}</Label>
+                  <Select value={form.department_id} onValueChange={(value) => setForm((p) => ({ ...p, department_id: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.filter((d) => d.is_active).map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            }
 
-          <div className="space-y-2">
-            <Label>Bed Type</Label>
-            <Select value={form.bed_type_id} onValueChange={(value) => setForm((p) => ({ ...p, bed_type_id: value }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Optional" />
-              </SelectTrigger>
-              <SelectContent>
-                {bedTypes.filter((b) => b.is_active).map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            if (field.field_key === "bed_type_id") {
+              return (
+                <div key={field.id} className="space-y-2">
+                  <Label>{field.label}</Label>
+                  <Select value={form.bed_type_id} onValueChange={(value) => setForm((p) => ({ ...p, bed_type_id: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Optional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bedTypes.filter((b) => b.is_active).map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            }
 
-          <div className="space-y-2">
-            <Label>Total Beds</Label>
-            <Input
-              type="number"
-              min={0}
-              disabled={!canManageTotals}
-              value={form.total_beds}
-              onChange={(e) => setForm((p) => ({ ...p, total_beds: Number(e.target.value) }))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Occupied</Label>
-            <Input type="number" min={0} value={form.occupied} onChange={(e) => setForm((p) => ({ ...p, occupied: Number(e.target.value) }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Closed</Label>
-            <Input type="number" min={0} value={form.closed} onChange={(e) => setForm((p) => ({ ...p, closed: Number(e.target.value) }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Vacant (auto)</Label>
-            <Input value={computed.vacant} readOnly />
-          </div>
+            if (field.field_key === "total_beds") {
+              return (
+                <div key={field.id} className="space-y-2">
+                  <Label>{field.label}</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    disabled={!canManageTotals}
+                    value={form.total_beds}
+                    onChange={(e) => setForm((p) => ({ ...p, total_beds: Number(e.target.value) }))}
+                  />
+                </div>
+              );
+            }
 
-          <div className="space-y-2 md:col-span-2">
-            <Label>Occupancy Rate (auto)</Label>
-            <Input value={`${computed.occupancyRate.toFixed(1)}%`} readOnly />
-          </div>
+            if (field.field_key === "occupied") {
+              return (
+                <div key={field.id} className="space-y-2">
+                  <Label>{field.label}</Label>
+                  <Input type="number" min={0} value={form.occupied} onChange={(e) => setForm((p) => ({ ...p, occupied: Number(e.target.value) }))} />
+                </div>
+              );
+            }
 
-          {form.closed > 0 && (
-            <div className="space-y-2 md:col-span-2">
-              <Label>Reason for Closure *</Label>
-              <Textarea
-                value={form.closure_reason}
-                onChange={(e) => setForm((p) => ({ ...p, closure_reason: e.target.value }))}
-                placeholder="Required when Closed is greater than 0"
-              />
-            </div>
-          )}
+            if (field.field_key === "closed") {
+              return (
+                <div key={field.id} className="space-y-2">
+                  <Label>{field.label}</Label>
+                  <Input type="number" min={0} value={form.closed} onChange={(e) => setForm((p) => ({ ...p, closed: Number(e.target.value) }))} />
+                </div>
+              );
+            }
 
-          <div className="space-y-2 md:col-span-2">
-            <Label>Upload Document (2MB max)</Label>
-            <Input
-              type="file"
-              accept=".csv,.xlsx,.pdf,.doc,.png,.jpg,.jpeg"
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                void onUpload(e.target.files?.[0]);
-              }}
-            />
-          </div>
+            if (field.field_key === "closure_reason") {
+              if (form.closed <= 0) return null;
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label>{field.label} *</Label>
+                  <Textarea
+                    value={form.closure_reason}
+                    onChange={(e) => setForm((p) => ({ ...p, closure_reason: e.target.value }))}
+                    placeholder="Required when Closed is greater than 0"
+                  />
+                </div>
+              );
+            }
 
-          {dynamicFields.map((field) => {
             const editable = canEditDynamicField(field);
             const currentValue = form.custom_fields[field.field_key] ?? field.default_value ?? "";
 
@@ -457,6 +467,27 @@ const DataEntryPage = () => {
               </div>
             );
           })}
+
+          <div className="space-y-2">
+            <Label>Vacant (auto)</Label>
+            <Input value={computed.vacant} readOnly />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label>Occupancy Rate (auto)</Label>
+            <Input value={`${computed.occupancyRate.toFixed(1)}%`} readOnly />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label>Upload Document (2MB max)</Label>
+            <Input
+              type="file"
+              accept=".csv,.xlsx,.pdf,.doc,.png,.jpg,.jpeg"
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                void onUpload(e.target.files?.[0]);
+              }}
+            />
+          </div>
 
           <div className="md:col-span-2">
             <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
