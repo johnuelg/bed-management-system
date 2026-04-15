@@ -11,6 +11,16 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GripVertical } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -80,6 +90,7 @@ const FormBuilderPage = () => {
     is_required: false,
     is_readonly: false,
   });
+  const [fieldToDelete, setFieldToDelete] = useState<FormField | null>(null);
 
   const { data: fields = [] } = useQuery({ queryKey: ["form_fields"], queryFn: fetchFormFields });
   const sortedFields = useMemo(() => [...fields].sort((a, b) => a.display_order - b.display_order), [fields]);
@@ -147,8 +158,15 @@ const FormBuilderPage = () => {
   };
 
   const onDelete = (field: FormField) => {
-    deleteMutation.mutate(field.id);
-    if (draft.id === field.id) {
+    setFieldToDelete(field);
+  };
+
+  const onConfirmDelete = () => {
+    if (!fieldToDelete) return;
+    deleteMutation.mutate(fieldToDelete.id, {
+      onSettled: () => setFieldToDelete(null),
+    });
+    if (draft.id === fieldToDelete.id) {
       setDraft({ id: undefined, field_key: "", label: "", field_type: "number", editable_roles: ["admin"], default_value: "", is_required: false, is_readonly: false });
     }
   };
@@ -293,6 +311,27 @@ const FormBuilderPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={Boolean(fieldToDelete)} onOpenChange={(open) => !open && setFieldToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this field?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. <span className="font-medium">{fieldToDelete?.label}</span> will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              onClick={onConfirmDelete}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 };
