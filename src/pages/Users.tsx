@@ -54,11 +54,6 @@ const UsersPage = () => {
     }
   }, [roleCatalog, form.role]);
 
-  const roleOptions = useMemo(
-    () => Array.from(new Set([...(roleCatalog ?? []), ...users.map((u) => u.role)])),
-    [roleCatalog, users],
-  );
-
   const users = useMemo(
     () =>
       profiles.map((profile) => ({
@@ -66,6 +61,11 @@ const UsersPage = () => {
         role: roleMap[profile.user_id]?.[0] ?? "staff",
       })),
     [profiles, roleMap],
+  );
+
+  const roleOptions = useMemo(
+    () => Array.from(new Set([...(roleCatalog ?? []), ...users.map((u) => u.role)])),
+    [roleCatalog, users],
   );
 
   const createMutation = useMutation({

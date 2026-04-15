@@ -17,7 +17,7 @@ const ActionSchema = z.discriminatedUnion("action", [
     email: z.string().trim().email().max(255),
     password: z.string().min(8).max(128),
     display_name: z.string().trim().min(1).max(100),
-    role: z.enum(["admin", "director", "doctor", "nurse", "staff"]),
+    role: z.string().trim().min(1).max(64),
   }),
   z.object({
     action: z.literal("set_user_active"),
