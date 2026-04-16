@@ -224,9 +224,9 @@ const DataEntryPage = () => {
   };
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-5 sm:space-y-6">
       <header>
-        <h1 className="text-3xl font-bold">Bed Data Entry</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Bed Data Entry</h1>
         <p className="text-sm text-muted-foreground">Admin and Staff can add/edit all Bed Entry fields; derived fields auto-calculate in real time.</p>
       </header>
 
@@ -510,7 +510,7 @@ const DataEntryPage = () => {
             />
           </div>
 
-          <div className="md:col-span-2 flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row md:col-span-2">
             <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
               Save Entry
             </Button>
@@ -533,7 +533,7 @@ const DataEntryPage = () => {
         <CardContent className="space-y-2">
           {rows.length === 0 && <p className="text-sm text-muted-foreground">No submissions yet.</p>}
           {rows.map((row) => (
-            <div key={row.id} className="flex items-start justify-between gap-3 rounded-md border p-3">
+            <div key={row.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-start sm:justify-between">
               <button
                 type="button"
                 className="hospital-transition flex-1 text-left hover:bg-muted"
@@ -569,6 +569,7 @@ const DataEntryPage = () => {
                       departmentName: departmentNameById[row.department_id] ?? "Unknown Department",
                     })
                   }
+                  className="w-full sm:w-auto"
                   disabled={deleteMutation.isPending}
                 >
                   Delete

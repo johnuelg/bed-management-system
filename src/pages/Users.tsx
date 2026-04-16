@@ -155,9 +155,9 @@ const UsersPage = () => {
   };
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-5 sm:space-y-6">
       <header>
-        <h1 className="text-3xl font-bold">User Management</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">User Management</h1>
         <p className="text-sm text-muted-foreground">Admin-only user CRUD and secure role assignment.</p>
       </header>
 
@@ -167,7 +167,7 @@ const UsersPage = () => {
           <CardDescription>Add custom roles that become selectable in Create User.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row">
+          <div className="flex flex-col gap-3 lg:flex-row">
             <Input
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
@@ -280,7 +280,8 @@ const UsersPage = () => {
           <CardTitle>Existing Users</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -323,7 +324,8 @@ const UsersPage = () => {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </section>

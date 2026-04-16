@@ -45,12 +45,12 @@ export const NavVisibilitySettingsEditor = ({ settings, roles, disabled, onChang
     ) : null}
 
     <div className="overflow-x-auto rounded-lg border bg-card">
-      <table className="w-full min-w-[980px] border-collapse text-sm">
+      <table className="w-full min-w-[720px] border-collapse text-sm sm:min-w-[980px]">
         <thead>
           <tr className="border-b bg-muted/40">
-            <th className="px-4 py-4 text-left text-base font-semibold text-muted-foreground">Navigation Item</th>
+            <th className="px-3 py-3 text-left text-sm font-semibold text-muted-foreground sm:px-4 sm:py-4 sm:text-base">Navigation Item</th>
             {columns.map((role) => (
-              <th key={role} className="px-4 py-4 text-left text-base font-semibold capitalize">
+              <th key={role} className="px-3 py-3 text-left text-sm font-semibold capitalize sm:px-4 sm:py-4 sm:text-base">
                 {role}
               </th>
             ))}
@@ -59,14 +59,14 @@ export const NavVisibilitySettingsEditor = ({ settings, roles, disabled, onChang
         <tbody>
           {settingRows.map((row) => (
             <tr key={row.key} className="border-b last:border-b-0">
-              <td className="px-4 py-5 align-middle">
+              <td className="px-3 py-4 align-middle sm:px-4 sm:py-5">
                 <div className="space-y-1">
-                  <Label className="text-xl font-semibold text-foreground">{row.label}</Label>
+                  <Label className="text-base font-semibold text-foreground sm:text-xl">{row.label}</Label>
                   <p className="text-xs text-muted-foreground">{row.description}</p>
                 </div>
               </td>
               {columns.map((role) => (
-                <td key={`${row.key}-${role}`} className="px-4 py-5 align-middle">
+                <td key={`${row.key}-${role}`} className="px-3 py-4 align-middle sm:px-4 sm:py-5">
                   <div className="flex items-center justify-start">
                     {(() => {
                       const roleSettings = settings[role] ?? defaultRoleVisibility;

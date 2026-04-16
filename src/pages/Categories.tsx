@@ -107,9 +107,9 @@ const CategoriesPage = () => {
   });
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-5 sm:space-y-6">
       <header>
-        <h1 className="text-3xl font-bold">Departments & Bed Types</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Departments & Bed Types</h1>
         <p className="text-sm text-muted-foreground">Soft delete is used to preserve historical bed records.</p>
       </header>
 
@@ -150,7 +150,7 @@ const CategoriesPage = () => {
             </div>
             <div className="space-y-3">
               {departments.map((item) => (
-                <div key={item.id} className="flex items-center justify-between rounded-md border p-3">
+                <div key={item.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold">{item.name}</p>
                     <p className="text-xs text-muted-foreground">{item.code}</p>
@@ -218,7 +218,7 @@ const CategoriesPage = () => {
             </div>
             <div className="space-y-3">
               {bedTypes.map((item) => (
-                <div key={item.id} className="flex items-center justify-between rounded-md border p-3">
+                <div key={item.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="font-semibold">{item.name}</p>
                   <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
                     <Button

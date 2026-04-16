@@ -45,9 +45,9 @@ const SettingsPage = () => {
   });
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-5 sm:space-y-6">
       <header>
-        <h1 className="text-3xl font-bold">Settings</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Settings</h1>
         <p className="text-sm text-muted-foreground">Configure global sidebar visibility for the app menus.</p>
       </header>
 
@@ -56,7 +56,7 @@ const SettingsPage = () => {
           <CardTitle>Navigation Visibility</CardTitle>
           <CardDescription>Choose which sidebar menus are visible for each role.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 overflow-x-auto">
           <NavVisibilitySettingsEditor
             settings={current}
             roles={roleCatalog}
