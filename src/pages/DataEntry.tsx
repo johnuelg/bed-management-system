@@ -66,7 +66,7 @@ const getCurrentDateTimeValue = () => {
 const DataEntryPage = () => {
   const { roles } = useAuth();
   const qc = useQueryClient();
-  const canManageTotals = hasAnyRole(roles, ["admin", "director"]);
+  const canEditAllBedEntryFields = hasAnyRole(roles, ["admin", "staff"]);
   const canDeleteSubmissions = hasAnyRole(roles, ["admin", "director"]);
   const initialForm = {
     id: "",
@@ -122,8 +122,10 @@ const DataEntryPage = () => {
     });
   }, [dynamicFields]);
 
-  const canEditDynamicField = (field: FormField) =>
-    !field.is_readonly && (field.editable_roles.length === 0 || field.editable_roles.some((role) => roles.includes(role)));
+  const canEditDynamicField = (field: FormField) => {
+    if (canEditAllBedEntryFields) return true;
+    return !field.is_readonly && (field.editable_roles.length === 0 || field.editable_roles.some((role) => roles.includes(role)));
+  };
 
   const departmentNameById = useMemo(
     () => Object.fromEntries(departments.map((department) => [department.id, department.name])),
@@ -172,7 +174,7 @@ const DataEntryPage = () => {
         id: form.id || undefined,
         department_id: form.department_id,
         bed_type_id: form.bed_type_id || null,
-        total_beds: canManageTotals ? Number(form.total_beds) : 0,
+        total_beds: canEditAllBedEntryFields ? Number(form.total_beds) : 0,
         occupied: Number(form.occupied),
         closed: Number(form.closed),
         closure_reason: form.closed > 0 ? form.closure_reason.trim() : null,
@@ -225,7 +227,7 @@ const DataEntryPage = () => {
     <section className="space-y-6">
       <header>
         <h1 className="text-3xl font-bold">Bed Data Entry</h1>
-        <p className="text-sm text-muted-foreground">Staff can edit Occupied/Closed; derived fields auto-calculate in real time.</p>
+        <p className="text-sm text-muted-foreground">Admin and Staff can add/edit all Bed Entry fields; derived fields auto-calculate in real time.</p>
       </header>
 
       <Card>
@@ -282,7 +284,7 @@ const DataEntryPage = () => {
                   <Input
                     type="number"
                     min={0}
-                    disabled={!canManageTotals}
+                    disabled={!canEditAllBedEntryFields}
                     value={form.total_beds}
                     onChange={(e) => setForm((p) => ({ ...p, total_beds: Number(e.target.value) }))}
                   />
@@ -508,9 +510,17 @@ const DataEntryPage = () => {
             />
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex flex-wrap gap-2">
             <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
               Save Entry
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={resetForm}
+              disabled={mutation.isPending || deleteMutation.isPending}
+            >
+              Reset
             </Button>
           </div>
         </CardContent>
