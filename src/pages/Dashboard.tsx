@@ -35,9 +35,9 @@ const DashboardPage = () => {
   }, [qc]);
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-5 sm:space-y-6">
       <header>
-        <h1 className="text-3xl font-bold">Live Hospital Dashboard</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Live Hospital Dashboard</h1>
         <p className="text-sm text-muted-foreground">Realtime, free-tier-safe metrics with manual refresh support.</p>
       </header>
 
@@ -60,7 +60,7 @@ const DashboardPage = () => {
                 <CardTitle className="text-sm text-muted-foreground">{metric.name}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{metric.value}</p>
+                <p className="text-2xl font-bold sm:text-3xl">{metric.value}</p>
               </CardContent>
             </Card>
           </motion.div>
