@@ -312,6 +312,21 @@ export const fetchTodaySubmissions = async (): Promise<BedSubmission[]> => {
   return data ?? [];
 };
 
+export const fetchSubmissionsByDateRange = async (startDate: string, endDate: string): Promise<BedSubmission[]> => {
+  const from = startDate <= endDate ? startDate : endDate;
+  const to = startDate <= endDate ? endDate : startDate;
+
+  const { data, error } = await db
+    .from("bed_submissions")
+    .select("*")
+    .gte("submitted_on", from)
+    .lte("submitted_on", to)
+    .order("updated_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+};
+
 export const saveBedSubmission = async (
   roles: AppRole[],
   input: Omit<BedSubmission, "id" | "created_at"> & { id?: string },
