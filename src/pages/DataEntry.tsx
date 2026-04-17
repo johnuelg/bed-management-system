@@ -168,6 +168,17 @@ const DataEntryPage = () => {
     [rows, departmentNameById, bedTypeNameById],
   );
 
+  const getSubmissionDateTime = (row: (typeof rows)[number]) => {
+    const createdAt = row.created_at ? new Date(row.created_at) : null;
+    const fallbackDate = new Date(`${row.submitted_on}T00:00:00`);
+    const sourceDate = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : fallbackDate;
+
+    return {
+      date: format(sourceDate, "MMM d, yyyy"),
+      time: format(sourceDate, "hh:mm a"),
+    };
+  };
+
   const handleEditSubmission = (row: (typeof rows)[number]) => {
     setForm({
       id: row.id,
@@ -636,54 +647,63 @@ const DataEntryPage = () => {
 
           {rows.length === 0 && <p className="text-sm text-muted-foreground">No submissions yet.</p>}
           {submissionView === "card"
-            ? rows.map((row) => (
-                <div key={row.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex-1 space-y-1 text-left">
-                    <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Bed Type: {row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Total {row.total_beds} • Occupied {row.occupied} • Closed {row.closed}
-                    </p>
-                  </div>
+            ? rows.map((row) => {
+                const dateTime = getSubmissionDateTime(row);
 
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEditSubmission(row)}
-                      className="w-full sm:w-auto"
-                    >
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </Button>
+                return (
+                  <div key={row.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex-1 space-y-1 text-left">
+                      <p className="text-sm text-muted-foreground">
+                        Date: {dateTime.date} • Time: {dateTime.time}
+                      </p>
+                      <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Bed Type: {row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Total {row.total_beds} • Occupied {row.occupied} • Closed {row.closed}
+                      </p>
+                    </div>
 
-                    {canDeleteSubmissions ? (
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                       <Button
+                        type="button"
                         size="sm"
-                        variant="destructive"
-                        onClick={() =>
-                          setSubmissionToDelete({
-                            id: row.id,
-                            departmentName: departmentNameById[row.department_id] ?? "Unknown Department",
-                          })
-                        }
+                        variant="outline"
+                        onClick={() => handleEditSubmission(row)}
                         className="w-full sm:w-auto"
-                        disabled={deleteMutation.isPending}
                       >
-                        Delete
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
                       </Button>
-                    ) : null}
+
+                      {canDeleteSubmissions ? (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() =>
+                            setSubmissionToDelete({
+                              id: row.id,
+                              departmentName: departmentNameById[row.department_id] ?? "Unknown Department",
+                            })
+                          }
+                          className="w-full sm:w-auto"
+                          disabled={deleteMutation.isPending}
+                        >
+                          Delete
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             : rows.length > 0 && (
                 <div className="overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Time</TableHead>
                         <TableHead>Department</TableHead>
                         <TableHead>Bed Type</TableHead>
                         <TableHead className="text-right">Total</TableHead>
@@ -693,38 +713,44 @@ const DataEntryPage = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {rows.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell>{departmentNameById[row.department_id] ?? "Unknown Department"}</TableCell>
-                          <TableCell>{row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}</TableCell>
-                          <TableCell className="text-right">{row.total_beds}</TableCell>
-                          <TableCell className="text-right">{row.occupied}</TableCell>
-                          <TableCell className="text-right">{row.closed}</TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-2">
-                              <Button type="button" size="sm" variant="outline" onClick={() => handleEditSubmission(row)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit
-                              </Button>
-                              {canDeleteSubmissions ? (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() =>
-                                    setSubmissionToDelete({
-                                      id: row.id,
-                                      departmentName: departmentNameById[row.department_id] ?? "Unknown Department",
-                                    })
-                                  }
-                                  disabled={deleteMutation.isPending}
-                                >
-                                  Delete
+                      {rows.map((row) => {
+                        const dateTime = getSubmissionDateTime(row);
+
+                        return (
+                          <TableRow key={row.id}>
+                            <TableCell>{dateTime.date}</TableCell>
+                            <TableCell>{dateTime.time}</TableCell>
+                            <TableCell>{departmentNameById[row.department_id] ?? "Unknown Department"}</TableCell>
+                            <TableCell>{row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}</TableCell>
+                            <TableCell className="text-right">{row.total_beds}</TableCell>
+                            <TableCell className="text-right">{row.occupied}</TableCell>
+                            <TableCell className="text-right">{row.closed}</TableCell>
+                            <TableCell>
+                              <div className="flex justify-end gap-2">
+                                <Button type="button" size="sm" variant="outline" onClick={() => handleEditSubmission(row)}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Edit
                                 </Button>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                {canDeleteSubmissions ? (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() =>
+                                      setSubmissionToDelete({
+                                        id: row.id,
+                                        departmentName: departmentNameById[row.department_id] ?? "Unknown Department",
+                                      })
+                                    }
+                                    disabled={deleteMutation.isPending}
+                                  >
+                                    Delete
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
