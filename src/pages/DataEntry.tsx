@@ -168,6 +168,17 @@ const DataEntryPage = () => {
     [rows, departmentNameById, bedTypeNameById],
   );
 
+  const getSubmissionDateTime = (row: (typeof rows)[number]) => {
+    const createdAt = row.created_at ? new Date(row.created_at) : null;
+    const fallbackDate = new Date(`${row.submitted_on}T00:00:00`);
+    const sourceDate = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : fallbackDate;
+
+    return {
+      date: format(sourceDate, "MMM d, yyyy"),
+      time: format(sourceDate, "hh:mm a"),
+    };
+  };
+
   const handleEditSubmission = (row: (typeof rows)[number]) => {
     setForm({
       id: row.id,
@@ -639,6 +650,9 @@ const DataEntryPage = () => {
             ? rows.map((row) => (
                 <div key={row.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex-1 space-y-1 text-left">
+                    <p className="text-sm text-muted-foreground">
+                      Date: {getSubmissionDateTime(row).date} • Time: {getSubmissionDateTime(row).time}
+                    </p>
                     <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
                     <p className="text-sm text-muted-foreground">
                       Bed Type: {row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}
@@ -684,6 +698,8 @@ const DataEntryPage = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Time</TableHead>
                         <TableHead>Department</TableHead>
                         <TableHead>Bed Type</TableHead>
                         <TableHead className="text-right">Total</TableHead>
@@ -695,6 +711,8 @@ const DataEntryPage = () => {
                     <TableBody>
                       {rows.map((row) => (
                         <TableRow key={row.id}>
+                          <TableCell>{getSubmissionDateTime(row).date}</TableCell>
+                          <TableCell>{getSubmissionDateTime(row).time}</TableCell>
                           <TableCell>{departmentNameById[row.department_id] ?? "Unknown Department"}</TableCell>
                           <TableCell>{row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}</TableCell>
                           <TableCell className="text-right">{row.total_beds}</TableCell>
