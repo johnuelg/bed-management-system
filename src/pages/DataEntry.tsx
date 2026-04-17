@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Download, FileSpreadsheet, LayoutGrid, Pencil, Table2 } from "lucide-react";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,14 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +46,7 @@ import { MAX_UPLOAD_SIZE } from "@/lib/file-upload";
 import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
+import { utils, writeFileXLSX } from "xlsx";
 
 const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((file, ctx) => {
   if (file.size > MAX_UPLOAD_SIZE) {
@@ -80,6 +89,7 @@ const DataEntryPage = () => {
   };
 
   const [form, setForm] = useState(initialForm);
+  const [submissionView, setSubmissionView] = useState<"card" | "table">("card");
   const [submissionToDelete, setSubmissionToDelete] = useState<{ id: string; departmentName: string } | null>(null);
   const resetForm = () => setForm(initialForm);
 
@@ -142,6 +152,63 @@ const DataEntryPage = () => {
     const occupancyRate = form.total_beds > 0 ? (Number(form.occupied) / Number(form.total_beds)) * 100 : 0;
     return { vacant, occupancyRate };
   }, [form.total_beds, form.occupied, form.closed]);
+
+  const exportRows = useMemo(
+    () =>
+      rows.map((row) => ({
+        date: row.submitted_on,
+        department: departmentNameById[row.department_id] ?? "Unknown Department",
+        bed_type: row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified",
+        total_beds: row.total_beds,
+        occupied: row.occupied,
+        closed: row.closed,
+        closure_reason: row.closure_reason ?? "",
+        submitted_by: row.submitted_by,
+      })),
+    [rows, departmentNameById, bedTypeNameById],
+  );
+
+  const handleEditSubmission = (row: (typeof rows)[number]) => {
+    setForm({
+      id: row.id,
+      department_id: row.department_id,
+      bed_type_id: row.bed_type_id ?? "",
+      total_beds: row.total_beds,
+      occupied: row.occupied,
+      closed: row.closed,
+      closure_reason: row.closure_reason ?? "",
+      custom_fields: (row.custom_fields as Record<string, unknown>) ?? {},
+    });
+  };
+
+  const downloadCsv = () => {
+    if (exportRows.length === 0) {
+      toast({ title: "No submissions", description: "There is no bed data to export for today.", variant: "destructive" });
+      return;
+    }
+
+    const worksheet = utils.json_to_sheet(exportRows);
+    const csv = utils.sheet_to_csv(worksheet);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `bed_submissions_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadXlsx = () => {
+    if (exportRows.length === 0) {
+      toast({ title: "No submissions", description: "There is no bed data to export for today.", variant: "destructive" });
+      return;
+    }
+
+    const worksheet = utils.json_to_sheet(exportRows);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, "Today_Submissions");
+    writeFileXLSX(workbook, `bed_submissions_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -531,52 +598,137 @@ const DataEntryPage = () => {
           <CardTitle>Today’s Submissions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {rows.length === 0 && <p className="text-sm text-muted-foreground">No submissions yet.</p>}
-          {rows.map((row) => (
-            <div key={row.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-start sm:justify-between">
-              <button
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="inline-flex w-full rounded-md border p-1 sm:w-auto">
+              <Button
                 type="button"
-                className="hospital-transition flex-1 text-left hover:bg-muted"
-                onClick={() =>
-                  setForm({
-                    id: row.id,
-                    department_id: row.department_id,
-                    bed_type_id: row.bed_type_id ?? "",
-                    total_beds: row.total_beds,
-                    occupied: row.occupied,
-                    closed: row.closed,
-                    closure_reason: row.closure_reason ?? "",
-                    custom_fields: (row.custom_fields as Record<string, unknown>) ?? {},
-                  })
-                }
+                variant={submissionView === "card" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setSubmissionView("card")}
+                className="flex-1 sm:flex-none"
               >
-                <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
-                <p className="text-sm text-muted-foreground">
-                  Bed Type: {row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Total {row.total_beds} • Occupied {row.occupied} • Closed {row.closed}
-                </p>
-              </button>
-
-              {canDeleteSubmissions ? (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() =>
-                    setSubmissionToDelete({
-                      id: row.id,
-                      departmentName: departmentNameById[row.department_id] ?? "Unknown Department",
-                    })
-                  }
-                  className="w-full sm:w-auto"
-                  disabled={deleteMutation.isPending}
-                >
-                  Delete
-                </Button>
-              ) : null}
+                <LayoutGrid className="mr-2 h-4 w-4" />
+                Card View
+              </Button>
+              <Button
+                type="button"
+                variant={submissionView === "table" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setSubmissionView("table")}
+                className="flex-1 sm:flex-none"
+              >
+                <Table2 className="mr-2 h-4 w-4" />
+                Table View
+              </Button>
             </div>
-          ))}
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button type="button" variant="outline" size="sm" onClick={downloadCsv}>
+                <Download className="mr-2 h-4 w-4" />
+                Download CSV
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={downloadXlsx}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Download XLSX
+              </Button>
+            </div>
+          </div>
+
+          {rows.length === 0 && <p className="text-sm text-muted-foreground">No submissions yet.</p>}
+          {submissionView === "card"
+            ? rows.map((row) => (
+                <div key={row.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex-1 space-y-1 text-left">
+                    <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Bed Type: {row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Total {row.total_beds} • Occupied {row.occupied} • Closed {row.closed}
+                    </p>
+                  </div>
+
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEditSubmission(row)}
+                      className="w-full sm:w-auto"
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+
+                    {canDeleteSubmissions ? (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() =>
+                          setSubmissionToDelete({
+                            id: row.id,
+                            departmentName: departmentNameById[row.department_id] ?? "Unknown Department",
+                          })
+                        }
+                        className="w-full sm:w-auto"
+                        disabled={deleteMutation.isPending}
+                      >
+                        Delete
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              ))
+            : rows.length > 0 && (
+                <div className="overflow-x-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Bed Type</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-right">Occupied</TableHead>
+                        <TableHead className="text-right">Closed</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell>{departmentNameById[row.department_id] ?? "Unknown Department"}</TableCell>
+                          <TableCell>{row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}</TableCell>
+                          <TableCell className="text-right">{row.total_beds}</TableCell>
+                          <TableCell className="text-right">{row.occupied}</TableCell>
+                          <TableCell className="text-right">{row.closed}</TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-2">
+                              <Button type="button" size="sm" variant="outline" onClick={() => handleEditSubmission(row)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </Button>
+                              {canDeleteSubmissions ? (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() =>
+                                    setSubmissionToDelete({
+                                      id: row.id,
+                                      departmentName: departmentNameById[row.department_id] ?? "Unknown Department",
+                                    })
+                                  }
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  Delete
+                                </Button>
+                              ) : null}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
         </CardContent>
       </Card>
 
