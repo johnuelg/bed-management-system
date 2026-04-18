@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { CalendarIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -72,6 +73,7 @@ const DashboardPage = () => {
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">Live Hospital Dashboard</h1>
           <p className="text-sm text-muted-foreground">Realtime, free-tier-safe metrics with manual refresh support.</p>
+          <Badge variant="secondary" className="mt-2 w-fit">Timezone: Asia/Riyadh</Badge>
         </div>
 
         <Popover>
