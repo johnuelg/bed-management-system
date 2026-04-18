@@ -302,7 +302,8 @@ export const replaceFormFieldOrder = async (roles: AppRole[], orderedIds: string
 };
 
 export const fetchTodaySubmissions = async (): Promise<BedSubmission[]> => {
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const { data, error } = await db
     .from("bed_submissions")
     .select("*")
