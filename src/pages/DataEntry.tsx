@@ -248,7 +248,10 @@ const DataEntryPage = () => {
       const currentUserId = await getCurrentUserId();
       if (!currentUserId) throw new Error("No authenticated user");
 
-      return saveBedSubmission(roles, {
+        const now = new Date();
+        const submittedOn = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+        return saveBedSubmission(roles, {
         id: form.id || undefined,
         department_id: form.department_id,
         bed_type_id: form.bed_type_id || null,
@@ -256,7 +259,7 @@ const DataEntryPage = () => {
         occupied: Number(form.occupied),
         closed: Number(form.closed),
         closure_reason: form.closed > 0 ? form.closure_reason.trim() : null,
-        submitted_on: new Date().toISOString().slice(0, 10),
+          submitted_on: submittedOn,
         custom_fields: form.custom_fields,
         calculated_fields: { vacant: computed.vacant, occupancy_rate: computed.occupancyRate },
         submitted_by: currentUserId,
