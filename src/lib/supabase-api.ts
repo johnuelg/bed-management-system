@@ -35,6 +35,32 @@ const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
   nurse: { ...DEFAULT_ROLE_MENU_VISIBILITY },
   staff: { ...DEFAULT_ROLE_MENU_VISIBILITY },
 };
+const SAUDI_TIMEZONE = "Asia/Riyadh";
+
+const getDatePartsInTimezone = (value: Date, timeZone: string) => {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(value);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    throw new Error(`Could not format date in timezone ${timeZone}`);
+  }
+
+  return { year, month, day };
+};
+
+const getSaudiDateString = (value = new Date()) => {
+  const { year, month, day } = getDatePartsInTimezone(value, SAUDI_TIMEZONE);
+  return `${year}-${month}-${day}`;
+};
 
 const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
   if (!value || typeof value !== "object") return { ...DEFAULT_ROLE_MENU_VISIBILITY };
@@ -302,8 +328,7 @@ export const replaceFormFieldOrder = async (roles: AppRole[], orderedIds: string
 };
 
 export const fetchTodaySubmissions = async (): Promise<BedSubmission[]> => {
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const today = getSaudiDateString();
   const { data, error } = await db
     .from("bed_submissions")
     .select("*")
