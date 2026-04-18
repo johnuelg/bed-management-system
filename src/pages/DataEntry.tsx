@@ -54,17 +54,41 @@ const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((fil
   }
 });
 
+const SAUDI_TIMEZONE = "Asia/Riyadh";
+
+const getDateTimePartsInTimezone = (value: Date, timeZone: string) => {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(value);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  const hour = parts.find((part) => part.type === "hour")?.value;
+  const minute = parts.find((part) => part.type === "minute")?.value;
+
+  if (!year || !month || !day || !hour || !minute) {
+    throw new Error(`Could not format datetime in timezone ${timeZone}`);
+  }
+
+  return { year, month, day, hour, minute };
+};
+
 const toLocalDateString = (value: Date) => {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
+  const { year, month, day } = getDateTimePartsInTimezone(value, SAUDI_TIMEZONE);
   return `${year}-${month}-${day}`;
 };
 
 const toLocalTimeString = (value: Date) => {
-  const hours = String(value.getHours()).padStart(2, "0");
-  const minutes = String(value.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
+  const { hour, minute } = getDateTimePartsInTimezone(value, SAUDI_TIMEZONE);
+  return `${hour}:${minute}`;
 };
 
 const getCurrentDateTimeValue = () => {
@@ -170,12 +194,22 @@ const DataEntryPage = () => {
 
   const getSubmissionDateTime = (row: (typeof rows)[number]) => {
     const createdAt = row.created_at ? new Date(row.created_at) : null;
-    const fallbackDate = new Date(`${row.submitted_on}T00:00:00`);
+    const fallbackDate = new Date(`${row.submitted_on}T00:00:00+03:00`);
     const sourceDate = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : fallbackDate;
 
     return {
-      date: format(sourceDate, "MMM d, yyyy"),
-      time: format(sourceDate, "hh:mm a"),
+      date: new Intl.DateTimeFormat("en-US", {
+        timeZone: SAUDI_TIMEZONE,
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }).format(sourceDate),
+      time: new Intl.DateTimeFormat("en-US", {
+        timeZone: SAUDI_TIMEZONE,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      }).format(sourceDate),
     };
   };
 
@@ -204,7 +238,7 @@ const DataEntryPage = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `bed_submissions_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `bed_submissions_${toLocalDateString(new Date())}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -218,7 +252,7 @@ const DataEntryPage = () => {
     const worksheet = utils.json_to_sheet(exportRows);
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Today_Submissions");
-    writeFileXLSX(workbook, `bed_submissions_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    writeFileXLSX(workbook, `bed_submissions_${toLocalDateString(new Date())}.xlsx`);
   };
 
   const mutation = useMutation({
@@ -248,8 +282,7 @@ const DataEntryPage = () => {
       const currentUserId = await getCurrentUserId();
       if (!currentUserId) throw new Error("No authenticated user");
 
-        const now = new Date();
-        const submittedOn = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const submittedOn = toLocalDateString(new Date());
 
         return saveBedSubmission(roles, {
         id: form.id || undefined,
