@@ -92,11 +92,6 @@ const toLocalTimeString = (value: Date) => {
   return `${hour}:${minute}`;
 };
 
-const getCurrentDateTimeValue = () => {
-  const now = new Date();
-  return `${toLocalDateString(now)}T${toLocalTimeString(now)}`;
-};
-
 const DataEntryPage = () => {
   const { roles } = useAuth();
   const qc = useQueryClient();
