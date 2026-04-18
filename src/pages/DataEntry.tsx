@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Download, FileSpreadsheet, LayoutGrid, Pencil, Table2 } from "lucide-react";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -342,6 +343,7 @@ const DataEntryPage = () => {
       <header>
         <h1 className="text-2xl font-bold sm:text-3xl">Bed Data Entry</h1>
         <p className="text-sm text-muted-foreground">Admin and Staff can add/edit all Bed Entry fields; derived fields auto-calculate in real time.</p>
+        <Badge variant="secondary" className="mt-2 w-fit">Timezone: Asia/Riyadh</Badge>
       </header>
 
       <Card>
