@@ -143,11 +143,6 @@ const DataEntryPage = () => {
         const existing = nextCustomFields[field.field_key];
         if (existing !== undefined && existing !== null && String(existing) !== "") return;
 
-        if (field.field_type === "date") {
-          nextCustomFields[field.field_key] = getCurrentDateTimeValue();
-          return;
-        }
-
         if (field.default_value !== null) {
           nextCustomFields[field.field_key] = field.default_value;
         }
@@ -516,9 +511,9 @@ const DataEntryPage = () => {
 
             if (field.field_type === "date") {
               const raw = String(currentValue || "");
-              const [datePart, timePart] = raw.includes("T")
-                ? raw.split("T")
-                : [raw || toLocalDateString(new Date()), toLocalTimeString(new Date())];
+              const [rawDatePart, rawTimePart = ""] = raw.includes("T") ? raw.split("T") : [raw, ""];
+              const datePart = /^\d{4}-\d{2}-\d{2}$/.test(rawDatePart) ? rawDatePart : "";
+              const timePart = /^\d{2}:\d{2}$/.test(rawTimePart) ? rawTimePart : "";
 
               return (
                 <div key={field.id} className="space-y-2 md:col-span-2">
@@ -546,12 +541,11 @@ const DataEntryPage = () => {
                           onSelect={(selected) => {
                             if (!selected) return;
                             const nextDate = toLocalDateString(selected);
-                            const safeTime = timePart || toLocalTimeString(new Date());
                             setForm((prev) => ({
                               ...prev,
                               custom_fields: {
                                 ...prev.custom_fields,
-                                [field.field_key]: `${nextDate}T${safeTime}`,
+                                [field.field_key]: timePart ? `${nextDate}T${timePart}` : nextDate,
                               },
                             }));
                           }}
@@ -565,14 +559,14 @@ const DataEntryPage = () => {
                       type="time"
                       step={60}
                       disabled={!editable}
-                      value={timePart || toLocalTimeString(new Date())}
+                      value={timePart}
                       onChange={(e) => {
-                        const safeDate = datePart || toLocalDateString(new Date());
+                        const nextTime = e.target.value;
                         setForm((prev) => ({
                           ...prev,
                           custom_fields: {
                             ...prev.custom_fields,
-                            [field.field_key]: `${safeDate}T${e.target.value}`,
+                            [field.field_key]: datePart ? `${datePart}T${nextTime}` : `T${nextTime}`,
                           },
                         }));
                       }}
