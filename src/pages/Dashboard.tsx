@@ -14,17 +14,49 @@ import { fetchDashboardSubmissions, aggregateSubmissionSums } from "@/lib/supaba
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
 
+const SAUDI_TIMEZONE = "Asia/Riyadh";
+
+const pad2 = (value: number) => String(value).padStart(2, "0");
+
+const getSaudiTodayIso = () => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SAUDI_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    throw new Error("Could not derive Saudi Arabia date");
+  }
+
+  return `${year}-${month}-${day}`;
+};
+
+const isoToCalendarDate = (isoDate: string) => {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
+};
+
+const calendarDateToIso = (value: Date) => {
+  return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
+};
+
 const DashboardPage = () => {
   const qc = useQueryClient();
-  const today = useMemo(() => new Date(), []);
+  const today = useMemo(() => isoToCalendarDate(getSaudiTodayIso()), []);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: today, to: today });
   const [timeFrom, setTimeFrom] = useState("00:00");
   const [timeTo, setTimeTo] = useState("23:59");
   const rangeStart = dateRange?.from ?? today;
   const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
 
-  const rangeStartIso = useMemo(() => format(rangeStart, "yyyy-MM-dd"), [rangeStart]);
-  const rangeEndIso = useMemo(() => format(rangeEnd, "yyyy-MM-dd"), [rangeEnd]);
+  const rangeStartIso = useMemo(() => calendarDateToIso(rangeStart), [rangeStart]);
+  const rangeEndIso = useMemo(() => calendarDateToIso(rangeEnd), [rangeEnd]);
 
   const { data: rows = [] } = useQuery({
     queryKey: ["bed_submissions_dashboard"],

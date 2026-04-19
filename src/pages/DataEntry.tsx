@@ -92,6 +92,17 @@ const toLocalTimeString = (value: Date) => {
   return `${hour}:${minute}`;
 };
 
+const pad2 = (value: number) => String(value).padStart(2, "0");
+
+const isoToCalendarDate = (isoDate: string) => {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
+};
+
+const calendarDateToIso = (value: Date) => {
+  return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
+};
+
 const DataEntryPage = () => {
   const { roles } = useAuth();
   const qc = useQueryClient();
@@ -526,16 +537,16 @@ const DataEntryPage = () => {
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {datePart ? format(new Date(`${datePart}T00:00:00`), "PPP") : <span>Pick a date</span>}
+                          {datePart ? format(isoToCalendarDate(datePart), "PPP") : <span>Pick a date</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={datePart ? new Date(`${datePart}T00:00:00`) : undefined}
+                          selected={datePart ? isoToCalendarDate(datePart) : undefined}
                           onSelect={(selected) => {
                             if (!selected) return;
-                            const nextDate = toLocalDateString(selected);
+                            const nextDate = calendarDateToIso(selected);
                             setForm((prev) => ({
                               ...prev,
                               custom_fields: {
