@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fetchSubmissionsByDateRange, aggregateSubmissionSums } from "@/lib/supabase-api";
+import { fetchDashboardSubmissions, aggregateSubmissionSums } from "@/lib/supabase-api";
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
 
@@ -27,8 +27,8 @@ const DashboardPage = () => {
   const rangeEndIso = useMemo(() => format(rangeEnd, "yyyy-MM-dd"), [rangeEnd]);
 
   const { data: rows = [] } = useQuery({
-    queryKey: ["bed_submissions_range", rangeStartIso, rangeEndIso],
-    queryFn: () => fetchSubmissionsByDateRange(rangeStartIso, rangeEndIso),
+    queryKey: ["bed_submissions_dashboard"],
+    queryFn: fetchDashboardSubmissions,
   });
 
   const extractUserInputDateTime = (row: (typeof rows)[number]) => {
@@ -55,10 +55,14 @@ const DashboardPage = () => {
     const fromMinutes = toMinutes(timeFrom);
     const toMinutesValue = toMinutes(timeTo);
     const wrapsMidnight = fromMinutes > toMinutesValue;
+    const dateFrom = rangeStartIso <= rangeEndIso ? rangeStartIso : rangeEndIso;
+    const dateTo = rangeStartIso <= rangeEndIso ? rangeEndIso : rangeStartIso;
 
     return rows.filter((row) => {
       const userDateTime = extractUserInputDateTime(row);
       if (!userDateTime) return false;
+
+      if (userDateTime.date < dateFrom || userDateTime.date > dateTo) return false;
 
       const valueMinutes = toMinutes(userDateTime.time);
 
@@ -68,7 +72,7 @@ const DashboardPage = () => {
 
       return valueMinutes >= fromMinutes && valueMinutes <= toMinutesValue;
     });
-  }, [rows, timeFrom, timeTo]);
+  }, [rows, timeFrom, timeTo, rangeStartIso, rangeEndIso]);
 
   const sums = aggregateSubmissionSums(filteredRows);
   const waitingPatients = filteredRows.reduce((total, row) => {
