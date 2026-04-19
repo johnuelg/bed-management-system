@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -243,7 +242,6 @@ const DashboardPage = () => {
                 numberOfMonths={2}
                 className="p-3 pointer-events-auto"
                 disabled={isDateDisabled}
-                excludeDisabled
                 modifiers={{
                   saudiFriday: isSaudiFriday,
                   saudiSaturday: isSaudiSaturday,
