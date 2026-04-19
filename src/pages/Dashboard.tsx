@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fetchDashboardSubmissions, aggregateSubmissionSums } from "@/lib/supabase-api";
+import { aggregateSubmissionSums, fetchBedTypes, fetchDashboardSubmissions, fetchDepartments } from "@/lib/supabase-api";
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
 
@@ -81,6 +82,8 @@ const DashboardPage = () => {
   const [timeFrom, setTimeFrom] = useState("00:00");
   const [timeTo, setTimeTo] = useState("23:59");
   const [showHijri, setShowHijri] = useState(false);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
+  const [selectedBedTypeId, setSelectedBedTypeId] = useState<string>("all");
   const rangeStart = dateRange?.from ?? today;
   const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
 
@@ -90,6 +93,16 @@ const DashboardPage = () => {
   const { data: rows = [] } = useQuery({
     queryKey: ["bed_submissions_dashboard"],
     queryFn: fetchDashboardSubmissions,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments"],
+    queryFn: fetchDepartments,
+  });
+
+  const { data: bedTypes = [] } = useQuery({
+    queryKey: ["bed_types"],
+    queryFn: fetchBedTypes,
   });
 
   const extractUserInputDateTime = (row: (typeof rows)[number]) => {
@@ -112,7 +125,7 @@ const DashboardPage = () => {
     return (Number.isNaN(hours) ? 0 : hours) * 60 + (Number.isNaN(minutes) ? 0 : minutes);
   };
 
-  const filteredRows = useMemo(() => {
+  const dateTimeFilteredRows = useMemo(() => {
     const fromMinutes = toMinutes(timeFrom);
     const toMinutesValue = toMinutes(timeTo);
     const wrapsMidnight = fromMinutes > toMinutesValue;
@@ -134,6 +147,49 @@ const DashboardPage = () => {
       return valueMinutes >= fromMinutes && valueMinutes <= toMinutesValue;
     });
   }, [rows, timeFrom, timeTo, rangeStartIso, rangeEndIso]);
+
+  const departmentOptions = useMemo(() => {
+    const availableDepartmentIds = new Set(
+      dateTimeFilteredRows
+        .filter((row) => selectedBedTypeId === "all" || row.bed_type_id === selectedBedTypeId)
+        .map((row) => row.department_id),
+    );
+
+    return departments.filter((department) => availableDepartmentIds.has(department.id));
+  }, [dateTimeFilteredRows, departments, selectedBedTypeId]);
+
+  const bedTypeOptions = useMemo(() => {
+    const availableBedTypeIds = new Set(
+      dateTimeFilteredRows
+        .filter((row) => selectedDepartmentId === "all" || row.department_id === selectedDepartmentId)
+        .map((row) => row.bed_type_id)
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    return bedTypes.filter((bedType) => availableBedTypeIds.has(bedType.id));
+  }, [dateTimeFilteredRows, bedTypes, selectedDepartmentId]);
+
+  useEffect(() => {
+    if (selectedDepartmentId !== "all" && !departmentOptions.some((department) => department.id === selectedDepartmentId)) {
+      setSelectedDepartmentId("all");
+    }
+  }, [departmentOptions, selectedDepartmentId]);
+
+  useEffect(() => {
+    if (selectedBedTypeId !== "all" && !bedTypeOptions.some((bedType) => bedType.id === selectedBedTypeId)) {
+      setSelectedBedTypeId("all");
+    }
+  }, [bedTypeOptions, selectedBedTypeId]);
+
+  const filteredRows = useMemo(
+    () =>
+      dateTimeFilteredRows.filter((row) => {
+        if (selectedDepartmentId !== "all" && row.department_id !== selectedDepartmentId) return false;
+        if (selectedBedTypeId !== "all" && row.bed_type_id !== selectedBedTypeId) return false;
+        return true;
+      }),
+    [dateTimeFilteredRows, selectedDepartmentId, selectedBedTypeId],
+  );
 
   const availableDateSet = useMemo(() => {
     const dates = new Set<string>();
@@ -278,6 +334,41 @@ const DashboardPage = () => {
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">To Time</label>
               <Input type="time" value={timeTo} onChange={(event) => setTimeTo(event.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Department</label>
+              <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All departments</SelectItem>
+                  {departmentOptions.map((department) => (
+                    <SelectItem key={department.id} value={department.id}>
+                      {department.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Bed Type</label>
+              <Select value={selectedBedTypeId} onValueChange={setSelectedBedTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All bed types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All bed types</SelectItem>
+                  {bedTypeOptions.map((bedType) => (
+                    <SelectItem key={bedType.id} value={bedType.id}>
+                      {bedType.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
