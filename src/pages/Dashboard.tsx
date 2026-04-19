@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -47,18 +46,6 @@ const calendarDateToIso = (value: Date) => {
   return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
 };
 
-const HIJRI_DAY_FORMATTER = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", {
-  timeZone: SAUDI_TIMEZONE,
-  day: "numeric",
-});
-
-const HIJRI_DATE_FORMATTER = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", {
-  timeZone: SAUDI_TIMEZONE,
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-});
-
 const GREGORIAN_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: SAUDI_TIMEZONE,
   year: "numeric",
@@ -81,7 +68,6 @@ const DashboardPage = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: today, to: today });
   const [timeFrom, setTimeFrom] = useState("00:00");
   const [timeTo, setTimeTo] = useState("23:59");
-  const [showHijri, setShowHijri] = useState(false);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
   const [selectedBedTypeId, setSelectedBedTypeId] = useState<string>("all");
   const rangeStart = dateRange?.from ?? today;
@@ -228,9 +214,7 @@ const DashboardPage = () => {
     return !availableDateSet.has(calendarDateToIso(value));
   };
 
-  const formattedRangeLabel = showHijri
-    ? `${HIJRI_DATE_FORMATTER.format(rangeStart)} - ${HIJRI_DATE_FORMATTER.format(rangeEnd)}`
-    : `${GREGORIAN_DATE_FORMATTER.format(rangeStart)} - ${GREGORIAN_DATE_FORMATTER.format(rangeEnd)}`;
+  const formattedRangeLabel = `${GREGORIAN_DATE_FORMATTER.format(rangeStart)} - ${GREGORIAN_DATE_FORMATTER.format(rangeEnd)}`;
 
   const sums = aggregateSubmissionSums(filteredRows);
   const waitingPatients = filteredRows.reduce((total, row) => {
@@ -315,16 +299,10 @@ const DashboardPage = () => {
                     "bg-transparent text-foreground ring-2 ring-primary ring-offset-2 ring-offset-background hover:bg-accent",
                   day_disabled: "text-muted-foreground opacity-40",
                 }}
-                components={showHijri ? { DayContent: ({ date }) => <span>{HIJRI_DAY_FORMATTER.format(date)}</span> } : undefined}
                 initialFocus
               />
             </PopoverContent>
           </Popover>
-
-          <div className="flex items-center justify-between rounded-md border bg-card px-3 py-2">
-            <span className="text-xs font-medium text-muted-foreground">Hijri view</span>
-            <Switch checked={showHijri} onCheckedChange={setShowHijri} aria-label="Toggle Hijri calendar view" />
-          </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
