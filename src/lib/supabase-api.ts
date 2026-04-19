@@ -353,6 +353,31 @@ export const fetchSubmissionsByDateRange = async (startDate: string, endDate: st
   return data ?? [];
 };
 
+export const fetchDashboardSubmissions = async (): Promise<BedSubmission[]> => {
+  const pageSize = 1000;
+  let from = 0;
+  let hasMore = true;
+  const allRows: BedSubmission[] = [];
+
+  while (hasMore) {
+    const to = from + pageSize - 1;
+    const { data, error } = await db
+      .from("bed_submissions")
+      .select("*")
+      .order("updated_at", { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const chunk = (data ?? []) as BedSubmission[];
+    allRows.push(...chunk);
+    hasMore = chunk.length === pageSize;
+    from += pageSize;
+  }
+
+  return allRows;
+};
+
 export const saveBedSubmission = async (
   roles: AppRole[],
   input: Omit<BedSubmission, "id" | "created_at"> & { id?: string },
