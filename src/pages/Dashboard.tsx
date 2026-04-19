@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
+import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fetchDashboardSubmissions, aggregateSubmissionSums } from "@/lib/supabase-api";
@@ -46,12 +47,41 @@ const calendarDateToIso = (value: Date) => {
   return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
 };
 
+const HIJRI_DAY_FORMATTER = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", {
+  timeZone: SAUDI_TIMEZONE,
+  day: "numeric",
+});
+
+const HIJRI_DATE_FORMATTER = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", {
+  timeZone: SAUDI_TIMEZONE,
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
+const GREGORIAN_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: SAUDI_TIMEZONE,
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
+const SAUDI_HOLIDAYS: Record<string, string> = {
+  "2025-02-22": "Founding Day",
+  "2025-09-23": "National Day",
+  "2026-02-22": "Founding Day",
+  "2026-09-23": "National Day",
+  "2027-02-22": "Founding Day",
+  "2027-09-23": "National Day",
+};
+
 const DashboardPage = () => {
   const qc = useQueryClient();
   const today = useMemo(() => isoToCalendarDate(getSaudiTodayIso()), []);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: today, to: today });
   const [timeFrom, setTimeFrom] = useState("00:00");
   const [timeTo, setTimeTo] = useState("23:59");
+  const [showHijri, setShowHijri] = useState(false);
   const rangeStart = dateRange?.from ?? today;
   const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
 
@@ -105,6 +135,47 @@ const DashboardPage = () => {
       return valueMinutes >= fromMinutes && valueMinutes <= toMinutesValue;
     });
   }, [rows, timeFrom, timeTo, rangeStartIso, rangeEndIso]);
+
+  const availableDateSet = useMemo(() => {
+    const dates = new Set<string>();
+    rows.forEach((row) => {
+      const value = extractUserInputDateTime(row)?.date;
+      if (value) dates.add(value);
+    });
+    return dates;
+  }, [rows]);
+
+  const isSaudiFriday = (value: Date) => {
+    const iso = calendarDateToIso(value);
+    const weekday = new Intl.DateTimeFormat("en-US", {
+      timeZone: SAUDI_TIMEZONE,
+      weekday: "short",
+    }).format(new Date(`${iso}T12:00:00+03:00`));
+    return weekday === "Fri";
+  };
+
+  const isSaudiSaturday = (value: Date) => {
+    const iso = calendarDateToIso(value);
+    const weekday = new Intl.DateTimeFormat("en-US", {
+      timeZone: SAUDI_TIMEZONE,
+      weekday: "short",
+    }).format(new Date(`${iso}T12:00:00+03:00`));
+    return weekday === "Sat";
+  };
+
+  const hasSaudiHoliday = (value: Date) => {
+    const iso = calendarDateToIso(value);
+    return Boolean(SAUDI_HOLIDAYS[iso]);
+  };
+
+  const isDateDisabled = (value: Date) => {
+    if (availableDateSet.size === 0) return true;
+    return !availableDateSet.has(calendarDateToIso(value));
+  };
+
+  const formattedRangeLabel = showHijri
+    ? `${HIJRI_DATE_FORMATTER.format(rangeStart)} - ${HIJRI_DATE_FORMATTER.format(rangeEnd)}`
+    : `${GREGORIAN_DATE_FORMATTER.format(rangeStart)} - ${GREGORIAN_DATE_FORMATTER.format(rangeEnd)}`;
 
   const sums = aggregateSubmissionSums(filteredRows);
   const waitingPatients = filteredRows.reduce((total, row) => {
@@ -160,7 +231,7 @@ const DashboardPage = () => {
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(rangeStart, "MMM d, yyyy")} - {format(rangeEnd, "MMM d, yyyy")}
+                {formattedRangeLabel}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
@@ -168,12 +239,38 @@ const DashboardPage = () => {
                 mode="range"
                 selected={dateRange}
                 onSelect={setDateRange}
+                today={today}
                 numberOfMonths={2}
                 className="p-3 pointer-events-auto"
+                disabled={isDateDisabled}
+                excludeDisabled
+                modifiers={{
+                  saudiFriday: isSaudiFriday,
+                  saudiSaturday: isSaudiSaturday,
+                  saHoliday: hasSaudiHoliday,
+                }}
+                modifiersClassNames={{
+                  saudiFriday: "text-primary",
+                  saudiSaturday: "text-muted-foreground font-semibold",
+                  saHoliday: "relative after:absolute after:bottom-1 after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-primary",
+                }}
+                classNames={{
+                  day_selected:
+                    "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                  day_today:
+                    "bg-transparent text-foreground ring-2 ring-primary ring-offset-2 ring-offset-background hover:bg-accent",
+                  day_disabled: "text-muted-foreground opacity-40",
+                }}
+                components={showHijri ? { DayContent: ({ date }) => <span>{HIJRI_DAY_FORMATTER.format(date)}</span> } : undefined}
                 initialFocus
               />
             </PopoverContent>
           </Popover>
+
+          <div className="flex items-center justify-between rounded-md border bg-card px-3 py-2">
+            <span className="text-xs font-medium text-muted-foreground">Hijri view</span>
+            <Switch checked={showHijri} onCheckedChange={setShowHijri} aria-label="Toggle Hijri calendar view" />
+          </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
