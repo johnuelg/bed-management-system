@@ -106,6 +106,7 @@ const calendarDateToIso = (value: Date) => {
 const DataEntryPage = () => {
   const { roles } = useAuth();
   const qc = useQueryClient();
+  const saudiTodayForCalendar = useMemo(() => isoToCalendarDate(toLocalDateString(new Date())), []);
   const canEditAllBedEntryFields = hasAnyRole(roles, ["admin", "staff"]);
   const canDeleteSubmissions = hasAnyRole(roles, ["admin", "director"]);
   const initialForm = {
@@ -544,6 +545,7 @@ const DataEntryPage = () => {
                         <Calendar
                           mode="single"
                           selected={datePart ? isoToCalendarDate(datePart) : undefined}
+                          today={saudiTodayForCalendar}
                           onSelect={(selected) => {
                             if (!selected) return;
                             const nextDate = calendarDateToIso(selected);
