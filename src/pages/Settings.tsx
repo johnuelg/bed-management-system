@@ -139,7 +139,7 @@ const SettingsPage = () => {
             </table>
           </div>
           <Button onClick={() => saveOccupancyMutation.mutate(currentOccupancy)} disabled={saveOccupancyMutation.isPending}>
-            Save Occupancy Benchmark
+            Save KPI Benchmark
           </Button>
         </CardContent>
       </Card>
