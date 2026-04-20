@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { BarChart3, ClipboardList, FileCog, LayoutDashboard, LogOut, Menu, Settings2, Users2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BarChart3, ChevronDown, ClipboardList, FileCog, LayoutDashboard, LogOut, Menu, Settings2, Users2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -30,26 +30,47 @@ const defaultRoleVisibility: RoleMenuVisibility = {
   users: false,
 };
 
-const navItems: NavItem[] = [
+const topLevelNavItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, settingKey: "dashboard" },
   { to: "/data-entry", label: "Bed Entry", icon: ClipboardList, settingKey: "data_entry" },
+  { to: "/users", label: "Users", icon: Users2, settingKey: "users", roles: ["admin"] },
+];
+
+const settingsSubNavItems: NavItem[] = [
   { to: "/kpi-builder", label: "KPI Builder", icon: BarChart3, settingKey: "kpi_builder", roles: ["admin", "director"] },
   { to: "/categories", label: "Categories", icon: Settings2, settingKey: "categories", roles: ["admin"] },
   { to: "/form-builder", label: "Form Builder", icon: FileCog, settingKey: "form_builder", roles: ["admin"] },
-  { to: "/users", label: "Users", icon: Users2, settingKey: "users", roles: ["admin"] },
 ];
 
 export const AppShell = () => {
   const { roles, signOut, profile } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [settingsOpenDesktop, setSettingsOpenDesktop] = useState(false);
+  const [settingsOpenMobile, setSettingsOpenMobile] = useState(false);
   const { data: navVisibility } = useQuery({ queryKey: ["app_settings", "nav_visibility"], queryFn: fetchNavVisibilitySettings });
 
   const primaryRole = getPrimaryRole(roles);
   const roleVisibility = primaryRole ? (navVisibility?.[primaryRole] ?? defaultRoleVisibility) : defaultRoleVisibility;
-  const visibleNavItems = navItems
+  const visibleTopLevelItems = topLevelNavItems
     .filter((item) => !item.roles || hasAnyRole(roles, item.roles))
     .filter((item) => roleVisibility[item.settingKey]);
+
+  const visibleSettingsItems = settingsSubNavItems
+    .filter((item) => !item.roles || hasAnyRole(roles, item.roles))
+    .filter((item) => roleVisibility[item.settingKey]);
+
+  const canAccessSettings = hasAnyRole(roles, ["admin"]);
+  const settingsVisible = canAccessSettings && (visibleSettingsItems.length > 0 || location.pathname === "/settings");
+  const settingsActive =
+    location.pathname === "/settings" || visibleSettingsItems.some((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`));
+
+  useEffect(() => {
+    if (settingsActive) {
+      setSettingsOpenDesktop(true);
+      setSettingsOpenMobile(true);
+    }
+  }, [settingsActive]);
 
   return (
     <div className="flex min-h-screen w-full">
