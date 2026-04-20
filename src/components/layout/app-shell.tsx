@@ -86,21 +86,70 @@ export const AppShell = () => {
         </div>
 
         <nav className="space-y-1 p-3">
-          {visibleNavItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    "hospital-transition flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                  )
-                }
+          {visibleTopLevelItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  "hospital-transition flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                )
+              }
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </NavLink>
+          ))}
+
+          {settingsVisible ? (
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => setSettingsOpenDesktop((prev) => !prev)}
+                className={cn(
+                  "hospital-transition flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  settingsActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                )}
+                aria-expanded={settingsOpenDesktop}
+                aria-controls="settings-submenu-desktop"
               >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </NavLink>
-            ))}
+                <Settings2 className="h-4 w-4" />
+                <span className="flex-1 text-left">Settings</span>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", settingsOpenDesktop && "rotate-180")} />
+              </button>
+
+              {settingsOpenDesktop ? (
+                <div id="settings-submenu-desktop" className="space-y-1 pl-6">
+                  <NavLink
+                    to="/settings"
+                    className={({ isActive }) =>
+                      cn(
+                        "hospital-transition block rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                      )
+                    }
+                  >
+                    General
+                  </NavLink>
+                  {visibleSettingsItems.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={({ isActive }) =>
+                        cn(
+                          "hospital-transition block rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                          isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                        )
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </nav>
 
         <div className="mt-auto border-t border-sidebar-border p-4">
@@ -142,7 +191,7 @@ export const AppShell = () => {
                   </div>
 
                   <nav className="space-y-1 p-3">
-                    {visibleNavItems.map((item) => (
+                    {visibleTopLevelItems.map((item) => (
                       <NavLink
                         key={`mobile-${item.to}`}
                         to={item.to}
@@ -158,6 +207,57 @@ export const AppShell = () => {
                         {item.label}
                       </NavLink>
                     ))}
+
+                    {settingsVisible ? (
+                      <div className="space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => setSettingsOpenMobile((prev) => !prev)}
+                          className={cn(
+                            "hospital-transition flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                            settingsActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                          )}
+                          aria-expanded={settingsOpenMobile}
+                          aria-controls="settings-submenu-mobile"
+                        >
+                          <Settings2 className="h-4 w-4" />
+                          <span className="flex-1 text-left">Settings</span>
+                          <ChevronDown className={cn("h-4 w-4 transition-transform", settingsOpenMobile && "rotate-180")} />
+                        </button>
+
+                        {settingsOpenMobile ? (
+                          <div id="settings-submenu-mobile" className="space-y-1 pl-6">
+                            <NavLink
+                              to="/settings"
+                              onClick={() => setMobileMenuOpen(false)}
+                              className={({ isActive }) =>
+                                cn(
+                                  "hospital-transition block rounded-md px-3 py-2.5 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                                  isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                                )
+                              }
+                            >
+                              General
+                            </NavLink>
+                            {visibleSettingsItems.map((item) => (
+                              <NavLink
+                                key={`mobile-settings-${item.to}`}
+                                to={item.to}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className={({ isActive }) =>
+                                  cn(
+                                    "hospital-transition block rounded-md px-3 py-2.5 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                                  )
+                                }
+                              >
+                                {item.label}
+                              </NavLink>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </nav>
 
                   <div className="mt-auto border-t border-sidebar-border p-4">
