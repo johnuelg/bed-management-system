@@ -6,22 +6,10 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  fetchNavVisibilitySettings,
   fetchOccupancyBenchmarkSettings,
-  fetchRoleCatalog,
-  saveNavVisibilitySettings,
   saveOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
-import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibility-settings";
-import type { NavVisibilitySettings, OccupancyBenchmarkSettings } from "@/types/hospital";
-
-const defaultNavSettings: NavVisibilitySettings = {
-  admin: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
-  director: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
-  doctor: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
-  nurse: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
-  staff: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
-};
+import type { OccupancyBenchmarkSettings } from "@/types/hospital";
 
 const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
   levels: [
@@ -34,36 +22,14 @@ const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
 const SettingsPage = () => {
   const { roles, user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: serverSettings } = useQuery({
-    queryKey: ["app_settings", "nav_visibility"],
-    queryFn: fetchNavVisibilitySettings,
-  });
-  const { data: roleCatalog = ["admin", "director", "doctor", "nurse", "staff"] } = useQuery({
-    queryKey: ["app_settings", "role_catalog"],
-    queryFn: fetchRoleCatalog,
-  });
   const { data: occupancyServerSettings } = useQuery({
     queryKey: ["app_settings", "occupancy_benchmark"],
     queryFn: fetchOccupancyBenchmarkSettings,
   });
 
-  const [draft, setDraft] = useState<NavVisibilitySettings>(defaultNavSettings);
   const [occupancyDraft, setOccupancyDraft] = useState<OccupancyBenchmarkSettings>(defaultOccupancyBenchmarkSettings);
 
-  const current = serverSettings ?? draft;
   const currentOccupancy = occupancyServerSettings ?? occupancyDraft;
-
-  const saveMutation = useMutation({
-    mutationFn: (next: NavVisibilitySettings) => {
-      if (!user?.id) throw new Error("You must be signed in to save settings.");
-      return saveNavVisibilitySettings(roles, next, user.id);
-    },
-    onSuccess: async () => {
-      toast({ title: "Settings saved" });
-      await queryClient.invalidateQueries({ queryKey: ["app_settings", "nav_visibility"] });
-    },
-    onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
-  });
 
   const saveOccupancyMutation = useMutation({
     mutationFn: (next: OccupancyBenchmarkSettings) => {
@@ -80,36 +46,13 @@ const SettingsPage = () => {
   return (
     <section className="space-y-5 sm:space-y-6">
       <header>
-        <h1 className="text-2xl font-bold sm:text-3xl">Settings</h1>
-        <p className="text-sm text-muted-foreground">Configure global sidebar visibility for the app menus.</p>
+        <h1 className="text-2xl font-bold sm:text-3xl">KPI Benchmark</h1>
+        <p className="text-sm text-muted-foreground">Define global KPI occupancy benchmark levels and colors.</p>
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle>Navigation Visibility</CardTitle>
-          <CardDescription>Choose which sidebar menus are visible for each role.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 overflow-x-auto">
-          <NavVisibilitySettingsEditor
-            settings={current}
-            roles={roleCatalog}
-            onChange={(next) => {
-              setDraft(next);
-              if (serverSettings) {
-                queryClient.setQueryData(["app_settings", "nav_visibility"], next);
-              }
-            }}
-            disabled={saveMutation.isPending}
-          />
-          <Button onClick={() => saveMutation.mutate(current)} disabled={saveMutation.isPending}>
-            Save Settings
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Occupancy Rate Benchmark</CardTitle>
+          <CardTitle>KPI Benchmark</CardTitle>
           <CardDescription>Define global occupancy percentage thresholds and color codes for all dashboard displays.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
