@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { BarChart3, ClipboardList, FileCog, LayoutDashboard, LogOut, Menu, Settings2, Users2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BarChart3, ChevronDown, ClipboardList, FileCog, LayoutDashboard, LogOut, Menu, Settings2, Users2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -30,26 +30,47 @@ const defaultRoleVisibility: RoleMenuVisibility = {
   users: false,
 };
 
-const navItems: NavItem[] = [
+const topLevelNavItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, settingKey: "dashboard" },
   { to: "/data-entry", label: "Bed Entry", icon: ClipboardList, settingKey: "data_entry" },
+  { to: "/users", label: "Users", icon: Users2, settingKey: "users", roles: ["admin"] },
+];
+
+const settingsSubNavItems: NavItem[] = [
   { to: "/kpi-builder", label: "KPI Builder", icon: BarChart3, settingKey: "kpi_builder", roles: ["admin", "director"] },
   { to: "/categories", label: "Categories", icon: Settings2, settingKey: "categories", roles: ["admin"] },
   { to: "/form-builder", label: "Form Builder", icon: FileCog, settingKey: "form_builder", roles: ["admin"] },
-  { to: "/users", label: "Users", icon: Users2, settingKey: "users", roles: ["admin"] },
 ];
 
 export const AppShell = () => {
   const { roles, signOut, profile } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [settingsOpenDesktop, setSettingsOpenDesktop] = useState(false);
+  const [settingsOpenMobile, setSettingsOpenMobile] = useState(false);
   const { data: navVisibility } = useQuery({ queryKey: ["app_settings", "nav_visibility"], queryFn: fetchNavVisibilitySettings });
 
   const primaryRole = getPrimaryRole(roles);
   const roleVisibility = primaryRole ? (navVisibility?.[primaryRole] ?? defaultRoleVisibility) : defaultRoleVisibility;
-  const visibleNavItems = navItems
+  const visibleTopLevelItems = topLevelNavItems
     .filter((item) => !item.roles || hasAnyRole(roles, item.roles))
     .filter((item) => roleVisibility[item.settingKey]);
+
+  const visibleSettingsItems = settingsSubNavItems
+    .filter((item) => !item.roles || hasAnyRole(roles, item.roles))
+    .filter((item) => roleVisibility[item.settingKey]);
+
+  const canAccessSettings = hasAnyRole(roles, ["admin"]);
+  const settingsVisible = canAccessSettings && (visibleSettingsItems.length > 0 || location.pathname === "/settings");
+  const settingsActive =
+    location.pathname === "/settings" || visibleSettingsItems.some((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`));
+
+  useEffect(() => {
+    if (settingsActive) {
+      setSettingsOpenDesktop(true);
+      setSettingsOpenMobile(true);
+    }
+  }, [settingsActive]);
 
   return (
     <div className="flex min-h-screen w-full">
@@ -65,21 +86,70 @@ export const AppShell = () => {
         </div>
 
         <nav className="space-y-1 p-3">
-          {visibleNavItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    "hospital-transition flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                  )
-                }
+          {visibleTopLevelItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  "hospital-transition flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                )
+              }
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </NavLink>
+          ))}
+
+          {settingsVisible ? (
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => setSettingsOpenDesktop((prev) => !prev)}
+                className={cn(
+                  "hospital-transition flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  settingsActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                )}
+                aria-expanded={settingsOpenDesktop}
+                aria-controls="settings-submenu-desktop"
               >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </NavLink>
-            ))}
+                <Settings2 className="h-4 w-4" />
+                <span className="flex-1 text-left">Settings</span>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", settingsOpenDesktop && "rotate-180")} />
+              </button>
+
+              {settingsOpenDesktop ? (
+                <div id="settings-submenu-desktop" className="space-y-1 pl-6">
+                  <NavLink
+                    to="/settings"
+                    className={({ isActive }) =>
+                      cn(
+                        "hospital-transition block rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                      )
+                    }
+                  >
+                    General
+                  </NavLink>
+                  {visibleSettingsItems.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={({ isActive }) =>
+                        cn(
+                          "hospital-transition block rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                          isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                        )
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </nav>
 
         <div className="mt-auto border-t border-sidebar-border p-4">
@@ -121,7 +191,7 @@ export const AppShell = () => {
                   </div>
 
                   <nav className="space-y-1 p-3">
-                    {visibleNavItems.map((item) => (
+                    {visibleTopLevelItems.map((item) => (
                       <NavLink
                         key={`mobile-${item.to}`}
                         to={item.to}
@@ -137,6 +207,57 @@ export const AppShell = () => {
                         {item.label}
                       </NavLink>
                     ))}
+
+                    {settingsVisible ? (
+                      <div className="space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => setSettingsOpenMobile((prev) => !prev)}
+                          className={cn(
+                            "hospital-transition flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                            settingsActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                          )}
+                          aria-expanded={settingsOpenMobile}
+                          aria-controls="settings-submenu-mobile"
+                        >
+                          <Settings2 className="h-4 w-4" />
+                          <span className="flex-1 text-left">Settings</span>
+                          <ChevronDown className={cn("h-4 w-4 transition-transform", settingsOpenMobile && "rotate-180")} />
+                        </button>
+
+                        {settingsOpenMobile ? (
+                          <div id="settings-submenu-mobile" className="space-y-1 pl-6">
+                            <NavLink
+                              to="/settings"
+                              onClick={() => setMobileMenuOpen(false)}
+                              className={({ isActive }) =>
+                                cn(
+                                  "hospital-transition block rounded-md px-3 py-2.5 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                                  isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                                )
+                              }
+                            >
+                              General
+                            </NavLink>
+                            {visibleSettingsItems.map((item) => (
+                              <NavLink
+                                key={`mobile-settings-${item.to}`}
+                                to={item.to}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className={({ isActive }) =>
+                                  cn(
+                                    "hospital-transition block rounded-md px-3 py-2.5 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                                  )
+                                }
+                              >
+                                {item.label}
+                              </NavLink>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </nav>
 
                   <div className="mt-auto border-t border-sidebar-border p-4">
