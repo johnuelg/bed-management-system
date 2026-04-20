@@ -130,7 +130,7 @@ export const AppShell = () => {
                       )
                     }
                   >
-                    General
+                    Occupancy Rate Benchmark
                   </NavLink>
                   {visibleSettingsItems.map((item) => (
                     <NavLink
@@ -237,7 +237,7 @@ export const AppShell = () => {
                                 )
                               }
                             >
-                              General
+                              Occupancy Rate Benchmark
                             </NavLink>
                             {visibleSettingsItems.map((item) => (
                               <NavLink
