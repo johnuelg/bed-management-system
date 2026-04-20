@@ -10,7 +10,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { aggregateSubmissionSums, fetchBedTypes, fetchDashboardSubmissions, fetchDepartments } from "@/lib/supabase-api";
+import {
+  aggregateSubmissionSums,
+  fetchBedTypes,
+  fetchDashboardSubmissions,
+  fetchDepartments,
+  fetchOccupancyBenchmarkSettings,
+} from "@/lib/supabase-api";
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
 
@@ -89,6 +95,11 @@ const DashboardPage = () => {
   const { data: bedTypes = [] } = useQuery({
     queryKey: ["bed_types"],
     queryFn: fetchBedTypes,
+  });
+
+  const { data: occupancyBenchmark } = useQuery({
+    queryKey: ["app_settings", "occupancy_benchmark"],
+    queryFn: fetchOccupancyBenchmarkSettings,
   });
 
   const extractUserInputDateTime = (row: (typeof rows)[number]) => {
@@ -234,6 +245,16 @@ const DashboardPage = () => {
     return total;
   }, 0);
   const occupancyRate = sums.total_beds > 0 ? (sums.occupied / sums.total_beds) * 100 : 0;
+  const benchmarkLevels = occupancyBenchmark?.levels ?? [
+    { key: "safe", label: "Safe", maxPercent: 70, color: "#16a34a" },
+    { key: "watch", label: "Watch", maxPercent: 85, color: "#f59e0b" },
+    { key: "critical", label: "Critical", maxPercent: 100, color: "#dc2626" },
+  ];
+
+  const getOccupancyBenchmark = (value: number) =>
+    benchmarkLevels.find((level) => value <= level.maxPercent) ?? benchmarkLevels[benchmarkLevels.length - 1];
+
+  const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
   useEffect(() => {
     const debouncedRefresh = () => {
@@ -359,7 +380,12 @@ const DashboardPage = () => {
           { name: "Closed", value: sums.closed },
           { name: "Vacant", value: sums.vacant },
           { name: "Waiting Patients", value: waitingPatients },
-          { name: "Occupancy Rate", value: `${occupancyRate.toFixed(1)}%` },
+            {
+              name: "Occupancy Rate",
+              value: `${occupancyRate.toFixed(1)}%`,
+              accentColor: occupancyBenchmarkMatch?.color,
+              subtitle: occupancyBenchmarkMatch?.label,
+            },
         ].map((metric, index) => (
           <motion.div
             key={metric.name}
@@ -373,7 +399,12 @@ const DashboardPage = () => {
                 <CardTitle className="text-sm text-muted-foreground">{metric.name}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold sm:text-3xl">{metric.value}</p>
+                  <p className="text-2xl font-bold sm:text-3xl" style={metric.name === "Occupancy Rate" ? { color: metric.accentColor } : undefined}>
+                    {metric.value}
+                  </p>
+                  {metric.name === "Occupancy Rate" && metric.subtitle ? (
+                    <p className="mt-1 text-xs text-muted-foreground">{metric.subtitle}</p>
+                  ) : null}
               </CardContent>
             </Card>
           </motion.div>
@@ -429,6 +460,7 @@ const DashboardPage = () => {
 
                     const vacant = Math.max((Number(row.total_beds) || 0) - (Number(row.occupied) || 0) - (Number(row.closed) || 0), 0);
                     const rowOccupancy = row.total_beds > 0 ? (row.occupied / row.total_beds) * 100 : 0;
+                    const rowBenchmark = getOccupancyBenchmark(rowOccupancy);
 
                     return (
                       <TableRow key={row.id}>
@@ -440,7 +472,7 @@ const DashboardPage = () => {
                         <TableCell className="text-right">{vacant}</TableCell>
                         <TableCell className="text-right">{waitingValue}</TableCell>
                         <TableCell>{row.closure_reason || "-"}</TableCell>
-                        <TableCell className="text-right">{rowOccupancy.toFixed(1)}%</TableCell>
+                        <TableCell className="text-right" style={{ color: rowBenchmark?.color }}>{rowOccupancy.toFixed(1)}%</TableCell>
                       </TableRow>
                     );
                   })

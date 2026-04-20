@@ -12,6 +12,8 @@ import type {
   KpiFormula,
   KpiWidget,
   NavVisibilitySettings,
+  OccupancyBenchmarkLevel,
+  OccupancyBenchmarkSettings,
   RoleMenuVisibility,
   Profile,
 } from "@/types/hospital";
@@ -19,6 +21,7 @@ import type {
 const db = supabase as any;
 const NAV_VISIBILITY_KEY = "nav_visibility";
 const ROLE_CATALOG_KEY = "role_catalog";
+const OCCUPANCY_BENCHMARK_KEY = "occupancy_benchmark";
 const DEFAULT_ROLE_CATALOG: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   dashboard: true,
@@ -34,6 +37,13 @@ const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
   doctor: { ...DEFAULT_ROLE_MENU_VISIBILITY },
   nurse: { ...DEFAULT_ROLE_MENU_VISIBILITY },
   staff: { ...DEFAULT_ROLE_MENU_VISIBILITY },
+};
+const DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS: OccupancyBenchmarkSettings = {
+  levels: [
+    { key: "safe", label: "Safe", maxPercent: 70, color: "#16a34a" },
+    { key: "watch", label: "Watch", maxPercent: 85, color: "#f59e0b" },
+    { key: "critical", label: "Critical", maxPercent: 100, color: "#dc2626" },
+  ],
 };
 const SAUDI_TIMEZONE = "Asia/Riyadh";
 
@@ -98,6 +108,55 @@ const normalizeNavVisibility = (value: unknown): NavVisibilitySettings => {
   return {
     ...base,
     ...Object.fromEntries(normalizedEntries),
+  };
+};
+
+const isValidColorCode = (value: string) =>
+  /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim()) || /^hsl\(\s*\d{1,3}\s+\d{1,3}%\s+\d{1,3}%\s*\)$/i.test(value.trim());
+
+const normalizeOccupancyLevel = (
+  level: unknown,
+  fallback: OccupancyBenchmarkLevel,
+): OccupancyBenchmarkLevel => {
+  if (!level || typeof level !== "object") return fallback;
+  const source = level as Partial<Record<keyof OccupancyBenchmarkLevel, unknown>>;
+  const label = typeof source.label === "string" && source.label.trim().length > 0 ? source.label.trim() : fallback.label;
+  const maxPercentCandidate = Number(source.maxPercent);
+  const maxPercent = Number.isFinite(maxPercentCandidate)
+    ? Math.min(Math.max(maxPercentCandidate, 0), 100)
+    : fallback.maxPercent;
+  const colorCandidate = typeof source.color === "string" ? source.color.trim() : "";
+  const color = isValidColorCode(colorCandidate) ? colorCandidate : fallback.color;
+  return {
+    key: fallback.key,
+    label,
+    maxPercent,
+    color,
+  };
+};
+
+const normalizeOccupancyBenchmarkSettings = (value: unknown): OccupancyBenchmarkSettings => {
+  const source = value && typeof value === "object" ? (value as { levels?: unknown[] }) : {};
+  const levels = source.levels ?? [];
+  const fallbackByKey = Object.fromEntries(
+    DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS.levels.map((level) => [level.key, level]),
+  ) as Record<OccupancyBenchmarkLevel["key"], OccupancyBenchmarkLevel>;
+
+  const parsed = {
+    safe: normalizeOccupancyLevel(levels[0], fallbackByKey.safe),
+    watch: normalizeOccupancyLevel(levels[1], fallbackByKey.watch),
+    critical: normalizeOccupancyLevel(levels[2], fallbackByKey.critical),
+  };
+
+  const watchMax = Math.max(parsed.watch.maxPercent, parsed.safe.maxPercent);
+  const criticalMax = Math.max(parsed.critical.maxPercent, watchMax);
+
+  return {
+    levels: [
+      { ...parsed.safe, maxPercent: Math.min(parsed.safe.maxPercent, 100) },
+      { ...parsed.watch, maxPercent: Math.min(watchMax, 100) },
+      { ...parsed.critical, maxPercent: Math.min(criticalMax, 100) },
+    ],
   };
 };
 
@@ -214,6 +273,38 @@ export const saveRoleCatalog = async (roles: AppRole[], roleCatalog: AppRole[], 
     {
       setting_key: ROLE_CATALOG_KEY,
       setting_value: finalCatalog,
+      updated_by: userId,
+    },
+    { onConflict: "setting_key" },
+  );
+
+  if (error) throw error;
+};
+
+export const fetchOccupancyBenchmarkSettings = async (): Promise<OccupancyBenchmarkSettings> => {
+  const { data, error } = await db
+    .from("app_settings")
+    .select("setting_value")
+    .eq("setting_key", OCCUPANCY_BENCHMARK_KEY)
+    .maybeSingle();
+
+  if (error) throw error;
+  return normalizeOccupancyBenchmarkSettings(data?.setting_value);
+};
+
+export const saveOccupancyBenchmarkSettings = async (
+  roles: AppRole[],
+  settings: OccupancyBenchmarkSettings,
+  userId: string,
+) => {
+  requireRole(roles, ["admin"], "manage occupancy benchmark settings");
+
+  const normalized = normalizeOccupancyBenchmarkSettings(settings);
+
+  const { error } = await db.from("app_settings").upsert(
+    {
+      setting_key: OCCUPANCY_BENCHMARK_KEY,
+      setting_value: normalized,
       updated_by: userId,
     },
     { onConflict: "setting_key" },
