@@ -90,3 +90,14 @@ export type ClinicalRole = "doctor" | "nurse" | "staff";
 export type NavRole = SystemRole;
 
 export type NavVisibilitySettings = Record<string, RoleMenuVisibility>;
+
+export type OccupancyBenchmarkLevel = {
+  key: "safe" | "watch" | "critical";
+  label: string;
+  maxPercent: number;
+  color: string;
+};
+
+export type OccupancyBenchmarkSettings = {
+  levels: OccupancyBenchmarkLevel[];
+};
