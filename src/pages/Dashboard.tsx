@@ -297,6 +297,19 @@ const DashboardPage = () => {
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
+  const getStatusBadge = (label: string, color: string, prefix?: string) => (
+    <span
+      className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
+      style={{
+        color,
+        backgroundColor: `${color}22`,
+      }}
+    >
+      {prefix ? `${prefix} ` : ""}
+      {label}
+    </span>
+  );
+
   useEffect(() => {
     const debouncedRefresh = () => {
       const timeout = setTimeout(() => {
@@ -470,53 +483,76 @@ const DashboardPage = () => {
                   <TableHead className="text-right">Waiting Patients</TableHead>
                   <TableHead>Reason for Closure</TableHead>
                   <TableHead className="text-right">Occupancy Rate</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="py-6 text-center text-muted-foreground">
                       No entries found for the selected date/time filters.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredRows.map((row) => {
-                    const userDateTime = extractUserInputDateTime(row);
-                    const customFields = (row.custom_fields as Record<string, unknown>) ?? {};
-                    const waitingDirect = customFields.waiting_patients ?? customFields.waitingPatients;
-                    const waitingDetected = Object.entries(customFields).find(([key]) =>
-                      key.toLowerCase().includes("waiting") && key.toLowerCase().includes("patient"),
-                    )?.[1];
+                  <>
+                    {filteredRows.map((row) => {
+                      const userDateTime = extractUserInputDateTime(row);
+                      const customFields = (row.custom_fields as Record<string, unknown>) ?? {};
+                      const waitingDirect = customFields.waiting_patients ?? customFields.waitingPatients;
+                      const waitingDetected = Object.entries(customFields).find(([key]) =>
+                        key.toLowerCase().includes("waiting") && key.toLowerCase().includes("patient"),
+                      )?.[1];
 
-                    const waitingValue =
-                      typeof waitingDirect === "number"
-                        ? waitingDirect
-                        : typeof waitingDirect === "string"
-                          ? Number(waitingDirect) || 0
-                          : typeof waitingDetected === "number"
-                            ? waitingDetected
-                            : typeof waitingDetected === "string"
-                              ? Number(waitingDetected) || 0
-                              : 0;
+                      const waitingValue =
+                        typeof waitingDirect === "number"
+                          ? waitingDirect
+                          : typeof waitingDirect === "string"
+                            ? Number(waitingDirect) || 0
+                            : typeof waitingDetected === "number"
+                              ? waitingDetected
+                              : typeof waitingDetected === "string"
+                                ? Number(waitingDetected) || 0
+                                : 0;
 
-                    const vacant = Math.max((Number(row.total_beds) || 0) - (Number(row.occupied) || 0) - (Number(row.closed) || 0), 0);
-                    const rowOccupancy = row.total_beds > 0 ? (row.occupied / row.total_beds) * 100 : 0;
-                    const rowBenchmark = getOccupancyBenchmark(rowOccupancy);
+                      const vacant = Math.max((Number(row.total_beds) || 0) - (Number(row.occupied) || 0) - (Number(row.closed) || 0), 0);
+                      const rowOccupancy = row.total_beds > 0 ? (row.occupied / row.total_beds) * 100 : 0;
+                      const rowBenchmark = getOccupancyBenchmark(rowOccupancy);
 
-                    return (
-                      <TableRow key={row.id}>
-                        <TableCell>{userDateTime?.date ?? "-"}</TableCell>
-                        <TableCell>{userDateTime?.time ?? "-"}</TableCell>
-                        <TableCell className="text-right font-medium">{row.total_beds}</TableCell>
-                        <TableCell className="text-right">{row.occupied}</TableCell>
-                        <TableCell className="text-right">{row.closed}</TableCell>
-                        <TableCell className="text-right">{vacant}</TableCell>
-                        <TableCell className="text-right">{waitingValue}</TableCell>
-                        <TableCell>{row.closure_reason || "-"}</TableCell>
-                        <TableCell className="text-right" style={{ color: rowBenchmark?.color }}>{rowOccupancy.toFixed(1)}%</TableCell>
-                      </TableRow>
-                    );
-                  })
+                      return (
+                        <TableRow key={row.id}>
+                          <TableCell>{userDateTime?.date ?? "-"}</TableCell>
+                          <TableCell>{userDateTime?.time ?? "-"}</TableCell>
+                          <TableCell className="text-right font-medium">{row.total_beds}</TableCell>
+                          <TableCell className="text-right">{row.occupied}</TableCell>
+                          <TableCell className="text-right">{row.closed}</TableCell>
+                          <TableCell className="text-right">{vacant}</TableCell>
+                          <TableCell className="text-right">{waitingValue}</TableCell>
+                          <TableCell>{row.closure_reason || "-"}</TableCell>
+                          <TableCell className="text-right" style={{ color: rowBenchmark?.color }}>{rowOccupancy.toFixed(1)}%</TableCell>
+                          <TableCell>{getStatusBadge(rowBenchmark.label, rowBenchmark.color, rowBenchmark.key === "high" ? "⚠" : undefined)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    <TableRow className="bg-muted/30">
+                      <TableCell colSpan={2} className="font-semibold">Total</TableCell>
+                      <TableCell className="text-right font-semibold">{sums.total_beds}</TableCell>
+                      <TableCell className="text-right font-semibold">{sums.occupied}</TableCell>
+                      <TableCell className="text-right font-semibold">{sums.closed}</TableCell>
+                      <TableCell className="text-right font-semibold">{sums.vacant}</TableCell>
+                      <TableCell className="text-right font-semibold">{waitingPatients}</TableCell>
+                      <TableCell>-</TableCell>
+                      <TableCell className="text-right font-semibold" style={{ color: occupancyBenchmarkMatch.color }}>
+                        {occupancyRate.toFixed(1)}%
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(
+                          occupancyBenchmarkMatch.label,
+                          occupancyBenchmarkMatch.color,
+                          occupancyBenchmarkMatch.key === "optimal" ? "✓" : occupancyBenchmarkMatch.key === "high" ? "⚠" : undefined,
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  </>
                 )}
               </TableBody>
             </Table>
