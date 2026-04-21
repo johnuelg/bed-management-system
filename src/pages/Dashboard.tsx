@@ -246,13 +246,54 @@ const DashboardPage = () => {
   }, 0);
   const occupancyRate = sums.total_beds > 0 ? (sums.occupied / sums.total_beds) * 100 : 0;
   const benchmarkLevels = occupancyBenchmark?.levels ?? [
-    { key: "safe", label: "Safe", maxPercent: 70, color: "#16a34a" },
-    { key: "watch", label: "Watch", maxPercent: 85, color: "#f59e0b" },
-    { key: "critical", label: "Critical", maxPercent: 100, color: "#dc2626" },
+    {
+      key: "low",
+      label: "Low",
+      threshold: "< 60%",
+      minPercent: null,
+      maxPercent: 60,
+      minInclusive: false,
+      maxInclusive: false,
+      color: "#16a34a",
+    },
+    {
+      key: "optimal",
+      label: "Optimal",
+      threshold: "60% – 84%",
+      minPercent: 60,
+      maxPercent: 84,
+      minInclusive: true,
+      maxInclusive: true,
+      color: "#16a34a",
+    },
+    {
+      key: "watch",
+      label: "Watch",
+      threshold: "85% – 89%",
+      minPercent: 85,
+      maxPercent: 89,
+      minInclusive: true,
+      maxInclusive: true,
+      color: "#f59e0b",
+    },
+    {
+      key: "high",
+      label: "High",
+      threshold: "≥ 90%",
+      minPercent: 90,
+      maxPercent: null,
+      minInclusive: true,
+      maxInclusive: false,
+      color: "#dc2626",
+    },
   ];
 
   const getOccupancyBenchmark = (value: number) =>
-    benchmarkLevels.find((level) => value <= level.maxPercent) ?? benchmarkLevels[benchmarkLevels.length - 1];
+    benchmarkLevels.find((level) => {
+      const minPass = level.minPercent === null ? true : level.minInclusive ? value >= level.minPercent : value > level.minPercent;
+      const maxPass = level.maxPercent === null ? true : level.maxInclusive ? value <= level.maxPercent : value < level.maxPercent;
+      return minPass && maxPass;
+    }) ?? benchmarkLevels[benchmarkLevels.length - 1];
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
