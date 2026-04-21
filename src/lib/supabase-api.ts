@@ -40,9 +40,46 @@ const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
 };
 const DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS: OccupancyBenchmarkSettings = {
   levels: [
-    { key: "safe", label: "Safe", maxPercent: 70, color: "#16a34a" },
-    { key: "watch", label: "Watch", maxPercent: 85, color: "#f59e0b" },
-    { key: "critical", label: "Critical", maxPercent: 100, color: "#dc2626" },
+    {
+      key: "low",
+      label: "Low",
+      threshold: "< 60%",
+      minPercent: null,
+      maxPercent: 60,
+      minInclusive: false,
+      maxInclusive: false,
+      color: "#16a34a",
+    },
+    {
+      key: "optimal",
+      label: "Optimal",
+      threshold: "60% – 84%",
+      minPercent: 60,
+      maxPercent: 84,
+      minInclusive: true,
+      maxInclusive: true,
+      color: "#16a34a",
+    },
+    {
+      key: "watch",
+      label: "Watch",
+      threshold: "85% – 89%",
+      minPercent: 85,
+      maxPercent: 89,
+      minInclusive: true,
+      maxInclusive: true,
+      color: "#f59e0b",
+    },
+    {
+      key: "high",
+      label: "High",
+      threshold: "≥ 90%",
+      minPercent: 90,
+      maxPercent: null,
+      minInclusive: true,
+      maxInclusive: false,
+      color: "#dc2626",
+    },
   ],
 };
 const SAUDI_TIMEZONE = "Asia/Riyadh";
@@ -113,6 +150,57 @@ const normalizeNavVisibility = (value: unknown): NavVisibilitySettings => {
 
 const isValidColorCode = (value: string) =>
   /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim()) || /^hsl\(\s*\d{1,3}\s+\d{1,3}%\s+\d{1,3}%\s*\)$/i.test(value.trim());
+
+const clampPercent = (value: number) => Math.min(Math.max(value, 0), 100);
+
+const parseThresholdValue = (value: string) => {
+  const normalized = value.trim().replace(/–/g, "-");
+
+  const rangeMatch = normalized.match(/^(\d{1,3})\s*%?\s*-\s*(\d{1,3})\s*%?$/);
+  if (rangeMatch) {
+    const min = clampPercent(Number(rangeMatch[1]));
+    const max = clampPercent(Number(rangeMatch[2]));
+    if (Number.isFinite(min) && Number.isFinite(max) && min <= max) {
+      return {
+        threshold: `${min}% – ${max}%`,
+        minPercent: min,
+        maxPercent: max,
+        minInclusive: true,
+        maxInclusive: true,
+      };
+    }
+  }
+
+  const lessThanMatch = normalized.match(/^<\s*(\d{1,3})\s*%?$/);
+  if (lessThanMatch) {
+    const max = clampPercent(Number(lessThanMatch[1]));
+    if (Number.isFinite(max)) {
+      return {
+        threshold: `< ${max}%`,
+        minPercent: null,
+        maxPercent: max,
+        minInclusive: false,
+        maxInclusive: false,
+      };
+    }
+  }
+
+  const greaterThanMatch = normalized.match(/^(>=|≥)\s*(\d{1,3})\s*%?$/);
+  if (greaterThanMatch) {
+    const min = clampPercent(Number(greaterThanMatch[2]));
+    if (Number.isFinite(min)) {
+      return {
+        threshold: `≥ ${min}%`,
+        minPercent: min,
+        maxPercent: null,
+        minInclusive: true,
+        maxInclusive: false,
+      };
+    }
+  }
+
+  return null;
+};
 
 const normalizeOccupancyLevel = (
   level: unknown,
