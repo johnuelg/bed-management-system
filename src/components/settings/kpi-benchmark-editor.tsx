@@ -28,7 +28,7 @@ const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
       maxPercent: 84,
       minInclusive: true,
       maxInclusive: true,
-      color: "#0ea5e9",
+      color: "#16a34a",
     },
     {
       key: "watch",
