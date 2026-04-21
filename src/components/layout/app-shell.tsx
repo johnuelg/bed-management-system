@@ -121,17 +121,6 @@ export const AppShell = () => {
 
               {settingsOpenDesktop ? (
                 <div id="settings-submenu-desktop" className="space-y-1 pl-6">
-                  <NavLink
-                    to="/settings"
-                    className={({ isActive }) =>
-                      cn(
-                        "hospital-transition block rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                        isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                      )
-                    }
-                  >
-                    KPI Benchmark
-                  </NavLink>
                   {visibleSettingsItems.map((item) => (
                     <NavLink
                       key={item.to}
@@ -227,18 +216,6 @@ export const AppShell = () => {
 
                         {settingsOpenMobile ? (
                           <div id="settings-submenu-mobile" className="space-y-1 pl-6">
-                            <NavLink
-                              to="/settings"
-                              onClick={() => setMobileMenuOpen(false)}
-                              className={({ isActive }) =>
-                                cn(
-                                  "hospital-transition block rounded-md px-3 py-2.5 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                                  isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                                )
-                              }
-                            >
-                              KPI Benchmark
-                            </NavLink>
                             {visibleSettingsItems.map((item) => (
                               <NavLink
                                 key={`mobile-settings-${item.to}`}
