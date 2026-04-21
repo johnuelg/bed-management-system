@@ -27,6 +27,7 @@ import {
   saveKpiFormula,
   saveKpiWidget,
 } from "@/lib/supabase-api";
+import { KpiBenchmarkEditor } from "@/components/settings/kpi-benchmark-editor";
 
 const defaultVariables = ["total_beds", "occupied", "closed", "vacant"];
 
@@ -217,6 +218,8 @@ const KpiBuilderPage = () => {
           ))}
         </CardContent>
       </Card>
+
+      <KpiBenchmarkEditor />
 
       <AlertDialog open={Boolean(widgetToDelete)} onOpenChange={(open) => !open && setWidgetToDelete(null)}>
         <AlertDialogContent>
