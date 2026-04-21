@@ -209,16 +209,38 @@ const normalizeOccupancyLevel = (
   if (!level || typeof level !== "object") return fallback;
   const source = level as Partial<Record<keyof OccupancyBenchmarkLevel, unknown>>;
   const label = typeof source.label === "string" && source.label.trim().length > 0 ? source.label.trim() : fallback.label;
-  const maxPercentCandidate = Number(source.maxPercent);
-  const maxPercent = Number.isFinite(maxPercentCandidate)
-    ? Math.min(Math.max(maxPercentCandidate, 0), 100)
-    : fallback.maxPercent;
+  const thresholdSource = typeof source.threshold === "string" ? source.threshold : "";
+  const parsedThreshold = parseThresholdValue(thresholdSource);
+
+  const minPercentCandidate = source.minPercent === null ? null : Number(source.minPercent);
+  const maxPercentCandidate = source.maxPercent === null ? null : Number(source.maxPercent);
+  const hasValidBounds =
+    (minPercentCandidate === null || Number.isFinite(minPercentCandidate)) &&
+    (maxPercentCandidate === null || Number.isFinite(maxPercentCandidate));
+
+  const minPercent = minPercentCandidate === null ? null : clampPercent(minPercentCandidate);
+  const maxPercent = maxPercentCandidate === null ? null : clampPercent(maxPercentCandidate);
+
+  const minInclusive = typeof source.minInclusive === "boolean" ? source.minInclusive : fallback.minInclusive;
+  const maxInclusive = typeof source.maxInclusive === "boolean" ? source.maxInclusive : fallback.maxInclusive;
+
+  const threshold =
+    parsedThreshold?.threshold ??
+    (typeof source.threshold === "string" && source.threshold.trim().length > 0 ? source.threshold.trim() : fallback.threshold);
+
   const colorCandidate = typeof source.color === "string" ? source.color.trim() : "";
   const color = isValidColorCode(colorCandidate) ? colorCandidate : fallback.color;
+
+  const derived = parsedThreshold ?? (hasValidBounds ? { minPercent, maxPercent, minInclusive, maxInclusive } : null);
+
   return {
     key: fallback.key,
     label,
-    maxPercent,
+    threshold,
+    minPercent: derived?.minPercent ?? fallback.minPercent,
+    maxPercent: derived?.maxPercent ?? fallback.maxPercent,
+    minInclusive: derived?.minInclusive ?? fallback.minInclusive,
+    maxInclusive: derived?.maxInclusive ?? fallback.maxInclusive,
     color,
   };
 };
@@ -230,21 +252,10 @@ const normalizeOccupancyBenchmarkSettings = (value: unknown): OccupancyBenchmark
     DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS.levels.map((level) => [level.key, level]),
   ) as Record<OccupancyBenchmarkLevel["key"], OccupancyBenchmarkLevel>;
 
-  const parsed = {
-    safe: normalizeOccupancyLevel(levels[0], fallbackByKey.safe),
-    watch: normalizeOccupancyLevel(levels[1], fallbackByKey.watch),
-    critical: normalizeOccupancyLevel(levels[2], fallbackByKey.critical),
-  };
-
-  const watchMax = Math.max(parsed.watch.maxPercent, parsed.safe.maxPercent);
-  const criticalMax = Math.max(parsed.critical.maxPercent, watchMax);
-
   return {
-    levels: [
-      { ...parsed.safe, maxPercent: Math.min(parsed.safe.maxPercent, 100) },
-      { ...parsed.watch, maxPercent: Math.min(watchMax, 100) },
-      { ...parsed.critical, maxPercent: Math.min(criticalMax, 100) },
-    ],
+    levels: DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS.levels.map((fallbackLevel, index) =>
+      normalizeOccupancyLevel(levels[index], fallbackLevel),
+    ),
   };
 };
 
