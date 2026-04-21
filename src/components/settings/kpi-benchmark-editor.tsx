@@ -10,10 +10,95 @@ import type { OccupancyBenchmarkSettings } from "@/types/hospital";
 
 const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
   levels: [
-    { key: "safe", label: "Safe", maxPercent: 70, color: "#16a34a" },
-    { key: "watch", label: "Watch", maxPercent: 85, color: "#f59e0b" },
-    { key: "critical", label: "Critical", maxPercent: 100, color: "#dc2626" },
+    {
+      key: "low",
+      label: "Low",
+      threshold: "< 60%",
+      minPercent: null,
+      maxPercent: 60,
+      minInclusive: false,
+      maxInclusive: false,
+      color: "#16a34a",
+    },
+    {
+      key: "optimal",
+      label: "Optimal",
+      threshold: "60% – 84%",
+      minPercent: 60,
+      maxPercent: 84,
+      minInclusive: true,
+      maxInclusive: true,
+      color: "#0ea5e9",
+    },
+    {
+      key: "watch",
+      label: "Watch",
+      threshold: "85% – 89%",
+      minPercent: 85,
+      maxPercent: 89,
+      minInclusive: true,
+      maxInclusive: true,
+      color: "#f59e0b",
+    },
+    {
+      key: "high",
+      label: "High",
+      threshold: "≥ 90%",
+      minPercent: 90,
+      maxPercent: null,
+      minInclusive: true,
+      maxInclusive: false,
+      color: "#dc2626",
+    },
   ],
+};
+
+const parseThreshold = (value: string) => {
+  const normalized = value.trim().replace(/–/g, "-");
+  const rangeMatch = normalized.match(/^(\d{1,3})\s*%?\s*-\s*(\d{1,3})\s*%?$/);
+  if (rangeMatch) {
+    const min = Number(rangeMatch[1]);
+    const max = Number(rangeMatch[2]);
+    if (Number.isFinite(min) && Number.isFinite(max) && min <= max && min >= 0 && max <= 100) {
+      return {
+        threshold: `${min}% – ${max}%`,
+        minPercent: min,
+        maxPercent: max,
+        minInclusive: true,
+        maxInclusive: true,
+      };
+    }
+  }
+
+  const lowMatch = normalized.match(/^<\s*(\d{1,3})\s*%?$/);
+  if (lowMatch) {
+    const max = Number(lowMatch[1]);
+    if (Number.isFinite(max) && max >= 0 && max <= 100) {
+      return {
+        threshold: `< ${max}%`,
+        minPercent: null,
+        maxPercent: max,
+        minInclusive: false,
+        maxInclusive: false,
+      };
+    }
+  }
+
+  const highMatch = normalized.match(/^(>=|≥)\s*(\d{1,3})\s*%?$/);
+  if (highMatch) {
+    const min = Number(highMatch[2]);
+    if (Number.isFinite(min) && min >= 0 && min <= 100) {
+      return {
+        threshold: `≥ ${min}%`,
+        minPercent: min,
+        maxPercent: null,
+        minInclusive: true,
+        maxInclusive: false,
+      };
+    }
+  }
+
+  return null;
 };
 
 export const KpiBenchmarkEditor = () => {
@@ -33,6 +118,8 @@ export const KpiBenchmarkEditor = () => {
     setOccupancyDraft(payload);
     if (occupancyServerSettings) queryClient.setQueryData(["app_settings", "occupancy_benchmark"], payload);
   };
+
+  const hasInvalidThreshold = currentOccupancy.levels.some((level) => !parseThreshold(level.threshold));
 
   const saveOccupancyMutation = useMutation({
     mutationFn: (next: OccupancyBenchmarkSettings) => {
@@ -58,32 +145,31 @@ export const KpiBenchmarkEditor = () => {
             <thead>
               <tr className="border-b bg-muted/40">
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Max %</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Threshold</th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Color</th>
               </tr>
             </thead>
             <tbody>
               {currentOccupancy.levels.map((level, index) => (
                 <tr key={level.key} className="border-b last:border-b-0">
+                  <td className="px-4 py-3 text-sm font-medium">{level.label}</td>
                   <td className="px-4 py-3">
                     <Input
-                      value={level.label}
-                      onChange={(event) => updateLevel(index, (entry) => ({ ...entry, label: event.target.value }))}
-                      disabled={saveOccupancyMutation.isPending}
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={level.maxPercent}
+                      value={level.threshold}
+                      placeholder="e.g., 60% – 84%, < 60%, ≥ 90%"
                       onChange={(event) => {
-                        const value = Number(event.target.value);
-                        updateLevel(index, (entry) => ({
-                          ...entry,
-                          maxPercent: Number.isFinite(value) ? Math.min(Math.max(value, 0), 100) : entry.maxPercent,
-                        }));
+                        const nextThreshold = event.target.value;
+                        updateLevel(index, (entry) => {
+                          const parsed = parseThreshold(nextThreshold);
+                          if (!parsed) {
+                            return { ...entry, threshold: nextThreshold };
+                          }
+
+                          return {
+                            ...entry,
+                            ...parsed,
+                          };
+                        });
                       }}
                       disabled={saveOccupancyMutation.isPending}
                     />
@@ -110,7 +196,20 @@ export const KpiBenchmarkEditor = () => {
             </tbody>
           </table>
         </div>
-        <Button onClick={() => saveOccupancyMutation.mutate(currentOccupancy)} disabled={saveOccupancyMutation.isPending}>
+        <Button
+          onClick={() => {
+            if (hasInvalidThreshold) {
+              toast({
+                title: "Invalid threshold format",
+                description: "Use one of: < 60%, 60% – 84%, or ≥ 90%.",
+                variant: "destructive",
+              });
+              return;
+            }
+            saveOccupancyMutation.mutate(currentOccupancy);
+          }}
+          disabled={saveOccupancyMutation.isPending}
+        >
           Save KPI Benchmark
         </Button>
       </CardContent>
