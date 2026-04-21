@@ -92,9 +92,13 @@ export type NavRole = SystemRole;
 export type NavVisibilitySettings = Record<string, RoleMenuVisibility>;
 
 export type OccupancyBenchmarkLevel = {
-  key: "safe" | "watch" | "critical";
+  key: "low" | "optimal" | "watch" | "high";
   label: string;
-  maxPercent: number;
+  threshold: string;
+  minPercent: number | null;
+  maxPercent: number | null;
+  minInclusive: boolean;
+  maxInclusive: boolean;
   color: string;
 };
 
