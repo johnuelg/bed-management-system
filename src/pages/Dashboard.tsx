@@ -271,6 +271,24 @@ const DashboardPage = () => {
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
+  const isFiltersDefault =
+    calendarDateToIsoDate(rangeStart) === calendarDateToIsoDate(today) &&
+    calendarDateToIsoDate(rangeEnd) === calendarDateToIsoDate(today) &&
+    timeFrom === "00:00" &&
+    timeTo === "23:59" &&
+    selectedDepartmentId === "all" &&
+    selectedBedTypeId === "all";
+
+  const handleResetFilters = () => {
+    const freshToday = isoDateToCalendarDate(getSaudiIsoDate());
+    setDateRange({ from: freshToday, to: freshToday });
+    setTimeFrom("00:00");
+    setTimeTo("23:59");
+    setSelectedDepartmentId("all");
+    setSelectedBedTypeId("all");
+    void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
+  };
+
   const renderStatusBadge = (level: { key: string; label: string; color: string; icon?: string }) => (
     <StatusBadge level={level} />
   );
