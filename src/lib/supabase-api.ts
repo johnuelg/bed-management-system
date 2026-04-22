@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { requireRole } from "@/lib/api-guard";
 import { compressImageIfNeeded, MAX_UPLOAD_SIZE, validateFileType } from "@/lib/file-upload";
+import { getSaudiIsoDate } from "@/lib/date-time";
 import { evaluateSafeExpression } from "@/lib/math-eval";
 import { bedSubmissionSchema, formulaSchema } from "@/lib/validation";
 import type {
@@ -81,32 +82,6 @@ const DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS: OccupancyBenchmarkSettings = {
       color: "#dc2626",
     },
   ],
-};
-const SAUDI_TIMEZONE = "Asia/Riyadh";
-
-const getDatePartsInTimezone = (value: Date, timeZone: string) => {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-
-  const parts = formatter.formatToParts(value);
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-
-  if (!year || !month || !day) {
-    throw new Error(`Could not format date in timezone ${timeZone}`);
-  }
-
-  return { year, month, day };
-};
-
-const getSaudiDateString = (value = new Date()) => {
-  const { year, month, day } = getDatePartsInTimezone(value, SAUDI_TIMEZONE);
-  return `${year}-${month}-${day}`;
 };
 
 const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
@@ -518,7 +493,7 @@ export const replaceFormFieldOrder = async (roles: AppRole[], orderedIds: string
 };
 
 export const fetchTodaySubmissions = async (): Promise<BedSubmission[]> => {
-  const today = getSaudiDateString();
+  const today = getSaudiIsoDate();
   const { data, error } = await db
     .from("bed_submissions")
     .select("*")
