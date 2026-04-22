@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -271,6 +271,24 @@ const DashboardPage = () => {
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
+  const isFiltersDefault =
+    calendarDateToIsoDate(rangeStart) === calendarDateToIsoDate(today) &&
+    calendarDateToIsoDate(rangeEnd) === calendarDateToIsoDate(today) &&
+    timeFrom === "00:00" &&
+    timeTo === "23:59" &&
+    selectedDepartmentId === "all" &&
+    selectedBedTypeId === "all";
+
+  const handleResetFilters = () => {
+    const freshToday = isoDateToCalendarDate(getSaudiIsoDate());
+    setDateRange({ from: freshToday, to: freshToday });
+    setTimeFrom("00:00");
+    setTimeTo("23:59");
+    setSelectedDepartmentId("all");
+    setSelectedBedTypeId("all");
+    void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
+  };
+
   const renderStatusBadge = (level: { key: string; label: string; color: string; icon?: string }) => (
     <StatusBadge level={level} />
   );
@@ -389,6 +407,19 @@ const DashboardPage = () => {
               </Select>
             </div>
           </div>
+
+          {!isFiltersDefault && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetFilters}
+              className="w-full justify-center text-destructive hover:text-destructive"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reset filters
+            </Button>
+          )}
         </div>
       </header>
 
