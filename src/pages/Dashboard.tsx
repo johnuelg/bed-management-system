@@ -410,6 +410,19 @@ const DashboardPage = () => {
         </div>
       </header>
 
+          {!isFiltersDefault && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetFilters}
+              className="w-full justify-center text-destructive hover:text-destructive"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reset filters
+            </Button>
+          )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         {[
           { name: "Total Beds", value: sums.total_beds },
