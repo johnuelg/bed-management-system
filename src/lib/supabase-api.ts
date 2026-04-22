@@ -18,6 +18,7 @@ import type {
   RoleMenuVisibility,
   Profile,
 } from "@/types/hospital";
+import { isValidStatusIconKey, getDefaultIconForLabel } from "@/lib/status-icons";
 
 const db = supabase as any;
 const NAV_VISIBILITY_KEY = "nav_visibility";
@@ -50,6 +51,7 @@ const DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS: OccupancyBenchmarkSettings = {
       minInclusive: false,
       maxInclusive: false,
       color: "#16a34a",
+      icon: "thumbs-up",
     },
     {
       key: "optimal",
@@ -60,6 +62,7 @@ const DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS: OccupancyBenchmarkSettings = {
       minInclusive: true,
       maxInclusive: true,
       color: "#16a34a",
+      icon: "check",
     },
     {
       key: "watch",
@@ -70,6 +73,7 @@ const DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS: OccupancyBenchmarkSettings = {
       minInclusive: true,
       maxInclusive: true,
       color: "#f59e0b",
+      icon: "eye",
     },
     {
       key: "high",
@@ -80,6 +84,7 @@ const DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS: OccupancyBenchmarkSettings = {
       minInclusive: true,
       maxInclusive: false,
       color: "#dc2626",
+      icon: "alert-triangle",
     },
   ],
 };
@@ -213,6 +218,11 @@ const normalizeOccupancyLevel = (
 
   const derived = parsedThreshold ?? (hasValidBounds ? { minPercent, maxPercent, minInclusive, maxInclusive } : null);
 
+  const iconCandidate = typeof source.icon === "string" ? source.icon.trim() : "";
+  const icon = isValidStatusIconKey(iconCandidate)
+    ? iconCandidate
+    : (fallback.icon && isValidStatusIconKey(fallback.icon) ? fallback.icon : getDefaultIconForLabel(label, key));
+
   return {
     key,
     label,
@@ -222,6 +232,7 @@ const normalizeOccupancyLevel = (
     minInclusive: derived?.minInclusive ?? fallback.minInclusive,
     maxInclusive: derived?.maxInclusive ?? fallback.maxInclusive,
     color,
+    icon,
   };
 };
 

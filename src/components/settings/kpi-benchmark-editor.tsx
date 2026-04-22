@@ -4,10 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchOccupancyBenchmarkSettings, saveOccupancyBenchmarkSettings } from "@/lib/supabase-api";
 import type { OccupancyBenchmarkSettings } from "@/types/hospital";
+import { STATUS_ICON_OPTIONS, getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
 
 const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
   levels: [
@@ -20,6 +22,7 @@ const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
       minInclusive: false,
       maxInclusive: false,
       color: "#16a34a",
+      icon: "thumbs-up",
     },
     {
       key: "optimal",
@@ -30,6 +33,7 @@ const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
       minInclusive: true,
       maxInclusive: true,
       color: "#16a34a",
+      icon: "check",
     },
     {
       key: "watch",
@@ -40,6 +44,7 @@ const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
       minInclusive: true,
       maxInclusive: true,
       color: "#f59e0b",
+      icon: "eye",
     },
     {
       key: "high",
@@ -50,6 +55,7 @@ const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
       minInclusive: true,
       maxInclusive: false,
       color: "#dc2626",
+      icon: "alert-triangle",
     },
   ],
 };
@@ -136,6 +142,7 @@ export const KpiBenchmarkEditor = () => {
           minInclusive: true,
           maxInclusive: true,
           color: "#64748b",
+          icon: "circle",
         },
       ],
     };
@@ -193,6 +200,7 @@ export const KpiBenchmarkEditor = () => {
               <tr className="border-b bg-muted/40">
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Threshold</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Icon</th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Color</th>
                 <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Actions</th>
               </tr>
@@ -228,6 +236,45 @@ export const KpiBenchmarkEditor = () => {
                       }}
                       disabled={!isAdmin || saveOccupancyMutation.isPending}
                     />
+                  </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const currentIcon = level.icon ?? getDefaultIconForLabel(level.label, level.key);
+                      const SelectedIcon = getStatusIconComponent(currentIcon);
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border"
+                            style={{ color: level.color, backgroundColor: `${level.color}22` }}
+                            aria-hidden
+                          >
+                            {SelectedIcon ? <SelectedIcon size={18} /> : <span className="text-xs text-muted-foreground">—</span>}
+                          </span>
+                          <Select
+                            value={currentIcon}
+                            onValueChange={(value) => updateLevel(index, (entry) => ({ ...entry, icon: value }))}
+                            disabled={!isAdmin || saveOccupancyMutation.isPending}
+                          >
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Pick icon" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUS_ICON_OPTIONS.map((option) => {
+                                const OptionIcon = option.Icon;
+                                return (
+                                  <SelectItem key={option.key} value={option.key}>
+                                    <span className="flex items-center gap-2">
+                                      <OptionIcon size={16} />
+                                      <span>{option.label}</span>
+                                    </span>
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">

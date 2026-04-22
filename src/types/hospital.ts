@@ -100,6 +100,7 @@ export type OccupancyBenchmarkLevel = {
   minInclusive: boolean;
   maxInclusive: boolean;
   color: string;
+  icon?: string;
 };
 
 export type OccupancyBenchmarkSettings = {
