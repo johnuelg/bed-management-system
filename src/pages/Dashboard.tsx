@@ -11,6 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
+  calendarDateToIsoDate,
+  formatSaudiDateTime,
+  getSaudiIsoDate,
+  getSaudiWeekdayShortFromIsoDate,
+  isoDateToCalendarDate,
+} from "@/lib/date-time";
+import {
   aggregateSubmissionSums,
   fetchBedTypes,
   fetchDashboardSubmissions,
@@ -19,45 +26,6 @@ import {
 } from "@/lib/supabase-api";
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
-
-const SAUDI_TIMEZONE = "Asia/Riyadh";
-
-const pad2 = (value: number) => String(value).padStart(2, "0");
-
-const getSaudiTodayIso = () => {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: SAUDI_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-
-  if (!year || !month || !day) {
-    throw new Error("Could not derive Saudi Arabia date");
-  }
-
-  return `${year}-${month}-${day}`;
-};
-
-const isoToCalendarDate = (isoDate: string) => {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
-};
-
-const calendarDateToIso = (value: Date) => {
-  return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
-};
-
-const GREGORIAN_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  timeZone: SAUDI_TIMEZONE,
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-});
 
 const SAUDI_HOLIDAYS: Record<string, string> = {
   "2025-02-22": "Founding Day",
@@ -70,7 +38,7 @@ const SAUDI_HOLIDAYS: Record<string, string> = {
 
 const DashboardPage = () => {
   const qc = useQueryClient();
-  const today = useMemo(() => isoToCalendarDate(getSaudiTodayIso()), []);
+  const today = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate()), []);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: today, to: today });
   const [timeFrom, setTimeFrom] = useState("00:00");
   const [timeTo, setTimeTo] = useState("23:59");
@@ -79,8 +47,8 @@ const DashboardPage = () => {
   const rangeStart = dateRange?.from ?? today;
   const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
 
-  const rangeStartIso = useMemo(() => calendarDateToIso(rangeStart), [rangeStart]);
-  const rangeEndIso = useMemo(() => calendarDateToIso(rangeEnd), [rangeEnd]);
+  const rangeStartIso = useMemo(() => calendarDateToIsoDate(rangeStart), [rangeStart]);
+  const rangeEndIso = useMemo(() => calendarDateToIsoDate(rangeEnd), [rangeEnd]);
 
   const { data: rows = [] } = useQuery({
     queryKey: ["bed_submissions_dashboard"],
@@ -198,34 +166,34 @@ const DashboardPage = () => {
   }, [rows]);
 
   const isSaudiFriday = (value: Date) => {
-    const iso = calendarDateToIso(value);
-    const weekday = new Intl.DateTimeFormat("en-US", {
-      timeZone: SAUDI_TIMEZONE,
-      weekday: "short",
-    }).format(new Date(`${iso}T12:00:00+03:00`));
-    return weekday === "Fri";
+    const iso = calendarDateToIsoDate(value);
+    return getSaudiWeekdayShortFromIsoDate(iso) === "Fri";
   };
 
   const isSaudiSaturday = (value: Date) => {
-    const iso = calendarDateToIso(value);
-    const weekday = new Intl.DateTimeFormat("en-US", {
-      timeZone: SAUDI_TIMEZONE,
-      weekday: "short",
-    }).format(new Date(`${iso}T12:00:00+03:00`));
-    return weekday === "Sat";
+    const iso = calendarDateToIsoDate(value);
+    return getSaudiWeekdayShortFromIsoDate(iso) === "Sat";
   };
 
   const hasSaudiHoliday = (value: Date) => {
-    const iso = calendarDateToIso(value);
+    const iso = calendarDateToIsoDate(value);
     return Boolean(SAUDI_HOLIDAYS[iso]);
   };
 
   const isDateDisabled = (value: Date) => {
     if (availableDateSet.size === 0) return true;
-    return !availableDateSet.has(calendarDateToIso(value));
+    return !availableDateSet.has(calendarDateToIsoDate(value));
   };
 
-  const formattedRangeLabel = `${GREGORIAN_DATE_FORMATTER.format(rangeStart)} - ${GREGORIAN_DATE_FORMATTER.format(rangeEnd)}`;
+  const formattedRangeLabel = `${formatSaudiDateTime(rangeStart, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })} - ${formatSaudiDateTime(rangeEnd, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })}`;
 
   const sums = aggregateSubmissionSums(filteredRows);
   const waitingPatients = filteredRows.reduce((total, row) => {

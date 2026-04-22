@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { calendarDateToIsoDate, formatSaudiDateTime, getSaudiIsoDate, isoDateToCalendarDate } from "@/lib/date-time";
 import {
   deleteBedSubmission,
   fetchBedTypes,
@@ -55,58 +56,10 @@ const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((fil
   }
 });
 
-const SAUDI_TIMEZONE = "Asia/Riyadh";
-
-const getDateTimePartsInTimezone = (value: Date, timeZone: string) => {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(value);
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-  const hour = parts.find((part) => part.type === "hour")?.value;
-  const minute = parts.find((part) => part.type === "minute")?.value;
-
-  if (!year || !month || !day || !hour || !minute) {
-    throw new Error(`Could not format datetime in timezone ${timeZone}`);
-  }
-
-  return { year, month, day, hour, minute };
-};
-
-const toLocalDateString = (value: Date) => {
-  const { year, month, day } = getDateTimePartsInTimezone(value, SAUDI_TIMEZONE);
-  return `${year}-${month}-${day}`;
-};
-
-const toLocalTimeString = (value: Date) => {
-  const { hour, minute } = getDateTimePartsInTimezone(value, SAUDI_TIMEZONE);
-  return `${hour}:${minute}`;
-};
-
-const pad2 = (value: number) => String(value).padStart(2, "0");
-
-const isoToCalendarDate = (isoDate: string) => {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
-};
-
-const calendarDateToIso = (value: Date) => {
-  return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
-};
-
 const DataEntryPage = () => {
   const { roles } = useAuth();
   const qc = useQueryClient();
-  const saudiTodayForCalendar = useMemo(() => isoToCalendarDate(toLocalDateString(new Date())), []);
+  const saudiTodayForCalendar = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate(new Date())), []);
   const canEditAllBedEntryFields = hasAnyRole(roles, ["admin", "staff"]);
   const canDeleteSubmissions = hasAnyRole(roles, ["admin", "director"]);
   const initialForm = {
@@ -201,18 +154,8 @@ const DataEntryPage = () => {
     const sourceDate = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : fallbackDate;
 
     return {
-      date: new Intl.DateTimeFormat("en-US", {
-        timeZone: SAUDI_TIMEZONE,
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }).format(sourceDate),
-      time: new Intl.DateTimeFormat("en-US", {
-        timeZone: SAUDI_TIMEZONE,
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }).format(sourceDate),
+      date: formatSaudiDateTime(sourceDate, { year: "numeric", month: "short", day: "numeric" }),
+      time: formatSaudiDateTime(sourceDate, { hour: "2-digit", minute: "2-digit", hour12: true }),
     };
   };
 
@@ -241,7 +184,7 @@ const DataEntryPage = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `bed_submissions_${toLocalDateString(new Date())}.csv`;
+    link.download = `bed_submissions_${getSaudiIsoDate(new Date())}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -255,7 +198,7 @@ const DataEntryPage = () => {
     const worksheet = utils.json_to_sheet(exportRows);
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Today_Submissions");
-    writeFileXLSX(workbook, `bed_submissions_${toLocalDateString(new Date())}.xlsx`);
+    writeFileXLSX(workbook, `bed_submissions_${getSaudiIsoDate(new Date())}.xlsx`);
   };
 
   const mutation = useMutation({
@@ -285,7 +228,7 @@ const DataEntryPage = () => {
       const currentUserId = await getCurrentUserId();
       if (!currentUserId) throw new Error("No authenticated user");
 
-        const submittedOn = toLocalDateString(new Date());
+        const submittedOn = getSaudiIsoDate(new Date());
 
         return saveBedSubmission(roles, {
         id: form.id || undefined,
@@ -538,17 +481,17 @@ const DataEntryPage = () => {
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {datePart ? format(isoToCalendarDate(datePart), "PPP") : <span>Pick a date</span>}
+                          {datePart ? format(isoDateToCalendarDate(datePart), "PPP") : <span>Pick a date</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={datePart ? isoToCalendarDate(datePart) : undefined}
+                           selected={datePart ? isoDateToCalendarDate(datePart) : undefined}
                           today={saudiTodayForCalendar}
                           onSelect={(selected) => {
                             if (!selected) return;
-                            const nextDate = calendarDateToIso(selected);
+                             const nextDate = calendarDateToIsoDate(selected);
                             setForm((prev) => ({
                               ...prev,
                               custom_fields: {
