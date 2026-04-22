@@ -218,6 +218,11 @@ const normalizeOccupancyLevel = (
 
   const derived = parsedThreshold ?? (hasValidBounds ? { minPercent, maxPercent, minInclusive, maxInclusive } : null);
 
+  const iconCandidate = typeof source.icon === "string" ? source.icon.trim() : "";
+  const icon = isValidStatusIconKey(iconCandidate)
+    ? iconCandidate
+    : (fallback.icon && isValidStatusIconKey(fallback.icon) ? fallback.icon : getDefaultIconForLabel(label, key));
+
   return {
     key,
     label,
@@ -227,6 +232,7 @@ const normalizeOccupancyLevel = (
     minInclusive: derived?.minInclusive ?? fallback.minInclusive,
     maxInclusive: derived?.maxInclusive ?? fallback.maxInclusive,
     color,
+    icon,
   };
 };
 

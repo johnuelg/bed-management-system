@@ -4,10 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchOccupancyBenchmarkSettings, saveOccupancyBenchmarkSettings } from "@/lib/supabase-api";
 import type { OccupancyBenchmarkSettings } from "@/types/hospital";
+import { STATUS_ICON_OPTIONS, getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
 
 const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
   levels: [
@@ -20,6 +22,7 @@ const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
       minInclusive: false,
       maxInclusive: false,
       color: "#16a34a",
+      icon: "thumbs-up",
     },
     {
       key: "optimal",
@@ -30,6 +33,7 @@ const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
       minInclusive: true,
       maxInclusive: true,
       color: "#16a34a",
+      icon: "check",
     },
     {
       key: "watch",
@@ -40,6 +44,7 @@ const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
       minInclusive: true,
       maxInclusive: true,
       color: "#f59e0b",
+      icon: "eye",
     },
     {
       key: "high",
@@ -50,6 +55,7 @@ const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
       minInclusive: true,
       maxInclusive: false,
       color: "#dc2626",
+      icon: "alert-triangle",
     },
   ],
 };
