@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { fetchOccupancyBenchmarkSettings, saveOccupancyBenchmarkSettings } from "@/lib/supabase-api";
 import type { OccupancyBenchmarkSettings } from "@/types/hospital";
 import { STATUS_ICON_OPTIONS, getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
+import { StatusBadge } from "@/components/status-badge";
 
 const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
   levels: [
