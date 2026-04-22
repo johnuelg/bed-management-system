@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { CalendarIcon, Download, FileSpreadsheet, LayoutGrid, Pencil, Table2 } from "lucide-react";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,12 +33,18 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
+  calendarDateToIsoDate,
   deleteBedSubmission,
   fetchBedTypes,
   fetchDepartments,
   fetchFormFields,
   fetchTodaySubmissions,
+  formatSaudiDateTime,
+  formatSaudiIsoDateForDisplay,
   getCurrentUserId,
+  getSaudiIsoDate,
+  getSaudiTime24,
+  isoDateToCalendarDate,
   saveBedSubmission,
   uploadDocument,
 } from "@/lib/supabase-api";
@@ -55,58 +60,10 @@ const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((fil
   }
 });
 
-const SAUDI_TIMEZONE = "Asia/Riyadh";
-
-const getDateTimePartsInTimezone = (value: Date, timeZone: string) => {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(value);
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-  const hour = parts.find((part) => part.type === "hour")?.value;
-  const minute = parts.find((part) => part.type === "minute")?.value;
-
-  if (!year || !month || !day || !hour || !minute) {
-    throw new Error(`Could not format datetime in timezone ${timeZone}`);
-  }
-
-  return { year, month, day, hour, minute };
-};
-
-const toLocalDateString = (value: Date) => {
-  const { year, month, day } = getDateTimePartsInTimezone(value, SAUDI_TIMEZONE);
-  return `${year}-${month}-${day}`;
-};
-
-const toLocalTimeString = (value: Date) => {
-  const { hour, minute } = getDateTimePartsInTimezone(value, SAUDI_TIMEZONE);
-  return `${hour}:${minute}`;
-};
-
-const pad2 = (value: number) => String(value).padStart(2, "0");
-
-const isoToCalendarDate = (isoDate: string) => {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
-};
-
-const calendarDateToIso = (value: Date) => {
-  return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
-};
-
 const DataEntryPage = () => {
   const { roles } = useAuth();
   const qc = useQueryClient();
-  const saudiTodayForCalendar = useMemo(() => isoToCalendarDate(toLocalDateString(new Date())), []);
+  const saudiTodayForCalendar = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate(new Date())), []);
   const canEditAllBedEntryFields = hasAnyRole(roles, ["admin", "staff"]);
   const canDeleteSubmissions = hasAnyRole(roles, ["admin", "director"]);
   const initialForm = {
@@ -201,18 +158,8 @@ const DataEntryPage = () => {
     const sourceDate = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : fallbackDate;
 
     return {
-      date: new Intl.DateTimeFormat("en-US", {
-        timeZone: SAUDI_TIMEZONE,
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }).format(sourceDate),
-      time: new Intl.DateTimeFormat("en-US", {
-        timeZone: SAUDI_TIMEZONE,
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }).format(sourceDate),
+      date: formatSaudiDateTime(sourceDate, { year: "numeric", month: "short", day: "numeric" }),
+      time: formatSaudiDateTime(sourceDate, { hour: "2-digit", minute: "2-digit", hour12: true }),
     };
   };
 
@@ -241,7 +188,7 @@ const DataEntryPage = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `bed_submissions_${toLocalDateString(new Date())}.csv`;
+    link.download = `bed_submissions_${getSaudiIsoDate(new Date())}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -255,7 +202,7 @@ const DataEntryPage = () => {
     const worksheet = utils.json_to_sheet(exportRows);
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Today_Submissions");
-    writeFileXLSX(workbook, `bed_submissions_${toLocalDateString(new Date())}.xlsx`);
+    writeFileXLSX(workbook, `bed_submissions_${getSaudiIsoDate(new Date())}.xlsx`);
   };
 
   const mutation = useMutation({
@@ -285,7 +232,7 @@ const DataEntryPage = () => {
       const currentUserId = await getCurrentUserId();
       if (!currentUserId) throw new Error("No authenticated user");
 
-        const submittedOn = toLocalDateString(new Date());
+        const submittedOn = getSaudiIsoDate(new Date());
 
         return saveBedSubmission(roles, {
         id: form.id || undefined,
