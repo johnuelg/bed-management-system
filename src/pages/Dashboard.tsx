@@ -444,11 +444,10 @@ const DashboardPage = () => {
                           <div className="mt-3">
                             <Progress
                               value={clamped}
-                              className="h-2 bg-muted"
-                              style={{ ["--progress-color" as string]: accent }}
+                              className="occupancy-progress h-2 bg-muted [&>div]:transition-all"
                             />
                             <style>{`
-                              .occupancy-progress > div { background-color: ${accent}; }
+                              .occupancy-progress > div { background-color: ${accent} !important; }
                             `}</style>
                           </div>
                           {metric.subtitle ? (
