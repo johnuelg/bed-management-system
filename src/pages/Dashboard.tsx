@@ -11,11 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
+  calendarDateToIsoDate,
   formatSaudiIsoDateForDisplay,
   getSaudiIsoDate,
   getSaudiWeekdayShortFromIsoDate,
   isoDateToCalendarDate,
-  SAUDI_TIMEZONE,
 } from "@/lib/date-time";
 import {
   aggregateSubmissionSums,
@@ -47,8 +47,8 @@ const DashboardPage = () => {
   const rangeStart = dateRange?.from ?? today;
   const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
 
-  const rangeStartIso = useMemo(() => getSaudiIsoDate(rangeStart), [rangeStart]);
-  const rangeEndIso = useMemo(() => getSaudiIsoDate(rangeEnd), [rangeEnd]);
+  const rangeStartIso = useMemo(() => calendarDateToIsoDate(rangeStart), [rangeStart]);
+  const rangeEndIso = useMemo(() => calendarDateToIsoDate(rangeEnd), [rangeEnd]);
 
   const { data: rows = [] } = useQuery({
     queryKey: ["bed_submissions_dashboard"],
@@ -166,23 +166,23 @@ const DashboardPage = () => {
   }, [rows]);
 
   const isSaudiFriday = (value: Date) => {
-    const iso = getSaudiIsoDate(value);
+    const iso = calendarDateToIsoDate(value);
     return getSaudiWeekdayShortFromIsoDate(iso) === "Fri";
   };
 
   const isSaudiSaturday = (value: Date) => {
-    const iso = getSaudiIsoDate(value);
+    const iso = calendarDateToIsoDate(value);
     return getSaudiWeekdayShortFromIsoDate(iso) === "Sat";
   };
 
   const hasSaudiHoliday = (value: Date) => {
-    const iso = getSaudiIsoDate(value);
+    const iso = calendarDateToIsoDate(value);
     return Boolean(SAUDI_HOLIDAYS[iso]);
   };
 
   const isDateDisabled = (value: Date) => {
     if (availableDateSet.size === 0) return true;
-    return !availableDateSet.has(getSaudiIsoDate(value));
+    return !availableDateSet.has(calendarDateToIsoDate(value));
   };
 
   const formattedRangeLabel = `${formatSaudiIsoDateForDisplay(rangeStartIso, {
@@ -322,7 +322,6 @@ const DashboardPage = () => {
                 selected={dateRange}
                 onSelect={setDateRange}
                 today={today}
-                timeZone={SAUDI_TIMEZONE}
                 numberOfMonths={2}
                 className="p-3 pointer-events-auto"
                 disabled={isDateDisabled}
