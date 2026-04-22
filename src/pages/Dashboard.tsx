@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   calendarDateToIsoDate,
-  formatSaudiDateTime,
+  formatSaudiIsoDateForDisplay,
   getSaudiIsoDate,
   getSaudiWeekdayShortFromIsoDate,
   isoDateToCalendarDate,
@@ -185,11 +185,11 @@ const DashboardPage = () => {
     return !availableDateSet.has(calendarDateToIsoDate(value));
   };
 
-  const formattedRangeLabel = `${formatSaudiDateTime(rangeStart, {
+  const formattedRangeLabel = `${formatSaudiIsoDateForDisplay(rangeStartIso, {
     year: "numeric",
     month: "short",
     day: "numeric",
-  })} - ${formatSaudiDateTime(rangeEnd, {
+  })} - ${formatSaudiIsoDateForDisplay(rangeEndIso, {
     year: "numeric",
     month: "short",
     day: "numeric",
