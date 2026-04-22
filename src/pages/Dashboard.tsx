@@ -12,10 +12,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   calendarDateToIsoDate,
-  formatSaudiDateTime,
+  formatSaudiIsoDateForDisplay,
   getSaudiIsoDate,
   getSaudiWeekdayShortFromIsoDate,
   isoDateToCalendarDate,
+  SAUDI_TIMEZONE,
 } from "@/lib/date-time";
 import {
   aggregateSubmissionSums,
@@ -47,8 +48,8 @@ const DashboardPage = () => {
   const rangeStart = dateRange?.from ?? today;
   const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
 
-  const rangeStartIso = useMemo(() => calendarDateToIsoDate(rangeStart), [rangeStart]);
-  const rangeEndIso = useMemo(() => calendarDateToIsoDate(rangeEnd), [rangeEnd]);
+  const rangeStartIso = useMemo(() => getSaudiIsoDate(rangeStart), [rangeStart]);
+  const rangeEndIso = useMemo(() => getSaudiIsoDate(rangeEnd), [rangeEnd]);
 
   const { data: rows = [] } = useQuery({
     queryKey: ["bed_submissions_dashboard"],
@@ -166,30 +167,30 @@ const DashboardPage = () => {
   }, [rows]);
 
   const isSaudiFriday = (value: Date) => {
-    const iso = calendarDateToIsoDate(value);
+    const iso = getSaudiIsoDate(value);
     return getSaudiWeekdayShortFromIsoDate(iso) === "Fri";
   };
 
   const isSaudiSaturday = (value: Date) => {
-    const iso = calendarDateToIsoDate(value);
+    const iso = getSaudiIsoDate(value);
     return getSaudiWeekdayShortFromIsoDate(iso) === "Sat";
   };
 
   const hasSaudiHoliday = (value: Date) => {
-    const iso = calendarDateToIsoDate(value);
+    const iso = getSaudiIsoDate(value);
     return Boolean(SAUDI_HOLIDAYS[iso]);
   };
 
   const isDateDisabled = (value: Date) => {
     if (availableDateSet.size === 0) return true;
-    return !availableDateSet.has(calendarDateToIsoDate(value));
+    return !availableDateSet.has(getSaudiIsoDate(value));
   };
 
-  const formattedRangeLabel = `${formatSaudiDateTime(rangeStart, {
+  const formattedRangeLabel = `${formatSaudiIsoDateForDisplay(rangeStartIso, {
     year: "numeric",
     month: "short",
     day: "numeric",
-  })} - ${formatSaudiDateTime(rangeEnd, {
+  })} - ${formatSaudiIsoDateForDisplay(rangeEndIso, {
     year: "numeric",
     month: "short",
     day: "numeric",
