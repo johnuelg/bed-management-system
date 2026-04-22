@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,7 @@ const parseThreshold = (value: string) => {
 
 export const KpiBenchmarkEditor = () => {
   const { roles, user } = useAuth();
+  const isAdmin = roles.includes("admin");
   const queryClient = useQueryClient();
   const { data: occupancyServerSettings } = useQuery({
     queryKey: ["app_settings", "occupancy_benchmark"],
@@ -112,6 +114,8 @@ export const KpiBenchmarkEditor = () => {
   const [occupancyDraft, setOccupancyDraft] = useState<OccupancyBenchmarkSettings>(defaultOccupancyBenchmarkSettings);
   const currentOccupancy = occupancyServerSettings ?? occupancyDraft;
 
+  const buildStatusKey = () => `status_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
   const updateLevel = (index: number, updater: (level: OccupancyBenchmarkSettings["levels"][number]) => OccupancyBenchmarkSettings["levels"][number]) => {
     const next = currentOccupancy.levels.map((entry, entryIndex) => (entryIndex === index ? updater(entry) : entry));
     const payload = { levels: next };
@@ -119,7 +123,44 @@ export const KpiBenchmarkEditor = () => {
     if (occupancyServerSettings) queryClient.setQueryData(["app_settings", "occupancy_benchmark"], payload);
   };
 
+  const addLevel = () => {
+    const payload = {
+      levels: [
+        ...currentOccupancy.levels,
+        {
+          key: buildStatusKey(),
+          label: "New Status",
+          threshold: "0% – 100%",
+          minPercent: 0,
+          maxPercent: 100,
+          minInclusive: true,
+          maxInclusive: true,
+          color: "#64748b",
+        },
+      ],
+    };
+    setOccupancyDraft(payload);
+    if (occupancyServerSettings) queryClient.setQueryData(["app_settings", "occupancy_benchmark"], payload);
+  };
+
+  const deleteLevel = (index: number) => {
+    if (currentOccupancy.levels.length <= 1) {
+      toast({
+        title: "At least one status is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const payload = {
+      levels: currentOccupancy.levels.filter((_, entryIndex) => entryIndex !== index),
+    };
+    setOccupancyDraft(payload);
+    if (occupancyServerSettings) queryClient.setQueryData(["app_settings", "occupancy_benchmark"], payload);
+  };
+
   const hasInvalidThreshold = currentOccupancy.levels.some((level) => !parseThreshold(level.threshold));
+  const hasEmptyStatusName = currentOccupancy.levels.some((level) => level.label.trim().length === 0);
 
   const saveOccupancyMutation = useMutation({
     mutationFn: (next: OccupancyBenchmarkSettings) => {
@@ -137,22 +178,36 @@ export const KpiBenchmarkEditor = () => {
     <Card>
       <CardHeader>
         <CardTitle>KPI Benchmark</CardTitle>
-        <CardDescription>Define global occupancy percentage thresholds and color codes for all dashboard displays.</CardDescription>
+        <CardDescription>Define occupancy statuses, thresholds, and color codes used by Dashboard and reports.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">Admins can add, edit, or delete status rows.</p>
+          <Button type="button" variant="outline" onClick={addLevel} disabled={!isAdmin || saveOccupancyMutation.isPending}>
+            <Plus className="mr-2 h-4 w-4" /> Add Status
+          </Button>
+        </div>
         <div className="overflow-x-auto rounded-lg border bg-card">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
+          <table className="w-full min-w-[780px] border-collapse text-sm">
             <thead>
               <tr className="border-b bg-muted/40">
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Threshold</th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Color</th>
+                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {currentOccupancy.levels.map((level, index) => (
                 <tr key={level.key} className="border-b last:border-b-0">
-                  <td className="px-4 py-3 text-sm font-medium">{level.label}</td>
+                  <td className="px-4 py-3">
+                    <Input
+                      value={level.label}
+                      placeholder="Status name"
+                      onChange={(event) => updateLevel(index, (entry) => ({ ...entry, label: event.target.value }))}
+                      disabled={!isAdmin || saveOccupancyMutation.isPending}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <Input
                       value={level.threshold}
@@ -171,7 +226,7 @@ export const KpiBenchmarkEditor = () => {
                           };
                         });
                       }}
-                      disabled={saveOccupancyMutation.isPending}
+                      disabled={!isAdmin || saveOccupancyMutation.isPending}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -180,22 +235,35 @@ export const KpiBenchmarkEditor = () => {
                         type="color"
                         value={level.color}
                         onChange={(event) => updateLevel(index, (entry) => ({ ...entry, color: event.target.value }))}
-                        disabled={saveOccupancyMutation.isPending}
+                        disabled={!isAdmin || saveOccupancyMutation.isPending}
                         className="h-10 w-14 cursor-pointer rounded border border-border bg-background p-1 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label={`${level.label} color code`}
                       />
                       <Input
                         value={level.color}
                         onChange={(event) => updateLevel(index, (entry) => ({ ...entry, color: event.target.value }))}
-                        disabled={saveOccupancyMutation.isPending}
+                        disabled={!isAdmin || saveOccupancyMutation.isPending}
                       />
                     </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteLevel(index)}
+                      disabled={!isAdmin || saveOccupancyMutation.isPending || currentOccupancy.levels.length <= 1}
+                      aria-label={`Delete ${level.label} status`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {hasEmptyStatusName ? <p className="text-sm text-destructive">Each status must have a name.</p> : null}
         <Button
           onClick={() => {
             if (hasInvalidThreshold) {
@@ -206,9 +274,17 @@ export const KpiBenchmarkEditor = () => {
               });
               return;
             }
+            if (hasEmptyStatusName) {
+              toast({
+                title: "Status name is required",
+                description: "Every status row must have a label.",
+                variant: "destructive",
+              });
+              return;
+            }
             saveOccupancyMutation.mutate(currentOccupancy);
           }}
-          disabled={saveOccupancyMutation.isPending}
+          disabled={!isAdmin || saveOccupancyMutation.isPending}
         >
           Save KPI Benchmark
         </Button>

@@ -180,10 +180,15 @@ const parseThresholdValue = (value: string) => {
 const normalizeOccupancyLevel = (
   level: unknown,
   fallback: OccupancyBenchmarkLevel,
+  index: number,
 ): OccupancyBenchmarkLevel => {
-  if (!level || typeof level !== "object") return fallback;
+  if (!level || typeof level !== "object") return { ...fallback };
   const source = level as Partial<Record<keyof OccupancyBenchmarkLevel, unknown>>;
-  const label = typeof source.label === "string" && source.label.trim().length > 0 ? source.label.trim() : fallback.label;
+  const fallbackLabel = fallback.label || `Status ${index + 1}`;
+  const label = typeof source.label === "string" && source.label.trim().length > 0 ? source.label.trim() : fallbackLabel;
+  const keySource = typeof source.key === "string" && source.key.trim().length > 0 ? source.key.trim() : "";
+  const fallbackKey = fallback.key || `status_${index + 1}`;
+  const key = keySource || fallbackKey;
   const thresholdSource = typeof source.threshold === "string" ? source.threshold : "";
   const parsedThreshold = parseThresholdValue(thresholdSource);
 
@@ -196,8 +201,8 @@ const normalizeOccupancyLevel = (
   const minPercent = minPercentCandidate === null ? null : clampPercent(minPercentCandidate);
   const maxPercent = maxPercentCandidate === null ? null : clampPercent(maxPercentCandidate);
 
-  const minInclusive = typeof source.minInclusive === "boolean" ? source.minInclusive : fallback.minInclusive;
-  const maxInclusive = typeof source.maxInclusive === "boolean" ? source.maxInclusive : fallback.maxInclusive;
+  const minInclusive = typeof source.minInclusive === "boolean" ? source.minInclusive : fallback.minInclusive ?? true;
+  const maxInclusive = typeof source.maxInclusive === "boolean" ? source.maxInclusive : fallback.maxInclusive ?? true;
 
   const threshold =
     parsedThreshold?.threshold ??
@@ -209,7 +214,7 @@ const normalizeOccupancyLevel = (
   const derived = parsedThreshold ?? (hasValidBounds ? { minPercent, maxPercent, minInclusive, maxInclusive } : null);
 
   return {
-    key: fallback.key,
+    key,
     label,
     threshold,
     minPercent: derived?.minPercent ?? fallback.minPercent,
@@ -222,15 +227,41 @@ const normalizeOccupancyLevel = (
 
 const normalizeOccupancyBenchmarkSettings = (value: unknown): OccupancyBenchmarkSettings => {
   const source = value && typeof value === "object" ? (value as { levels?: unknown[] }) : {};
-  const levels = source.levels ?? [];
-  const fallbackByKey = Object.fromEntries(
-    DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS.levels.map((level) => [level.key, level]),
-  ) as Record<OccupancyBenchmarkLevel["key"], OccupancyBenchmarkLevel>;
+  const levels = Array.isArray(source.levels) ? source.levels : [];
+  const fallbackLevels = DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS.levels;
+
+  const normalizedLevels = levels
+    .map((level, index) => normalizeOccupancyLevel(level, fallbackLevels[index] ?? fallbackLevels[fallbackLevels.length - 1], index))
+    .filter((level) => level.label.trim().length > 0);
+
+  const usedKeys = new Set<string>();
+  const dedupedLevels = normalizedLevels.map((level, index) => {
+    const baseKey = (level.key || `status_${index + 1}`)
+      .toLowerCase()
+      .replace(/[^a-z0-9_\-]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "") || `status_${index + 1}`;
+
+    let uniqueKey = baseKey;
+    let suffix = 2;
+    while (usedKeys.has(uniqueKey)) {
+      uniqueKey = `${baseKey}_${suffix}`;
+      suffix += 1;
+    }
+    usedKeys.add(uniqueKey);
+
+    return {
+      ...level,
+      key: uniqueKey,
+    };
+  });
+
+  if (dedupedLevels.length > 0) {
+    return { levels: dedupedLevels };
+  }
 
   return {
-    levels: DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS.levels.map((fallbackLevel, index) =>
-      normalizeOccupancyLevel(levels[index], fallbackLevel),
-    ),
+    levels: fallbackLevels.map((level) => ({ ...level })),
   };
 };
 
