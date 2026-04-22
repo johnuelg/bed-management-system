@@ -238,6 +238,45 @@ export const KpiBenchmarkEditor = () => {
                     />
                   </td>
                   <td className="px-4 py-3">
+                    {(() => {
+                      const currentIcon = level.icon ?? getDefaultIconForLabel(level.label, level.key);
+                      const SelectedIcon = getStatusIconComponent(currentIcon);
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border"
+                            style={{ color: level.color, backgroundColor: `${level.color}22` }}
+                            aria-hidden
+                          >
+                            {SelectedIcon ? <SelectedIcon size={18} /> : <span className="text-xs text-muted-foreground">—</span>}
+                          </span>
+                          <Select
+                            value={currentIcon}
+                            onValueChange={(value) => updateLevel(index, (entry) => ({ ...entry, icon: value }))}
+                            disabled={!isAdmin || saveOccupancyMutation.isPending}
+                          >
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Pick icon" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUS_ICON_OPTIONS.map((option) => {
+                                const OptionIcon = option.Icon;
+                                return (
+                                  <SelectItem key={option.key} value={option.key}>
+                                    <span className="flex items-center gap-2">
+                                      <OptionIcon size={16} />
+                                      <span>{option.label}</span>
+                                    </span>
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <input
                         type="color"
