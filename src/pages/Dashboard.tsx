@@ -419,12 +419,51 @@ const DashboardPage = () => {
                 <CardTitle className="text-sm text-muted-foreground">{metric.name}</CardTitle>
               </CardHeader>
               <CardContent>
-                  <p className="text-2xl font-bold sm:text-3xl" style={metric.name === "Occupancy Rate" ? { color: metric.accentColor } : undefined}>
-                    {metric.value}
-                  </p>
-                  {metric.name === "Occupancy Rate" && metric.subtitle ? (
-                    <p className="mt-1 text-xs text-muted-foreground">{metric.subtitle}</p>
-                  ) : null}
+                {metric.name === "Occupancy Rate" ? (
+                  (() => {
+                    const level = occupancyBenchmarkMatch;
+                    const iconKey = level?.icon ?? (level ? getDefaultIconForLabel(level.label, level.key) : undefined);
+                    const StatusIcon = getStatusIconComponent(iconKey);
+                    const DecorativeIcon = StatusIcon;
+                    const accent = metric.accentColor ?? "hsl(var(--primary))";
+                    const clamped = Math.max(0, Math.min(100, occupancyRate));
+                    return (
+                      <div className="relative overflow-hidden">
+                        {DecorativeIcon ? (
+                          <DecorativeIcon
+                            size={120}
+                            aria-hidden
+                            className="pointer-events-none absolute -right-4 -top-6 opacity-10"
+                            style={{ color: accent }}
+                          />
+                        ) : null}
+                        <div className="relative">
+                          <p className="text-2xl font-bold sm:text-3xl" style={{ color: accent }}>
+                            {metric.value}
+                          </p>
+                          <div className="mt-3">
+                            <Progress
+                              value={clamped}
+                              className="h-2 bg-muted"
+                              style={{ ["--progress-color" as string]: accent }}
+                            />
+                            <style>{`
+                              .occupancy-progress > div { background-color: ${accent}; }
+                            `}</style>
+                          </div>
+                          {metric.subtitle ? (
+                            <div className="mt-2 flex items-center gap-1.5 text-xs font-medium" style={{ color: accent }}>
+                              {StatusIcon ? <StatusIcon size={14} aria-hidden /> : null}
+                              <span>{metric.subtitle}</span>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <p className="text-2xl font-bold sm:text-3xl">{metric.value}</p>
+                )}
               </CardContent>
             </Card>
           </motion.div>
