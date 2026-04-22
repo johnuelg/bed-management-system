@@ -415,55 +415,62 @@ const DashboardPage = () => {
             className="h-full"
           >
             <Card className="hospital-glass h-full">
-              <CardHeader>
-                <CardTitle className="text-sm text-muted-foreground">{metric.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {metric.name === "Occupancy Rate" ? (
-                  (() => {
-                    const level = occupancyBenchmarkMatch;
-                    const iconKey = level?.icon ?? (level ? getDefaultIconForLabel(level.label, level.key) : undefined);
-                    const StatusIcon = getStatusIconComponent(iconKey);
-                    const DecorativeIcon = StatusIcon;
-                    const accent = metric.accentColor ?? "hsl(var(--primary))";
-                    const clamped = Math.max(0, Math.min(100, occupancyRate));
-                    return (
-                      <div className="relative overflow-hidden">
-                        {DecorativeIcon ? (
-                          <DecorativeIcon
-                            size={120}
-                            aria-hidden
-                            className="pointer-events-none absolute -right-4 -top-6 opacity-10"
-                            style={{ color: accent }}
+              {metric.name === "Occupancy Rate" ? (
+                (() => {
+                  const level = occupancyBenchmarkMatch;
+                  const iconKey = level?.icon ?? (level ? getDefaultIconForLabel(level.label, level.key) : undefined);
+                  const StatusIcon = getStatusIconComponent(iconKey);
+                  const accent = metric.accentColor ?? "hsl(var(--primary))";
+                  const clamped = Math.max(0, Math.min(100, occupancyRate));
+                  const progressId = `occupancy-progress-${index}`;
+                  return (
+                    <div className="relative h-full overflow-hidden rounded-lg" style={{ padding: "20px 24px" }}>
+                      {StatusIcon ? (
+                        <StatusIcon
+                          size={56}
+                          aria-hidden
+                          className="pointer-events-none absolute bottom-3 right-3"
+                          style={{ color: accent, opacity: 0.15 }}
+                        />
+                      ) : null}
+                      <div className="relative flex h-full flex-col">
+                        <p className="text-sm text-muted-foreground">{metric.name}</p>
+                        <p className="mt-2 text-3xl font-bold leading-tight sm:text-4xl" style={{ color: accent }}>
+                          {metric.value}
+                        </p>
+                        <div className="mt-1">
+                          <Progress
+                            value={clamped}
+                            id={progressId}
+                            className={`${progressId} h-1.5 rounded-full bg-muted [&>div]:rounded-full [&>div]:transition-all`}
                           />
-                        ) : null}
-                        <div className="relative">
-                          <p className="text-2xl font-bold sm:text-3xl" style={{ color: accent }}>
-                            {metric.value}
-                          </p>
-                          <div className="mt-3">
-                            <Progress
-                              value={clamped}
-                              className="occupancy-progress h-2 bg-muted [&>div]:transition-all"
-                            />
-                            <style>{`
-                              .occupancy-progress > div { background-color: ${accent} !important; }
-                            `}</style>
-                          </div>
-                          {metric.subtitle ? (
-                            <div className="mt-2 flex items-center gap-1.5 text-xs font-medium" style={{ color: accent }}>
-                              {StatusIcon ? <StatusIcon size={14} aria-hidden /> : null}
-                              <span>{metric.subtitle}</span>
-                            </div>
-                          ) : null}
+                          <style>{`
+                            .${progressId} > div { background-color: ${accent} !important; }
+                          `}</style>
                         </div>
+                        {metric.subtitle ? (
+                          <div
+                            className="mt-1 flex items-center gap-1.5 text-xs font-medium"
+                            style={{ color: accent }}
+                          >
+                            {StatusIcon ? <StatusIcon size={14} aria-hidden /> : null}
+                            <span>{metric.subtitle}</span>
+                          </div>
+                        ) : null}
                       </div>
-                    );
-                  })()
-                ) : (
-                  <p className="text-2xl font-bold sm:text-3xl">{metric.value}</p>
-                )}
-              </CardContent>
+                    </div>
+                  );
+                })()
+              ) : (
+                <>
+                  <CardHeader>
+                    <CardTitle className="text-sm text-muted-foreground">{metric.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold sm:text-3xl">{metric.value}</p>
+                  </CardContent>
+                </>
+              )}
             </Card>
           </motion.div>
         ))}
