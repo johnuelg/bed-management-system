@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { fetchOccupancyBenchmarkSettings, saveOccupancyBenchmarkSettings } from "@/lib/supabase-api";
 import type { OccupancyBenchmarkSettings } from "@/types/hospital";
 import { STATUS_ICON_OPTIONS, getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
+import { StatusBadge } from "@/components/status-badge";
 
 const defaultOccupancyBenchmarkSettings: OccupancyBenchmarkSettings = {
   levels: [
@@ -240,16 +241,9 @@ export const KpiBenchmarkEditor = () => {
                   <td className="px-4 py-3">
                     {(() => {
                       const currentIcon = level.icon ?? getDefaultIconForLabel(level.label, level.key);
-                      const SelectedIcon = getStatusIconComponent(currentIcon);
                       return (
                         <div className="flex items-center gap-2">
-                          <span
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border"
-                            style={{ color: level.color, backgroundColor: `${level.color}22` }}
-                            aria-hidden
-                          >
-                            {SelectedIcon ? <SelectedIcon size={18} /> : <span className="text-xs text-muted-foreground">—</span>}
-                          </span>
+                          <StatusBadge level={{ ...level, icon: currentIcon }} />
                           <Select
                             value={currentIcon}
                             onValueChange={(value) => updateLevel(index, (entry) => ({ ...entry, icon: value }))}
@@ -264,7 +258,7 @@ export const KpiBenchmarkEditor = () => {
                                 return (
                                   <SelectItem key={option.key} value={option.key}>
                                     <span className="flex items-center gap-2">
-                                      <OptionIcon size={16} />
+                                      <OptionIcon size={14} />
                                       <span>{option.label}</span>
                                     </span>
                                   </SelectItem>
