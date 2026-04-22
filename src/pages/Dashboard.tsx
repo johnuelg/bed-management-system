@@ -26,7 +26,7 @@ import {
 } from "@/lib/supabase-api";
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
-import { getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
+import { StatusBadge } from "@/components/status-badge";
 
 const SAUDI_HOLIDAYS: Record<string, string> = {
   "2025-02-22": "Founding Day",
@@ -270,22 +270,9 @@ const DashboardPage = () => {
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
-  const renderStatusBadge = (level: { key: string; label: string; color: string; icon?: string }) => {
-    const iconKey = level.icon ?? getDefaultIconForLabel(level.label, level.key);
-    const IconComponent = getStatusIconComponent(iconKey);
-    return (
-      <span
-        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-        style={{
-          color: level.color,
-          backgroundColor: `${level.color}22`,
-        }}
-      >
-        {IconComponent ? <IconComponent size={14} aria-hidden /> : null}
-        <span>{level.label}</span>
-      </span>
-    );
-  };
+  const renderStatusBadge = (level: { key: string; label: string; color: string; icon?: string }) => (
+    <StatusBadge level={level} />
+  );
 
   useEffect(() => {
     const debouncedRefresh = () => {
