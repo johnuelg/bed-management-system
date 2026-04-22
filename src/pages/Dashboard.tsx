@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,6 +28,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
 import { StatusBadge } from "@/components/status-badge";
+import { getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
 
 const SAUDI_HOLIDAYS: Record<string, string> = {
   "2025-02-22": "Founding Day",
@@ -417,12 +419,50 @@ const DashboardPage = () => {
                 <CardTitle className="text-sm text-muted-foreground">{metric.name}</CardTitle>
               </CardHeader>
               <CardContent>
-                  <p className="text-2xl font-bold sm:text-3xl" style={metric.name === "Occupancy Rate" ? { color: metric.accentColor } : undefined}>
-                    {metric.value}
-                  </p>
-                  {metric.name === "Occupancy Rate" && metric.subtitle ? (
-                    <p className="mt-1 text-xs text-muted-foreground">{metric.subtitle}</p>
-                  ) : null}
+                {metric.name === "Occupancy Rate" ? (
+                  (() => {
+                    const level = occupancyBenchmarkMatch;
+                    const iconKey = level?.icon ?? (level ? getDefaultIconForLabel(level.label, level.key) : undefined);
+                    const StatusIcon = getStatusIconComponent(iconKey);
+                    const DecorativeIcon = StatusIcon;
+                    const accent = metric.accentColor ?? "hsl(var(--primary))";
+                    const clamped = Math.max(0, Math.min(100, occupancyRate));
+                    return (
+                      <div className="relative overflow-hidden">
+                        {DecorativeIcon ? (
+                          <DecorativeIcon
+                            size={120}
+                            aria-hidden
+                            className="pointer-events-none absolute -right-4 -top-6 opacity-10"
+                            style={{ color: accent }}
+                          />
+                        ) : null}
+                        <div className="relative">
+                          <p className="text-2xl font-bold sm:text-3xl" style={{ color: accent }}>
+                            {metric.value}
+                          </p>
+                          <div className="mt-3">
+                            <Progress
+                              value={clamped}
+                              className="occupancy-progress h-2 bg-muted [&>div]:transition-all"
+                            />
+                            <style>{`
+                              .occupancy-progress > div { background-color: ${accent} !important; }
+                            `}</style>
+                          </div>
+                          {metric.subtitle ? (
+                            <div className="mt-2 flex items-center gap-1.5 text-xs font-medium" style={{ color: accent }}>
+                              {StatusIcon ? <StatusIcon size={14} aria-hidden /> : null}
+                              <span>{metric.subtitle}</span>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <p className="text-2xl font-bold sm:text-3xl">{metric.value}</p>
+                )}
               </CardContent>
             </Card>
           </motion.div>
