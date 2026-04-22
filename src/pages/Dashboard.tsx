@@ -506,7 +506,7 @@ const DashboardPage = () => {
                           <TableCell className="text-right">{waitingValue}</TableCell>
                           <TableCell>{row.closure_reason || "-"}</TableCell>
                           <TableCell className="text-right" style={{ color: rowBenchmark?.color }}>{rowOccupancy.toFixed(1)}%</TableCell>
-                          <TableCell>{getStatusBadge(rowBenchmark.label, rowBenchmark.color, getStatusPrefix(rowBenchmark, "row"))}</TableCell>
+                          <TableCell>{renderStatusBadge(rowBenchmark)}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -522,11 +522,7 @@ const DashboardPage = () => {
                         {occupancyRate.toFixed(1)}%
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(
-                          occupancyBenchmarkMatch.label,
-                          occupancyBenchmarkMatch.color,
-                            getStatusPrefix(occupancyBenchmarkMatch, "total"),
-                        )}
+                        {renderStatusBadge(occupancyBenchmarkMatch)}
                       </TableCell>
                     </TableRow>
                   </>
