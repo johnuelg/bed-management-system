@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { CalendarIcon, Download, FileSpreadsheet, LayoutGrid, Pencil, Table2 } from "lucide-react";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,19 +33,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { calendarDateToIsoDate, formatSaudiDateTime, getSaudiIsoDate, isoDateToCalendarDate } from "@/lib/date-time";
 import {
-  calendarDateToIsoDate,
   deleteBedSubmission,
   fetchBedTypes,
   fetchDepartments,
   fetchFormFields,
   fetchTodaySubmissions,
-  formatSaudiDateTime,
-  formatSaudiIsoDateForDisplay,
   getCurrentUserId,
-  getSaudiIsoDate,
-  getSaudiTime24,
-  isoDateToCalendarDate,
   saveBedSubmission,
   uploadDocument,
 } from "@/lib/supabase-api";
@@ -485,17 +481,17 @@ const DataEntryPage = () => {
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {datePart ? format(isoToCalendarDate(datePart), "PPP") : <span>Pick a date</span>}
+                          {datePart ? format(isoDateToCalendarDate(datePart), "PPP") : <span>Pick a date</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={datePart ? isoToCalendarDate(datePart) : undefined}
+                           selected={datePart ? isoDateToCalendarDate(datePart) : undefined}
                           today={saudiTodayForCalendar}
                           onSelect={(selected) => {
                             if (!selected) return;
-                            const nextDate = calendarDateToIso(selected);
+                             const nextDate = calendarDateToIsoDate(selected);
                             setForm((prev) => ({
                               ...prev,
                               custom_fields: {
