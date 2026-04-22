@@ -26,6 +26,7 @@ import {
 } from "@/lib/supabase-api";
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
+import { getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
 
 const SAUDI_HOLIDAYS: Record<string, string> = {
   "2025-02-22": "Founding Day",
@@ -223,6 +224,7 @@ const DashboardPage = () => {
       minInclusive: false,
       maxInclusive: false,
       color: "#16a34a",
+      icon: "thumbs-up",
     },
     {
       key: "optimal",
@@ -233,6 +235,7 @@ const DashboardPage = () => {
       minInclusive: true,
       maxInclusive: true,
       color: "#16a34a",
+      icon: "check",
     },
     {
       key: "watch",
@@ -243,6 +246,7 @@ const DashboardPage = () => {
       minInclusive: true,
       maxInclusive: true,
       color: "#f59e0b",
+      icon: "eye",
     },
     {
       key: "high",
@@ -253,6 +257,7 @@ const DashboardPage = () => {
       minInclusive: true,
       maxInclusive: false,
       color: "#dc2626",
+      icon: "alert-triangle",
     },
   ];
 
@@ -265,26 +270,21 @@ const DashboardPage = () => {
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
-  const getStatusBadge = (label: string, color: string, prefix?: string) => (
-    <span
-      className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
-      style={{
-        color,
-        backgroundColor: `${color}22`,
-      }}
-    >
-      {prefix ? `${prefix} ` : ""}
-      {label}
-    </span>
-  );
-
-  const getStatusPrefix = (level: { key: string; label: string }, mode: "row" | "total") => {
-    const normalized = level.label.trim().toLowerCase();
-    const isHigh = level.key === "high" || normalized === "high";
-    const isOptimal = level.key === "optimal" || normalized === "optimal";
-    if (isHigh) return "⚠";
-    if (mode === "total" && isOptimal) return "✓";
-    return undefined;
+  const renderStatusBadge = (level: { key: string; label: string; color: string; icon?: string }) => {
+    const iconKey = level.icon ?? getDefaultIconForLabel(level.label, level.key);
+    const IconComponent = getStatusIconComponent(iconKey);
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+        style={{
+          color: level.color,
+          backgroundColor: `${level.color}22`,
+        }}
+      >
+        {IconComponent ? <IconComponent size={14} aria-hidden /> : null}
+        <span>{level.label}</span>
+      </span>
+    );
   };
 
   useEffect(() => {
