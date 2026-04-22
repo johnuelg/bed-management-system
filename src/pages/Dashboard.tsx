@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
-import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -424,33 +423,85 @@ const DashboardPage = () => {
                   const clamped = Math.max(0, Math.min(100, occupancyRate));
                   const progressId = `occupancy-progress-${index}`;
                   return (
-                    <div className="relative h-full overflow-hidden rounded-lg" style={{ padding: "20px 24px" }}>
+                    <div
+                      className="group relative h-full w-full overflow-hidden rounded-lg"
+                      style={{ padding: "20px 24px" }}
+                    >
+                      <style>{`
+                        @keyframes occupancy-shimmer-${index} {
+                          0% { transform: translateX(-100%); }
+                          100% { transform: translateX(200%); }
+                        }
+                        .${progressId}-track {
+                          position: relative;
+                          width: 100%;
+                          height: 10px;
+                          border-radius: 9999px;
+                          background-color: color-mix(in srgb, ${accent} 12%, hsl(var(--muted)));
+                          overflow: hidden;
+                          box-shadow: inset 0 1px 2px color-mix(in srgb, ${accent} 18%, transparent);
+                        }
+                        .${progressId}-fill {
+                          position: relative;
+                          height: 100%;
+                          border-radius: 9999px;
+                          background-image: linear-gradient(90deg,
+                            color-mix(in srgb, ${accent} 55%, white) 0%,
+                            ${accent} 100%);
+                          box-shadow: 0 0 12px color-mix(in srgb, ${accent} 40%, transparent);
+                          transition: width 0.5s ease;
+                          overflow: hidden;
+                        }
+                        .${progressId}-fill::after {
+                          content: "";
+                          position: absolute;
+                          inset: 0;
+                          background-image: linear-gradient(90deg,
+                            transparent 0%,
+                            rgba(255,255,255,0.45) 50%,
+                            transparent 100%);
+                          transform: translateX(-100%);
+                          animation: occupancy-shimmer-${index} 2s linear infinite;
+                        }
+                      `}</style>
+
                       {StatusIcon ? (
                         <StatusIcon
-                          size={56}
+                          size={64}
                           aria-hidden
-                          className="pointer-events-none absolute bottom-3 right-3"
-                          style={{ color: accent, opacity: 0.15 }}
+                          className="pointer-events-none absolute right-3 top-3 transition-all duration-300 group-hover:rotate-[-4deg]"
+                          style={{
+                            color: accent,
+                            opacity: 0.13,
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as SVGSVGElement).style.opacity = "0.22";
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as SVGSVGElement).style.opacity = "0.13";
+                          }}
                         />
                       ) : null}
-                      <div className="relative flex h-full flex-col">
+
+                      <div className="relative flex h-full min-w-0 flex-col gap-3 pr-16 sm:pr-20">
                         <p className="text-sm text-muted-foreground">{metric.name}</p>
-                        <p className="mt-2 text-3xl font-bold leading-tight sm:text-4xl" style={{ color: accent }}>
+                        <p
+                          className="text-3xl font-bold leading-tight sm:text-4xl"
+                          style={{ color: accent }}
+                        >
                           {metric.value}
                         </p>
-                        <div className="mt-1">
-                          <Progress
-                            value={clamped}
-                            id={progressId}
-                            className={`${progressId} h-1.5 rounded-full bg-muted [&>div]:rounded-full [&>div]:transition-all`}
-                          />
-                          <style>{`
-                            .${progressId} > div { background-color: ${accent} !important; }
-                          `}</style>
+                        <div className="w-full">
+                          <div className={`${progressId}-track`}>
+                            <div
+                              className={`${progressId}-fill`}
+                              style={{ width: `${clamped}%` }}
+                            />
+                          </div>
                         </div>
                         {metric.subtitle ? (
                           <div
-                            className="mt-1 flex items-center gap-1.5 text-xs font-medium"
+                            className="flex items-center gap-1.5 text-xs font-medium"
                             style={{ color: accent }}
                           >
                             {StatusIcon ? <StatusIcon size={14} aria-hidden /> : null}
