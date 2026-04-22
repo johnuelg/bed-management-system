@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  calendarDateToIsoDate,
   formatSaudiIsoDateForDisplay,
   getSaudiIsoDate,
   getSaudiWeekdayShortFromIsoDate,
@@ -323,6 +322,7 @@ const DashboardPage = () => {
                 selected={dateRange}
                 onSelect={setDateRange}
                 today={today}
+                timeZone={SAUDI_TIMEZONE}
                 numberOfMonths={2}
                 className="p-3 pointer-events-auto"
                 disabled={isDateDisabled}
