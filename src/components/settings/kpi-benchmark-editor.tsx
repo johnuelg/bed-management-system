@@ -142,6 +142,7 @@ export const KpiBenchmarkEditor = () => {
           minInclusive: true,
           maxInclusive: true,
           color: "#64748b",
+          icon: "circle",
         },
       ],
     };
@@ -199,6 +200,7 @@ export const KpiBenchmarkEditor = () => {
               <tr className="border-b bg-muted/40">
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Threshold</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Icon</th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Color</th>
                 <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Actions</th>
               </tr>
