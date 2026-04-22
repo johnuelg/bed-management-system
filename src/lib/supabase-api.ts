@@ -234,10 +234,27 @@ const normalizeOccupancyBenchmarkSettings = (value: unknown): OccupancyBenchmark
     .map((level, index) => normalizeOccupancyLevel(level, fallbackLevels[index] ?? fallbackLevels[fallbackLevels.length - 1], index))
     .filter((level) => level.label.trim().length > 0);
 
-  const dedupedLevels = normalizedLevels.map((level, index) => ({
-    ...level,
-    key: `${level.key || "status"}_${index + 1}`,
-  }));
+  const usedKeys = new Set<string>();
+  const dedupedLevels = normalizedLevels.map((level, index) => {
+    const baseKey = (level.key || `status_${index + 1}`)
+      .toLowerCase()
+      .replace(/[^a-z0-9_\-]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "") || `status_${index + 1}`;
+
+    let uniqueKey = baseKey;
+    let suffix = 2;
+    while (usedKeys.has(uniqueKey)) {
+      uniqueKey = `${baseKey}_${suffix}`;
+      suffix += 1;
+    }
+    usedKeys.add(uniqueKey);
+
+    return {
+      ...level,
+      key: uniqueKey,
+    };
+  });
 
   if (dedupedLevels.length > 0) {
     return { levels: dedupedLevels };

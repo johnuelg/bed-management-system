@@ -278,6 +278,15 @@ const DashboardPage = () => {
     </span>
   );
 
+  const getStatusPrefix = (level: { key: string; label: string }, mode: "row" | "total") => {
+    const normalized = level.label.trim().toLowerCase();
+    const isHigh = level.key === "high" || normalized === "high";
+    const isOptimal = level.key === "optimal" || normalized === "optimal";
+    if (isHigh) return "⚠";
+    if (mode === "total" && isOptimal) return "✓";
+    return undefined;
+  };
+
   useEffect(() => {
     const debouncedRefresh = () => {
       const timeout = setTimeout(() => {
@@ -497,7 +506,7 @@ const DashboardPage = () => {
                           <TableCell className="text-right">{waitingValue}</TableCell>
                           <TableCell>{row.closure_reason || "-"}</TableCell>
                           <TableCell className="text-right" style={{ color: rowBenchmark?.color }}>{rowOccupancy.toFixed(1)}%</TableCell>
-                          <TableCell>{getStatusBadge(rowBenchmark.label, rowBenchmark.color, rowBenchmark.key === "high" ? "⚠" : undefined)}</TableCell>
+                          <TableCell>{getStatusBadge(rowBenchmark.label, rowBenchmark.color, getStatusPrefix(rowBenchmark, "row"))}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -516,7 +525,7 @@ const DashboardPage = () => {
                         {getStatusBadge(
                           occupancyBenchmarkMatch.label,
                           occupancyBenchmarkMatch.color,
-                          occupancyBenchmarkMatch.key === "optimal" ? "✓" : occupancyBenchmarkMatch.key === "high" ? "⚠" : undefined,
+                            getStatusPrefix(occupancyBenchmarkMatch, "total"),
                         )}
                       </TableCell>
                     </TableRow>
