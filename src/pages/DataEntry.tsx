@@ -39,6 +39,7 @@ import {
   fetchBedTypes,
   fetchDepartments,
   fetchFormFields,
+  fetchKpiFormulas,
   fetchTodaySubmissions,
   getCurrentUserId,
   saveBedSubmission,
@@ -49,6 +50,7 @@ import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
 import { utils, writeFileXLSX } from "xlsx";
+import { buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
 
 const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((file, ctx) => {
   if (file.size > MAX_UPLOAD_SIZE) {
@@ -82,6 +84,7 @@ const DataEntryPage = () => {
   const { data: bedTypes = [] } = useQuery({ queryKey: ["bed_types"], queryFn: fetchBedTypes });
   const { data: formFields = [] } = useQuery({ queryKey: ["form_fields"], queryFn: fetchFormFields });
   const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
+  const { data: kpiFormulas = [] } = useQuery({ queryKey: ["kpi_formulas"], queryFn: fetchKpiFormulas });
 
   const orderedActiveFields = useMemo(
     () => formFields.filter((field) => field.is_active).sort((a, b) => a.display_order - b.display_order),
@@ -128,10 +131,19 @@ const DataEntryPage = () => {
   );
 
   const computed = useMemo(() => {
-    const vacant = Math.max(0, Number(form.total_beds) - Number(form.occupied) - Number(form.closed));
-    const occupancyRate = form.total_beds > 0 ? (Number(form.occupied) / Number(form.total_beds)) * 100 : 0;
+    const total_beds = Number(form.total_beds) || 0;
+    const occupied = Number(form.occupied) || 0;
+    const closed = Number(form.closed) || 0;
+    const vacant = Math.max(0, total_beds - occupied - closed);
+    const scope = buildRowScope({
+      total_beds,
+      occupied,
+      closed,
+      custom_fields: form.custom_fields,
+    });
+    const occupancyRate = evaluateOccupancyRate(kpiFormulas, scope);
     return { vacant, occupancyRate };
-  }, [form.total_beds, form.occupied, form.closed]);
+  }, [form.total_beds, form.occupied, form.closed, form.custom_fields, kpiFormulas]);
 
   const exportRows = useMemo(
     () =>

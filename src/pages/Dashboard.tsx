@@ -22,12 +22,14 @@ import {
   fetchBedTypes,
   fetchDashboardSubmissions,
   fetchDepartments,
+  fetchKpiFormulas,
   fetchOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
 import { StatusBadge } from "@/components/status-badge";
 import { getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
+import { buildAggregateScope, buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
 
 const SAUDI_HOLIDAYS: Record<string, string> = {
   "2025-02-22": "Founding Day",
@@ -70,6 +72,11 @@ const DashboardPage = () => {
   const { data: occupancyBenchmark } = useQuery({
     queryKey: ["app_settings", "occupancy_benchmark"],
     queryFn: fetchOccupancyBenchmarkSettings,
+  });
+
+  const { data: kpiFormulas = [] } = useQuery({
+    queryKey: ["kpi_formulas"],
+    queryFn: fetchKpiFormulas,
   });
 
   const extractUserInputDateTime = (row: (typeof rows)[number]) => {
@@ -214,7 +221,11 @@ const DashboardPage = () => {
 
     return total;
   }, 0);
-  const occupancyRate = sums.total_beds > 0 ? (sums.occupied / sums.total_beds) * 100 : 0;
+  const aggregateScope = useMemo(() => buildAggregateScope(filteredRows), [filteredRows]);
+  const occupancyRate = useMemo(
+    () => evaluateOccupancyRate(kpiFormulas, aggregateScope),
+    [kpiFormulas, aggregateScope],
+  );
   const benchmarkLevels = occupancyBenchmark?.levels ?? [
     {
       key: "low",
@@ -608,7 +619,8 @@ const DashboardPage = () => {
                                 : 0;
 
                       const vacant = Math.max((Number(row.total_beds) || 0) - (Number(row.occupied) || 0) - (Number(row.closed) || 0), 0);
-                      const rowOccupancy = row.total_beds > 0 ? (row.occupied / row.total_beds) * 100 : 0;
+                      const rowScope = buildRowScope(row);
+                      const rowOccupancy = evaluateOccupancyRate(kpiFormulas, rowScope);
                       const rowBenchmark = getOccupancyBenchmark(rowOccupancy);
 
                       return (
