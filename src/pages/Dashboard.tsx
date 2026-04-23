@@ -74,6 +74,11 @@ const DashboardPage = () => {
     queryFn: fetchOccupancyBenchmarkSettings,
   });
 
+  const { data: kpiFormulas = [] } = useQuery({
+    queryKey: ["kpi_formulas"],
+    queryFn: fetchKpiFormulas,
+  });
+
   const extractUserInputDateTime = (row: (typeof rows)[number]) => {
     const customFields = (row.custom_fields as Record<string, unknown>) ?? {};
 
