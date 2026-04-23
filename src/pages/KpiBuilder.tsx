@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCcw } from "lucide-react";
+import { Pencil, RefreshCcw, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,14 +22,16 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/hooks/use-toast";
 import {
   deleteKpiWidget,
+  deleteKpiFormula,
   fetchKpiFormulas,
   fetchKpiWidgets,
   saveKpiFormula,
   saveKpiWidget,
+  updateKpiFormula,
 } from "@/lib/supabase-api";
 import { KpiBenchmarkEditor } from "@/components/settings/kpi-benchmark-editor";
 
-const defaultVariables = ["total_beds", "occupied", "closed", "vacant"];
+const defaultVariables = ["total_beds", "occupied", "closed", "vacant", "waiting_patients"];
 
 const KpiBuilderPage = () => {
   const { roles } = useAuth();
