@@ -625,6 +625,23 @@ export const saveKpiFormula = async (roles: AppRole[], formula: Omit<KpiFormula,
   if (error) throw error;
 };
 
+export const updateKpiFormula = async (
+  roles: AppRole[],
+  id: string,
+  formula: Omit<KpiFormula, "id" | "is_system">,
+) => {
+  requireRole(roles, ["admin", "director"], "manage KPI formulas");
+  formulaSchema.parse(formula);
+  const { error } = await db.from("kpi_formulas").update(formula).eq("id", id);
+  if (error) throw error;
+};
+
+export const deleteKpiFormula = async (roles: AppRole[], id: string) => {
+  requireRole(roles, ["admin", "director"], "manage KPI formulas");
+  const { error } = await db.from("kpi_formulas").delete().eq("id", id).eq("is_system", false);
+  if (error) throw error;
+};
+
 export const fetchKpiWidgets = async (): Promise<KpiWidget[]> => {
   const { data, error } = await db.from("kpi_widgets").select("*").order("display_order", { ascending: true });
   if (error) throw error;
