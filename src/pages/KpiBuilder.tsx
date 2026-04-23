@@ -36,30 +36,54 @@ const defaultVariables = ["total_beds", "occupied", "closed", "vacant", "waiting
 const KpiBuilderPage = () => {
   const { roles } = useAuth();
   const qc = useQueryClient();
+  const [editingFormulaId, setEditingFormulaId] = useState<string | null>(null);
   const [formulaName, setFormulaName] = useState("");
   const [expression, setExpression] = useState("occupied / total_beds * 100");
   const [selectedVariables, setSelectedVariables] = useState<string[]>(["occupied", "total_beds"]);
   const [widgetName, setWidgetName] = useState("");
   const [widgetFormulaId, setWidgetFormulaId] = useState("");
   const [widgetToDelete, setWidgetToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [formulaToDelete, setFormulaToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const { data: formulas = [] } = useQuery({ queryKey: ["kpi_formulas"], queryFn: fetchKpiFormulas });
   const { data: widgets = [] } = useQuery({ queryKey: ["kpi_widgets"], queryFn: fetchKpiWidgets });
 
+  const resetFormulaForm = () => {
+    setEditingFormulaId(null);
+    setFormulaName("");
+    setExpression("occupied / total_beds * 100");
+    setSelectedVariables(["occupied", "total_beds"]);
+  };
+
   const formulaMutation = useMutation({
-    mutationFn: () =>
-      saveKpiFormula(roles, {
-        name: formulaName,
-        expression,
+    mutationFn: () => {
+      const payload = {
+        name: formulaName.trim(),
+        expression: expression.trim(),
         variables: selectedVariables,
         is_active: true,
-      }),
+      };
+      if (editingFormulaId) {
+        return updateKpiFormula(roles, editingFormulaId, payload);
+      }
+      return saveKpiFormula(roles, payload);
+    },
     onSuccess: async () => {
-      toast({ title: "Formula saved" });
-      setFormulaName("");
+      toast({ title: editingFormulaId ? "Formula updated" : "Formula saved" });
+      resetFormulaForm();
       await qc.invalidateQueries({ queryKey: ["kpi_formulas"] });
     },
     onError: (error) => toast({ title: "Formula save failed", description: (error as Error).message, variant: "destructive" }),
+  });
+
+  const deleteFormulaMutation = useMutation({
+    mutationFn: (id: string) => deleteKpiFormula(roles, id),
+    onSuccess: async () => {
+      toast({ title: "Formula deleted" });
+      if (editingFormulaId === formulaToDelete?.id) resetFormulaForm();
+      await qc.invalidateQueries({ queryKey: ["kpi_formulas"] });
+    },
+    onError: (error) => toast({ title: "Formula delete failed", description: (error as Error).message, variant: "destructive" }),
   });
 
   const widgetMutation = useMutation({
