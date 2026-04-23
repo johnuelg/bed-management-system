@@ -221,7 +221,11 @@ const DashboardPage = () => {
 
     return total;
   }, 0);
-  const occupancyRate = sums.total_beds > 0 ? (sums.occupied / sums.total_beds) * 100 : 0;
+  const aggregateScope = useMemo(() => buildAggregateScope(filteredRows), [filteredRows]);
+  const occupancyRate = useMemo(
+    () => evaluateOccupancyRate(kpiFormulas, aggregateScope),
+    [kpiFormulas, aggregateScope],
+  );
   const benchmarkLevels = occupancyBenchmark?.levels ?? [
     {
       key: "low",
