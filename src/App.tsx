@@ -12,6 +12,7 @@ import LoginPage from "./pages/Login";
 import ResetPasswordPage from "./pages/ResetPassword";
 import DashboardPage from "./pages/Dashboard";
 import DataEntryPage from "./pages/DataEntry";
+import DataTablePage from "./pages/DataTable";
 import CategoriesPage from "./pages/Categories";
 import FormBuilderPage from "./pages/FormBuilder";
 import KpiBuilderPage from "./pages/KpiBuilder";
@@ -40,6 +41,9 @@ const App = () => (
                 </Route>
                 <Route element={<NavVisibilityGuard settingKey="data_entry" />}>
                   <Route path="/data-entry" element={<DataEntryPage />} />
+                </Route>
+                <Route element={<NavVisibilityGuard settingKey="data_table" />}>
+                  <Route path="/data-table" element={<DataTablePage />} />
                 </Route>
 
                 <Route element={<RoleGuard allow={["admin"]} />}>

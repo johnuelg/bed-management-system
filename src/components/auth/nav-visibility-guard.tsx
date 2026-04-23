@@ -12,6 +12,7 @@ const defaultRoleVisibility: RoleMenuVisibility = {
   categories: false,
   form_builder: false,
   users: false,
+  data_table: false,
 };
 
 type NavVisibilityGuardProps = {

@@ -32,6 +32,7 @@ const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   categories: true,
   form_builder: true,
   users: true,
+  data_table: true,
 };
 const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
   admin: { ...DEFAULT_ROLE_MENU_VISIBILITY },
@@ -99,6 +100,7 @@ const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
     categories: typeof source.categories === "boolean" ? source.categories : true,
     form_builder: typeof source.form_builder === "boolean" ? source.form_builder : true,
     users: typeof source.users === "boolean" ? source.users : true,
+    data_table: typeof source.data_table === "boolean" ? source.data_table : true,
   };
 };
 
