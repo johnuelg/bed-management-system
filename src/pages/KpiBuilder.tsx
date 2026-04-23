@@ -129,8 +129,11 @@ const KpiBuilderPage = () => {
       <div className="grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Create Formula</CardTitle>
-            <CardDescription>Use variable mapping and operators: + - * / ( )</CardDescription>
+            <CardTitle>{editingFormulaId ? "Edit Formula" : "Create Formula"}</CardTitle>
+            <CardDescription>
+              All saved formulas are applied globally across Dashboard tables, charts, and KPI cards.
+              Use variable mapping and operators: + - * / ( )
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -162,9 +165,19 @@ const KpiBuilderPage = () => {
                 })}
               </div>
             </div>
-            <Button onClick={() => formulaMutation.mutate()} disabled={formulaMutation.isPending || !formulaName.trim()}>
-              Save Formula
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => formulaMutation.mutate()}
+                disabled={formulaMutation.isPending || !formulaName.trim() || !expression.trim()}
+              >
+                {editingFormulaId ? "Update Formula" : "Save Formula"}
+              </Button>
+              {editingFormulaId && (
+                <Button type="button" variant="outline" onClick={resetFormulaForm}>
+                  <X className="mr-2 h-4 w-4" /> Cancel Edit
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 
