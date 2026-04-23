@@ -619,7 +619,8 @@ const DashboardPage = () => {
                                 : 0;
 
                       const vacant = Math.max((Number(row.total_beds) || 0) - (Number(row.occupied) || 0) - (Number(row.closed) || 0), 0);
-                      const rowOccupancy = row.total_beds > 0 ? (row.occupied / row.total_beds) * 100 : 0;
+                      const rowScope = buildRowScope(row);
+                      const rowOccupancy = evaluateOccupancyRate(kpiFormulas, rowScope);
                       const rowBenchmark = getOccupancyBenchmark(rowOccupancy);
 
                       return (
