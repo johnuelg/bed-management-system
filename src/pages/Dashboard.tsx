@@ -22,12 +22,14 @@ import {
   fetchBedTypes,
   fetchDashboardSubmissions,
   fetchDepartments,
+  fetchKpiFormulas,
   fetchOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
 import { StatusBadge } from "@/components/status-badge";
 import { getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
+import { buildAggregateScope, buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
 
 const SAUDI_HOLIDAYS: Record<string, string> = {
   "2025-02-22": "Founding Day",
