@@ -39,6 +39,7 @@ import {
   fetchBedTypes,
   fetchDepartments,
   fetchFormFields,
+  fetchKpiFormulas,
   fetchTodaySubmissions,
   getCurrentUserId,
   saveBedSubmission,
@@ -49,6 +50,7 @@ import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
 import { utils, writeFileXLSX } from "xlsx";
+import { buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
 
 const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((file, ctx) => {
   if (file.size > MAX_UPLOAD_SIZE) {
