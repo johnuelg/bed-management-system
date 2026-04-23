@@ -83,6 +83,7 @@ export type RoleMenuVisibility = {
   categories: boolean;
   form_builder: boolean;
   users: boolean;
+  data_table?: boolean;
 };
 
 export type ClinicalRole = "doctor" | "nurse" | "staff";
