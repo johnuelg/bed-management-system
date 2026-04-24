@@ -927,6 +927,35 @@ const DataEntryPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={missingFields.length > 0}
+        onOpenChange={(open) => {
+          if (!open) setMissingFields([]);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" aria-hidden />
+              Please complete the following fields
+            </DialogTitle>
+            <DialogDescription>
+              These fields are required before you can save this entry.
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="list-disc space-y-1 pl-6 text-sm">
+            {missingFields.map((f) => (
+              <li key={f.key} className="font-medium">
+                {f.label}
+              </li>
+            ))}
+          </ul>
+          <DialogFooter>
+            <Button onClick={handleFixMissing}>Go Back &amp; Fix</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };
