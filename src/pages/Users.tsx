@@ -6,22 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
   createUserByAdmin,
   deactivateUserByAdmin,
+  fetchAllUserEntryPermissions,
   fetchNavVisibilitySettings,
   fetchProfiles,
   fetchRoleCatalog,
   fetchUserRoles,
+  saveUserEntryPermissions,
   saveNavVisibilitySettings,
   saveRoleCatalog,
   setUserRole,
 } from "@/lib/supabase-api";
 import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibility-settings";
-import type { AppRole, NavVisibilitySettings } from "@/types/hospital";
+import type { AppRole, NavVisibilitySettings, UserEntryPermissions } from "@/types/hospital";
+import { cn } from "@/lib/utils";
 
 const defaultNavSettings: NavVisibilitySettings = {
   admin: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
@@ -30,6 +33,8 @@ const defaultNavSettings: NavVisibilitySettings = {
   nurse: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
   staff: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
 };
+
+const DEFAULT_PERMS: Omit<UserEntryPermissions, "user_id"> = { can_add: true, can_edit: true, can_delete: false };
 
 const UsersPage = () => {
   const { roles, user } = useAuth();
