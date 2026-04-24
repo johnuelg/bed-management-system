@@ -361,6 +361,43 @@ const DataEntryPage = () => {
     }
   };
 
+  const focusFieldByKey = (key: string) => {
+    const el = fieldRefs.current[key];
+    if (el && typeof (el as HTMLElement).focus === "function") {
+      (el as HTMLElement).focus();
+      if (typeof (el as HTMLElement).scrollIntoView === "function") {
+        (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  };
+
+  const handleSaveClick = () => {
+    const missing = collectMissingFields();
+    if (missing.length > 0) {
+      setMissingFields(missing);
+      return;
+    }
+    if (occupiedExceedsTotal) {
+      focusFieldByKey("occupied");
+      return;
+    }
+    if (closedExceedsVacant) {
+      focusFieldByKey("closed");
+      return;
+    }
+    mutation.mutate();
+  };
+
+  const handleFixMissing = () => {
+    const first = missingFields[0];
+    setMissingFields([]);
+    if (first) {
+      // map combined date keys back to base key
+      const baseKey = first.key.replace(/__(date|time)$/, "");
+      setTimeout(() => focusFieldByKey(baseKey), 50);
+    }
+  };
+
   return (
     <section className="space-y-5 sm:space-y-6">
       <header>
