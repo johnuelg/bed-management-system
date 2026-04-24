@@ -18,6 +18,7 @@ const defaultRoleVisibility: RoleMenuVisibility = {
   form_builder: false,
   users: false,
   data_table: false,
+  audit_log: false,
 };
 
 const settingRows: Array<{ key: keyof RoleMenuVisibility; label: string; description: string }> = [
@@ -28,6 +29,7 @@ const settingRows: Array<{ key: keyof RoleMenuVisibility; label: string; descrip
   { key: "categories", label: "Categories", description: "Show or hide Categories in the sidebar menu." },
   { key: "form_builder", label: "Form Builder", description: "Show or hide Form Builder in the sidebar menu." },
   { key: "users", label: "Users", description: "Show or hide Users in the sidebar menu." },
+  { key: "audit_log", label: "Audit Log", description: "Show or hide Audit Log in the sidebar menu (admin only)." },
 ];
 
 export const NavVisibilitySettingsEditor = ({ settings, roles, disabled, onChange, showHeader = true }: Props) => {
