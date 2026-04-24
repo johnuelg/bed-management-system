@@ -620,6 +620,7 @@ const DataEntryPage = () => {
                       <PopoverTrigger asChild>
                         <Button
                           type="button"
+                          ref={setFieldRef(field.field_key) as never}
                           variant="outline"
                           disabled={!editable}
                           className={cn(
@@ -654,6 +655,7 @@ const DataEntryPage = () => {
                     </Popover>
 
                     <Input
+                      ref={setFieldRef(`${field.field_key}__time`) as never}
                       type="time"
                       step={60}
                       disabled={!editable}
