@@ -105,6 +105,7 @@ const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
     form_builder: typeof source.form_builder === "boolean" ? source.form_builder : true,
     users: typeof source.users === "boolean" ? source.users : true,
     data_table: typeof source.data_table === "boolean" ? source.data_table : true,
+    audit_log: typeof source.audit_log === "boolean" ? source.audit_log : false,
   };
 };
 
