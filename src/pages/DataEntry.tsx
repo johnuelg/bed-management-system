@@ -162,9 +162,10 @@ const DataEntryPage = () => {
   const occupiedNum = Number(form.occupied) || 0;
   const closedNum = Number(form.closed) || 0;
   const occupiedExceedsTotal = occupiedNum > totalBedsNum;
-  const vacantBeds = computed.vacant;
-  const closedExceedsVacant = closedNum > vacantBeds && !occupiedExceedsTotal;
-  const noVacantBeds = vacantBeds === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
+  // Per business rule: Vacant for Closed validation = Total Beds − Occupied
+  const vacantForClosed = Math.max(0, totalBedsNum - occupiedNum);
+  const closedExceedsVacant = closedNum > vacantForClosed && !occupiedExceedsTotal;
+  const noVacantBeds = vacantForClosed === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
 
   // Auto-lock Closed to 0 when there are no vacant beds.
   useEffect(() => {
