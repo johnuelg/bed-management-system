@@ -318,17 +318,20 @@ const UsersPage = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Bed Entry Permissions</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.display_name ?? "Unnamed"}</TableCell>
+              {users.map((row) => {
+                const perms = permissionsMap[row.user_id] ?? { user_id: row.user_id, ...DEFAULT_PERMS };
+                return (
+                <TableRow key={row.id}>
+                  <TableCell>{row.display_name ?? "Unnamed"}</TableCell>
                   <TableCell>
                     <Select
-                      value={user.role}
-                      onValueChange={(value) => roleMutation.mutate({ userId: user.user_id, role: value })}
+                      value={row.role}
+                      onValueChange={(value) => roleMutation.mutate({ userId: row.user_id, role: value })}
                     >
                       <SelectTrigger className="w-40">
                         <SelectValue />
@@ -342,18 +345,51 @@ const UsersPage = () => {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>{user.is_active ? "Active" : "Inactive"}</TableCell>
+                  <TableCell>{row.is_active ? "Active" : "Inactive"}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {([
+                        { key: "can_add" as const, Icon: Plus, label: "Can Add" },
+                        { key: "can_edit" as const, Icon: Pencil, label: "Can Edit" },
+                        { key: "can_delete" as const, Icon: Trash2, label: "Can Delete" },
+                      ]).map(({ key, Icon, label }) => {
+                        const enabled = perms[key];
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            role="switch"
+                            aria-checked={enabled}
+                            aria-label={`${label} for ${row.display_name ?? "user"}`}
+                            disabled={permissionsMutation.isPending}
+                            onClick={() => togglePermission(row.user_id, key)}
+                            title={`${label}: ${enabled ? "On" : "Off"}`}
+                            className={cn(
+                              "inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors",
+                              enabled
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-muted text-muted-foreground/60 hover:border-primary/50",
+                              permissionsMutation.isPending && "opacity-60",
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button
                       size="sm"
-                      variant={user.is_active ? "destructive" : "secondary"}
-                      onClick={() => activeMutation.mutate({ userId: user.user_id, active: !user.is_active })}
+                      variant={row.is_active ? "destructive" : "secondary"}
+                      onClick={() => activeMutation.mutate({ userId: row.user_id, active: !row.is_active })}
                     >
-                      {user.is_active ? "Deactivate" : "Activate"}
+                      {row.is_active ? "Deactivate" : "Activate"}
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
             </Table>
           </div>
