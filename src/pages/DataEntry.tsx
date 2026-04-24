@@ -789,9 +789,15 @@ const DataEntryPage = () => {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row md:col-span-2">
-            <Button onClick={handleSaveClick} disabled={mutation.isPending}>
-              Save Entry
-            </Button>
+            {(form.id ? canEdit : canAdd) ? (
+              <Button onClick={handleSaveClick} disabled={mutation.isPending}>
+                {form.id ? "Save Changes" : "Add New Entry"}
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                You don't have permission to {form.id ? "edit" : "add"} bed entries.
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"
