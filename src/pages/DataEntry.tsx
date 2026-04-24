@@ -158,6 +158,21 @@ const DataEntryPage = () => {
     return { vacant, occupancyRate };
   }, [form.total_beds, form.occupied, form.closed, form.custom_fields, kpiFormulas]);
 
+  const totalBedsNum = Number(form.total_beds) || 0;
+  const occupiedNum = Number(form.occupied) || 0;
+  const closedNum = Number(form.closed) || 0;
+  const occupiedExceedsTotal = occupiedNum > totalBedsNum;
+  const vacantBeds = computed.vacant;
+  const closedExceedsVacant = closedNum > vacantBeds && !occupiedExceedsTotal;
+  const noVacantBeds = vacantBeds === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
+
+  // Auto-lock Closed to 0 when there are no vacant beds.
+  useEffect(() => {
+    if (noVacantBeds && form.closed !== 0) {
+      setForm((prev) => ({ ...prev, closed: 0 }));
+    }
+  }, [noVacantBeds, form.closed]);
+
   const exportRows = useMemo(
     () =>
       rows.map((row) => ({
