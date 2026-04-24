@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, ChevronDown, ClipboardList, FileCog, LayoutDashboard, LogOut, Menu, Settings2, Table as TableIcon, Users2 } from "lucide-react";
+import { BarChart3, ChevronDown, ClipboardList, FileCog, History, LayoutDashboard, LogOut, Menu, Settings2, Table as TableIcon, Users2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -34,6 +34,7 @@ const topLevelNavItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, settingKey: "dashboard" },
   { to: "/data-entry", label: "Bed Entry", icon: ClipboardList, settingKey: "data_entry" },
   { to: "/data-table", label: "Data Table", icon: TableIcon, settingKey: "data_table" },
+  { to: "/audit-log", label: "Audit Log", icon: History, settingKey: "audit_log", roles: ["admin"] },
   { to: "/users", label: "Users", icon: Users2, settingKey: "users", roles: ["admin"] },
 ];
 
