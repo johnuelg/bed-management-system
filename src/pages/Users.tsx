@@ -52,6 +52,10 @@ const UsersPage = () => {
     queryKey: ["app_settings", "nav_visibility"],
     queryFn: fetchNavVisibilitySettings,
   });
+  const { data: permissionsMap = {} } = useQuery({
+    queryKey: ["user_entry_permissions"],
+    queryFn: fetchAllUserEntryPermissions,
+  });
 
   useEffect(() => {
     if (!roleCatalog.length) return;
@@ -102,6 +106,28 @@ const UsersPage = () => {
     },
     onError: (error) => toast({ title: "Status update failed", description: (error as Error).message, variant: "destructive" }),
   });
+
+  const permissionsMutation = useMutation({
+    mutationFn: (payload: UserEntryPermissions) => {
+      if (!user?.id) throw new Error("You must be signed in.");
+      return saveUserEntryPermissions(roles, payload, user.id);
+    },
+    onSuccess: async () => {
+      toast({ title: "Permissions updated" });
+      await queryClient.invalidateQueries({ queryKey: ["user_entry_permissions"] });
+    },
+    onError: (error) => toast({ title: "Permissions save failed", description: (error as Error).message, variant: "destructive" }),
+  });
+
+  const togglePermission = (userId: string, key: "can_add" | "can_edit" | "can_delete") => {
+    const existing = permissionsMap[userId];
+    const current: UserEntryPermissions = existing
+      ? existing
+      : { user_id: userId, ...DEFAULT_PERMS };
+    const next: UserEntryPermissions = { ...current, [key]: !current[key] };
+    queryClient.setQueryData(["user_entry_permissions"], { ...permissionsMap, [userId]: next });
+    permissionsMutation.mutate(next);
+  };
 
   const settingsMutation = useMutation({
     mutationFn: (settings: NavVisibilitySettings) => {
