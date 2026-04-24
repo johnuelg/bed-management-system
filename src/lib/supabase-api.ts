@@ -808,8 +808,8 @@ export const diffBedSubmission = (
     if (a !== b) diff[key as string] = { from: a, to: b };
   });
   // Custom fields shallow diff
-  const beforeCustom = ((before?.custom_fields ?? {}) as Record<string, unknown>) ?? {};
-  const afterCustom = ((after.custom_fields ?? {}) as Record<string, unknown>) ?? {};
+  const beforeCustom = (before?.custom_fields ?? {}) as Record<string, unknown>;
+  const afterCustom = (after.custom_fields ?? {}) as Record<string, unknown>;
   const allCustomKeys = new Set([...Object.keys(beforeCustom), ...Object.keys(afterCustom)]);
   allCustomKeys.forEach((key) => {
     if (beforeCustom[key] !== afterCustom[key]) {
