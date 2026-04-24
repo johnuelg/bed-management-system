@@ -702,7 +702,13 @@ const DataEntryPage = () => {
 
           <div className="space-y-2">
             <Label>Vacant (auto)</Label>
-            <Input value={computed.vacant} readOnly />
+            <Input
+              value={computed.vacant}
+              readOnly
+              className={cn(
+                computed.vacant === 0 && totalBedsNum > 0 && "border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
+              )}
+            />
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -722,7 +728,7 @@ const DataEntryPage = () => {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row md:col-span-2">
-            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+            <Button onClick={handleSaveClick} disabled={mutation.isPending}>
               Save Entry
             </Button>
             <Button
