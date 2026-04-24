@@ -174,6 +174,43 @@ const DataEntryPage = () => {
     }
   }, [noVacantBeds, form.closed]);
 
+  const findRequiredDateField = () =>
+    dynamicFields.find((field) => field.field_type === "date" && field.is_required);
+
+  const findWaitingPatientsField = () =>
+    dynamicFields.find((field) => {
+      const key = field.field_key.toLowerCase();
+      const label = field.label.toLowerCase();
+      return key.includes("waiting") || label.includes("waiting");
+    });
+
+  const collectMissingFields = () => {
+    const missing: Array<{ key: string; label: string }> = [];
+    const dateField = findRequiredDateField();
+
+    if (dateField) {
+      const raw = String(form.custom_fields[dateField.field_key] ?? "");
+      const [d = "", t = ""] = raw.split("T");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) missing.push({ key: `${dateField.field_key}__date`, label: "Date" });
+      if (!/^\d{2}:\d{2}$/.test(t)) missing.push({ key: `${dateField.field_key}__time`, label: "Time" });
+    }
+
+    if (!form.department_id) missing.push({ key: "department_id", label: "Department" });
+    if (!form.bed_type_id) missing.push({ key: "bed_type_id", label: "Bed Type" });
+    if (!form.total_beds || Number(form.total_beds) <= 0) missing.push({ key: "total_beds", label: "Total Beds" });
+    if (form.occupied === undefined || form.occupied === null || Number.isNaN(Number(form.occupied)))
+      missing.push({ key: "occupied", label: "Occupied" });
+
+    const waitingField = findWaitingPatientsField();
+    if (waitingField) {
+      const value = form.custom_fields[waitingField.field_key];
+      const isEmpty = value === undefined || value === null || String(value).trim() === "";
+      if (isEmpty) missing.push({ key: waitingField.field_key, label: waitingField.label });
+    }
+
+    return missing;
+  };
+
   const exportRows = useMemo(
     () =>
       rows.map((row) => ({
