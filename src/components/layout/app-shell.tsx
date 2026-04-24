@@ -28,6 +28,7 @@ const defaultRoleVisibility: RoleMenuVisibility = {
   categories: false,
   form_builder: false,
   users: false,
+  audit_log: false,
 };
 
 const topLevelNavItems: NavItem[] = [
