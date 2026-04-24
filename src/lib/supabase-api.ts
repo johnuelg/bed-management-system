@@ -702,3 +702,125 @@ export const uploadDocument = async (userId: string, file: File) => {
   if (error) throw error;
   return path;
 };
+
+// ====== User Entry Permissions ======
+
+const DEFAULT_PERMISSIONS = { can_add: true, can_edit: true, can_delete: false };
+
+export const fetchAllUserEntryPermissions = async (): Promise<Record<string, UserEntryPermissions>> => {
+  const { data, error } = await db
+    .from("user_entry_permissions")
+    .select("user_id,can_add,can_edit,can_delete");
+  if (error) throw error;
+  const map: Record<string, UserEntryPermissions> = {};
+  (data ?? []).forEach((row: UserEntryPermissions) => {
+    map[row.user_id] = row;
+  });
+  return map;
+};
+
+export const fetchUserEntryPermissions = async (userId: string): Promise<UserEntryPermissions> => {
+  const { data, error } = await db
+    .from("user_entry_permissions")
+    .select("user_id,can_add,can_edit,can_delete")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return { user_id: userId, ...DEFAULT_PERMISSIONS };
+  return data as UserEntryPermissions;
+};
+
+export const saveUserEntryPermissions = async (
+  roles: AppRole[],
+  payload: UserEntryPermissions,
+  actingUserId: string,
+) => {
+  requireRole(roles, ["admin"], "manage user permissions");
+  const { error } = await db.from("user_entry_permissions").upsert(
+    {
+      user_id: payload.user_id,
+      can_add: payload.can_add,
+      can_edit: payload.can_edit,
+      can_delete: payload.can_delete,
+      updated_at: new Date().toISOString(),
+      updated_by: actingUserId,
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) throw error;
+};
+
+// ====== Audit Logs ======
+
+export const writeAuditLog = async (entry: {
+  action: AuditAction;
+  record_id?: string | null;
+  user_id: string;
+  user_name: string | null;
+  department_name?: string | null;
+  record_date?: string | null;
+  changes?: Record<string, { from?: unknown; to?: unknown }>;
+}) => {
+  const { error } = await db.from("audit_logs").insert({
+    action: entry.action,
+    table_name: "bed_submissions",
+    record_id: entry.record_id ?? null,
+    user_id: entry.user_id,
+    user_name: entry.user_name,
+    department_name: entry.department_name ?? null,
+    record_date: entry.record_date ?? null,
+    changes: entry.changes ?? {},
+  });
+  if (error) throw error;
+};
+
+export const fetchAuditLogs = async (limit = 500): Promise<AuditLogEntry[]> => {
+  const { data, error } = await db
+    .from("audit_logs")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as AuditLogEntry[];
+};
+
+/**
+ * Compute a diff of changed fields between two bed_submission shapes.
+ * Only includes keys whose values differ.
+ */
+export const diffBedSubmission = (
+  before: Partial<BedSubmission> | null,
+  after: Partial<BedSubmission>,
+): Record<string, { from?: unknown; to?: unknown }> => {
+  const trackedKeys: Array<keyof BedSubmission> = [
+    "department_id",
+    "bed_type_id",
+    "total_beds",
+    "occupied",
+    "closed",
+    "closure_reason",
+    "submitted_on",
+  ];
+  const diff: Record<string, { from?: unknown; to?: unknown }> = {};
+  trackedKeys.forEach((key) => {
+    const a = before ? (before as Record<string, unknown>)[key as string] : undefined;
+    const b = (after as Record<string, unknown>)[key as string];
+    if (a !== b) diff[key as string] = { from: a, to: b };
+  });
+  // Custom fields shallow diff
+  const beforeCustom = ((before?.custom_fields ?? {}) as Record<string, unknown>) ?? {};
+  const afterCustom = ((after.custom_fields ?? {}) as Record<string, unknown>) ?? {};
+  const allCustomKeys = new Set([...Object.keys(beforeCustom), ...Object.keys(afterCustom)]);
+  allCustomKeys.forEach((key) => {
+    if (beforeCustom[key] !== afterCustom[key]) {
+      diff[`custom.${key}`] = { from: beforeCustom[key], to: afterCustom[key] };
+    }
+  });
+  return diff;
+};
+
+export const fetchBedSubmissionById = async (id: string): Promise<BedSubmission | null> => {
+  const { data, error } = await db.from("bed_submissions").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return (data as BedSubmission) ?? null;
+};
