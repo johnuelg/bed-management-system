@@ -6,6 +6,8 @@ import { evaluateSafeExpression } from "@/lib/math-eval";
 import { bedSubmissionSchema, formulaSchema } from "@/lib/validation";
 import type {
   AppRole,
+  AuditAction,
+  AuditLogEntry,
   BedSubmission,
   BedType,
   Department,
@@ -17,6 +19,7 @@ import type {
   OccupancyBenchmarkSettings,
   RoleMenuVisibility,
   Profile,
+  UserEntryPermissions,
 } from "@/types/hospital";
 import { isValidStatusIconKey, getDefaultIconForLabel } from "@/lib/status-icons";
 
@@ -33,6 +36,7 @@ const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   form_builder: true,
   users: true,
   data_table: true,
+  audit_log: false,
 };
 const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
   admin: { ...DEFAULT_ROLE_MENU_VISIBILITY },
