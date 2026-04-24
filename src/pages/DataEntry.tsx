@@ -418,7 +418,7 @@ const DataEntryPage = () => {
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
                   <Select value={form.department_id} onValueChange={(value) => setForm((p) => ({ ...p, department_id: value }))}>
-                    <SelectTrigger>
+                    <SelectTrigger ref={setFieldRef("department_id") as never}>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -438,7 +438,7 @@ const DataEntryPage = () => {
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
                   <Select value={form.bed_type_id} onValueChange={(value) => setForm((p) => ({ ...p, bed_type_id: value }))}>
-                    <SelectTrigger>
+                    <SelectTrigger ref={setFieldRef("bed_type_id") as never}>
                       <SelectValue placeholder="Optional" />
                     </SelectTrigger>
                     <SelectContent>
@@ -458,6 +458,7 @@ const DataEntryPage = () => {
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
                   <Input
+                    ref={setFieldRef("total_beds") as never}
                     type="number"
                     min={0}
                     disabled={!canEditAllBedEntryFields}
@@ -472,7 +473,20 @@ const DataEntryPage = () => {
               return (
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
-                  <Input type="number" min={0} value={form.occupied} onChange={(e) => setForm((p) => ({ ...p, occupied: Number(e.target.value) }))} />
+                  <Input
+                    ref={setFieldRef("occupied") as never}
+                    type="number"
+                    min={0}
+                    value={form.occupied}
+                    onChange={(e) => setForm((p) => ({ ...p, occupied: Number(e.target.value) }))}
+                    aria-invalid={occupiedExceedsTotal}
+                    className={cn(occupiedExceedsTotal && "border-destructive focus-visible:ring-destructive")}
+                  />
+                  {occupiedExceedsTotal ? (
+                    <p className="text-sm font-medium text-destructive">
+                      Occupied cannot exceed Total Beds ({totalBedsNum}).
+                    </p>
+                  ) : null}
                 </div>
               );
             }
@@ -481,7 +495,25 @@ const DataEntryPage = () => {
               return (
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
-                  <Input type="number" min={0} value={form.closed} onChange={(e) => setForm((p) => ({ ...p, closed: Number(e.target.value) }))} />
+                  <Input
+                    ref={setFieldRef("closed") as never}
+                    type="number"
+                    min={0}
+                    max={noVacantBeds ? 0 : undefined}
+                    disabled={noVacantBeds}
+                    value={noVacantBeds ? 0 : form.closed}
+                    onChange={(e) => setForm((p) => ({ ...p, closed: Number(e.target.value) }))}
+                    aria-invalid={closedExceedsVacant}
+                    className={cn(closedExceedsVacant && "border-destructive focus-visible:ring-destructive")}
+                  />
+                  {closedExceedsVacant ? (
+                    <p className="text-sm font-medium text-destructive">
+                      Closed cannot exceed Vacant beds ({vacantForClosed}).
+                    </p>
+                  ) : null}
+                  {noVacantBeds ? (
+                    <p className="text-sm text-muted-foreground">No vacant beds — cannot close beds.</p>
+                  ) : null}
                 </div>
               );
             }
