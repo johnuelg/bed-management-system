@@ -872,16 +872,18 @@ const DataEntryPage = () => {
                     </div>
 
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditSubmission(row)}
-                        className="w-full sm:w-auto"
-                      >
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </Button>
+                      {canEdit ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditSubmission(row)}
+                          className="w-full sm:w-auto"
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </Button>
+                      ) : null}
 
                       {canDeleteSubmissions ? (
                         <Button
