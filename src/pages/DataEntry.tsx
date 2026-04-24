@@ -71,11 +71,21 @@ const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((fil
 });
 
 const DataEntryPage = () => {
-  const { roles } = useAuth();
+  const { roles, user, profile } = useAuth();
   const qc = useQueryClient();
   const saudiTodayForCalendar = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate(new Date())), []);
   const canEditAllBedEntryFields = hasAnyRole(roles, ["admin", "staff"]);
-  const canDeleteSubmissions = hasAnyRole(roles, ["admin", "director"]);
+  const isAdmin = hasAnyRole(roles, ["admin"]);
+  const { data: userPerms } = useQuery({
+    queryKey: ["user_entry_permissions", user?.id ?? "anon"],
+    queryFn: () => fetchUserEntryPermissions(user!.id),
+    enabled: Boolean(user?.id),
+  });
+  // Admin always has full permissions; otherwise use stored row (defaults: add+edit on, delete off)
+  const canAdd = isAdmin || userPerms?.can_add !== false;
+  const canEdit = isAdmin || userPerms?.can_edit !== false;
+  const canDelete = isAdmin || userPerms?.can_delete === true;
+  const canDeleteSubmissions = canDelete;
   const initialForm = {
     id: "",
     department_id: "",
