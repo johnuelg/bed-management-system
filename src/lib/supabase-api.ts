@@ -36,7 +36,7 @@ const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   form_builder: true,
   users: true,
   data_table: true,
-  audit_log: false,
+  audit_log: true,
 };
 const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
   admin: { ...DEFAULT_ROLE_MENU_VISIBILITY },
