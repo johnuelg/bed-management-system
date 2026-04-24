@@ -44,14 +44,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { calendarDateToIsoDate, formatSaudiDateTime, getSaudiIsoDate, isoDateToCalendarDate } from "@/lib/date-time";
 import {
   deleteBedSubmission,
+  diffBedSubmission,
+  fetchBedSubmissionById,
   fetchBedTypes,
   fetchDepartments,
   fetchFormFields,
   fetchKpiFormulas,
   fetchTodaySubmissions,
+  fetchUserEntryPermissions,
   getCurrentUserId,
   saveBedSubmission,
   uploadDocument,
+  writeAuditLog,
 } from "@/lib/supabase-api";
 import { MAX_UPLOAD_SIZE } from "@/lib/file-upload";
 import { hasAnyRole } from "@/lib/rbac";
