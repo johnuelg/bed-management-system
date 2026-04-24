@@ -86,6 +86,11 @@ const DataEntryPage = () => {
   const [form, setForm] = useState(initialForm);
   const [submissionView, setSubmissionView] = useState<"card" | "table">("card");
   const [submissionToDelete, setSubmissionToDelete] = useState<{ id: string; departmentName: string } | null>(null);
+  const [missingFields, setMissingFields] = useState<Array<{ key: string; label: string }>>([]);
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+  const setFieldRef = (key: string) => (el: HTMLElement | null) => {
+    fieldRefs.current[key] = el;
+  };
   const resetForm = () => setForm(initialForm);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
