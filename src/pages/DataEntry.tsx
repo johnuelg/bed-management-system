@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon, Download, FileSpreadsheet, LayoutGrid, Pencil, Table2 } from "lucide-react";
+import { AlertTriangle, CalendarIcon, Download, FileSpreadsheet, LayoutGrid, Pencil, Table2 } from "lucide-react";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { calendarDateToIsoDate, formatSaudiDateTime, getSaudiIsoDate, isoDateToCalendarDate } from "@/lib/date-time";
@@ -78,6 +86,11 @@ const DataEntryPage = () => {
   const [form, setForm] = useState(initialForm);
   const [submissionView, setSubmissionView] = useState<"card" | "table">("card");
   const [submissionToDelete, setSubmissionToDelete] = useState<{ id: string; departmentName: string } | null>(null);
+  const [missingFields, setMissingFields] = useState<Array<{ key: string; label: string }>>([]);
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+  const setFieldRef = (key: string) => (el: HTMLElement | null) => {
+    fieldRefs.current[key] = el;
+  };
   const resetForm = () => setForm(initialForm);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
@@ -144,6 +157,59 @@ const DataEntryPage = () => {
     const occupancyRate = evaluateOccupancyRate(kpiFormulas, scope);
     return { vacant, occupancyRate };
   }, [form.total_beds, form.occupied, form.closed, form.custom_fields, kpiFormulas]);
+
+  const totalBedsNum = Number(form.total_beds) || 0;
+  const occupiedNum = Number(form.occupied) || 0;
+  const closedNum = Number(form.closed) || 0;
+  const occupiedExceedsTotal = occupiedNum > totalBedsNum;
+  // Per business rule: Vacant for Closed validation = Total Beds − Occupied
+  const vacantForClosed = Math.max(0, totalBedsNum - occupiedNum);
+  const closedExceedsVacant = closedNum > vacantForClosed && !occupiedExceedsTotal;
+  const noVacantBeds = vacantForClosed === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
+
+  // Auto-lock Closed to 0 when there are no vacant beds.
+  useEffect(() => {
+    if (noVacantBeds && form.closed !== 0) {
+      setForm((prev) => ({ ...prev, closed: 0 }));
+    }
+  }, [noVacantBeds, form.closed]);
+
+  const findRequiredDateField = () =>
+    dynamicFields.find((field) => field.field_type === "date" && field.is_required);
+
+  const findWaitingPatientsField = () =>
+    dynamicFields.find((field) => {
+      const key = field.field_key.toLowerCase();
+      const label = field.label.toLowerCase();
+      return key.includes("waiting") || label.includes("waiting");
+    });
+
+  const collectMissingFields = () => {
+    const missing: Array<{ key: string; label: string }> = [];
+    const dateField = findRequiredDateField();
+
+    if (dateField) {
+      const raw = String(form.custom_fields[dateField.field_key] ?? "");
+      const [d = "", t = ""] = raw.split("T");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) missing.push({ key: `${dateField.field_key}__date`, label: "Date" });
+      if (!/^\d{2}:\d{2}$/.test(t)) missing.push({ key: `${dateField.field_key}__time`, label: "Time" });
+    }
+
+    if (!form.department_id) missing.push({ key: "department_id", label: "Department" });
+    if (!form.bed_type_id) missing.push({ key: "bed_type_id", label: "Bed Type" });
+    if (!form.total_beds || Number(form.total_beds) <= 0) missing.push({ key: "total_beds", label: "Total Beds" });
+    if (form.occupied === undefined || form.occupied === null || Number.isNaN(Number(form.occupied)))
+      missing.push({ key: "occupied", label: "Occupied" });
+
+    const waitingField = findWaitingPatientsField();
+    if (waitingField) {
+      const value = form.custom_fields[waitingField.field_key];
+      const isEmpty = value === undefined || value === null || String(value).trim() === "";
+      if (isEmpty) missing.push({ key: waitingField.field_key, label: waitingField.label });
+    }
+
+    return missing;
+  };
 
   const exportRows = useMemo(
     () =>
@@ -295,6 +361,43 @@ const DataEntryPage = () => {
     }
   };
 
+  const focusFieldByKey = (key: string) => {
+    const el = fieldRefs.current[key];
+    if (el && typeof (el as HTMLElement).focus === "function") {
+      (el as HTMLElement).focus();
+      if (typeof (el as HTMLElement).scrollIntoView === "function") {
+        (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  };
+
+  const handleSaveClick = () => {
+    const missing = collectMissingFields();
+    if (missing.length > 0) {
+      setMissingFields(missing);
+      return;
+    }
+    if (occupiedExceedsTotal) {
+      focusFieldByKey("occupied");
+      return;
+    }
+    if (closedExceedsVacant) {
+      focusFieldByKey("closed");
+      return;
+    }
+    mutation.mutate();
+  };
+
+  const handleFixMissing = () => {
+    const first = missingFields[0];
+    setMissingFields([]);
+    if (first) {
+      // map combined date keys back to base key
+      const baseKey = first.key.replace(/__(date|time)$/, "");
+      setTimeout(() => focusFieldByKey(baseKey), 50);
+    }
+  };
+
   return (
     <section className="space-y-5 sm:space-y-6">
       <header>
@@ -315,7 +418,7 @@ const DataEntryPage = () => {
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
                   <Select value={form.department_id} onValueChange={(value) => setForm((p) => ({ ...p, department_id: value }))}>
-                    <SelectTrigger>
+                    <SelectTrigger ref={setFieldRef("department_id") as never}>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -335,7 +438,7 @@ const DataEntryPage = () => {
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
                   <Select value={form.bed_type_id} onValueChange={(value) => setForm((p) => ({ ...p, bed_type_id: value }))}>
-                    <SelectTrigger>
+                    <SelectTrigger ref={setFieldRef("bed_type_id") as never}>
                       <SelectValue placeholder="Optional" />
                     </SelectTrigger>
                     <SelectContent>
@@ -355,6 +458,7 @@ const DataEntryPage = () => {
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
                   <Input
+                    ref={setFieldRef("total_beds") as never}
                     type="number"
                     min={0}
                     disabled={!canEditAllBedEntryFields}
@@ -369,7 +473,20 @@ const DataEntryPage = () => {
               return (
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
-                  <Input type="number" min={0} value={form.occupied} onChange={(e) => setForm((p) => ({ ...p, occupied: Number(e.target.value) }))} />
+                  <Input
+                    ref={setFieldRef("occupied") as never}
+                    type="number"
+                    min={0}
+                    value={form.occupied}
+                    onChange={(e) => setForm((p) => ({ ...p, occupied: Number(e.target.value) }))}
+                    aria-invalid={occupiedExceedsTotal}
+                    className={cn(occupiedExceedsTotal && "border-destructive focus-visible:ring-destructive")}
+                  />
+                  {occupiedExceedsTotal ? (
+                    <p className="text-sm font-medium text-destructive">
+                      Occupied cannot exceed Total Beds ({totalBedsNum}).
+                    </p>
+                  ) : null}
                 </div>
               );
             }
@@ -378,7 +495,25 @@ const DataEntryPage = () => {
               return (
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
-                  <Input type="number" min={0} value={form.closed} onChange={(e) => setForm((p) => ({ ...p, closed: Number(e.target.value) }))} />
+                  <Input
+                    ref={setFieldRef("closed") as never}
+                    type="number"
+                    min={0}
+                    max={noVacantBeds ? 0 : undefined}
+                    disabled={noVacantBeds}
+                    value={noVacantBeds ? 0 : form.closed}
+                    onChange={(e) => setForm((p) => ({ ...p, closed: Number(e.target.value) }))}
+                    aria-invalid={closedExceedsVacant}
+                    className={cn(closedExceedsVacant && "border-destructive focus-visible:ring-destructive")}
+                  />
+                  {closedExceedsVacant ? (
+                    <p className="text-sm font-medium text-destructive">
+                      Closed cannot exceed Vacant beds ({vacantForClosed}).
+                    </p>
+                  ) : null}
+                  {noVacantBeds ? (
+                    <p className="text-sm text-muted-foreground">No vacant beds — cannot close beds.</p>
+                  ) : null}
                 </div>
               );
             }
@@ -485,6 +620,7 @@ const DataEntryPage = () => {
                       <PopoverTrigger asChild>
                         <Button
                           type="button"
+                          ref={setFieldRef(field.field_key) as never}
                           variant="outline"
                           disabled={!editable}
                           className={cn(
@@ -519,6 +655,7 @@ const DataEntryPage = () => {
                     </Popover>
 
                     <Input
+                      ref={setFieldRef(`${field.field_key}__time`) as never}
                       type="time"
                       step={60}
                       disabled={!editable}
@@ -545,6 +682,7 @@ const DataEntryPage = () => {
               <div key={field.id} className="space-y-2 md:col-span-2">
                 <Label>{field.label}{field.is_required ? " *" : ""}</Label>
                 <Input
+                  ref={setFieldRef(field.field_key) as never}
                   type={inputType}
                   disabled={!editable}
                   value={inputType === "number" ? Number(currentValue || 0) : String(currentValue)}
@@ -564,7 +702,13 @@ const DataEntryPage = () => {
 
           <div className="space-y-2">
             <Label>Vacant (auto)</Label>
-            <Input value={computed.vacant} readOnly />
+            <Input
+              value={computed.vacant}
+              readOnly
+              className={cn(
+                computed.vacant === 0 && totalBedsNum > 0 && "border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
+              )}
+            />
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -584,7 +728,7 @@ const DataEntryPage = () => {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row md:col-span-2">
-            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+            <Button onClick={handleSaveClick} disabled={mutation.isPending}>
               Save Entry
             </Button>
             <Button
@@ -783,6 +927,35 @@ const DataEntryPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={missingFields.length > 0}
+        onOpenChange={(open) => {
+          if (!open) setMissingFields([]);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" aria-hidden />
+              Please complete the following fields
+            </DialogTitle>
+            <DialogDescription>
+              These fields are required before you can save this entry.
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="list-disc space-y-1 pl-6 text-sm">
+            {missingFields.map((f) => (
+              <li key={f.key} className="font-medium">
+                {f.label}
+              </li>
+            ))}
+          </ul>
+          <DialogFooter>
+            <Button onClick={handleFixMissing}>Go Back &amp; Fix</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };
