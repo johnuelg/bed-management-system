@@ -682,6 +682,7 @@ const DataEntryPage = () => {
               <div key={field.id} className="space-y-2 md:col-span-2">
                 <Label>{field.label}{field.is_required ? " *" : ""}</Label>
                 <Input
+                  ref={setFieldRef(field.field_key) as never}
                   type={inputType}
                   disabled={!editable}
                   value={inputType === "number" ? Number(currentValue || 0) : String(currentValue)}
