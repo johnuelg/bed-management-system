@@ -935,10 +935,12 @@ const DataEntryPage = () => {
                             <TableCell className="text-right">{row.closed}</TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-2">
-                                <Button type="button" size="sm" variant="outline" onClick={() => handleEditSubmission(row)}>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Edit
-                                </Button>
+                                {canEdit ? (
+                                  <Button type="button" size="sm" variant="outline" onClick={() => handleEditSubmission(row)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit
+                                  </Button>
+                                ) : null}
                                 {canDeleteSubmissions ? (
                                   <Button
                                     size="sm"
