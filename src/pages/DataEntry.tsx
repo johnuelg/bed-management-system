@@ -44,14 +44,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { calendarDateToIsoDate, formatSaudiDateTime, getSaudiIsoDate, isoDateToCalendarDate } from "@/lib/date-time";
 import {
   deleteBedSubmission,
+  diffBedSubmission,
+  fetchBedSubmissionById,
   fetchBedTypes,
   fetchDepartments,
   fetchFormFields,
   fetchKpiFormulas,
   fetchTodaySubmissions,
+  fetchUserEntryPermissions,
   getCurrentUserId,
   saveBedSubmission,
   uploadDocument,
+  writeAuditLog,
 } from "@/lib/supabase-api";
 import { MAX_UPLOAD_SIZE } from "@/lib/file-upload";
 import { hasAnyRole } from "@/lib/rbac";
@@ -67,11 +71,21 @@ const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((fil
 });
 
 const DataEntryPage = () => {
-  const { roles } = useAuth();
+  const { roles, user, profile } = useAuth();
   const qc = useQueryClient();
   const saudiTodayForCalendar = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate(new Date())), []);
   const canEditAllBedEntryFields = hasAnyRole(roles, ["admin", "staff"]);
-  const canDeleteSubmissions = hasAnyRole(roles, ["admin", "director"]);
+  const isAdmin = hasAnyRole(roles, ["admin"]);
+  const { data: userPerms } = useQuery({
+    queryKey: ["user_entry_permissions", user?.id ?? "anon"],
+    queryFn: () => fetchUserEntryPermissions(user!.id),
+    enabled: Boolean(user?.id),
+  });
+  // Admin always has full permissions; otherwise use stored row (defaults: add+edit on, delete off)
+  const canAdd = isAdmin || userPerms?.can_add !== false;
+  const canEdit = isAdmin || userPerms?.can_edit !== false;
+  const canDelete = isAdmin || userPerms?.can_delete === true;
+  const canDeleteSubmissions = canDelete;
   const initialForm = {
     id: "",
     department_id: "",
@@ -308,20 +322,48 @@ const DataEntryPage = () => {
 
         const submittedOn = getSaudiIsoDate(new Date());
 
-        return saveBedSubmission(roles, {
-        id: form.id || undefined,
-        department_id: form.department_id,
-        bed_type_id: form.bed_type_id || null,
-        total_beds: canEditAllBedEntryFields ? Number(form.total_beds) : 0,
-        occupied: Number(form.occupied),
-        closed: Number(form.closed),
-        closure_reason: form.closed > 0 ? form.closure_reason.trim() : null,
+        const isEdit = Boolean(form.id);
+        const recordId = form.id || (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : undefined);
+
+        // Capture before-state for audit (only on edit)
+        const beforeRow = isEdit ? await fetchBedSubmissionById(form.id) : null;
+
+        const payload = {
+          id: recordId,
+          department_id: form.department_id,
+          bed_type_id: form.bed_type_id || null,
+          total_beds: canEditAllBedEntryFields ? Number(form.total_beds) : 0,
+          occupied: Number(form.occupied),
+          closed: Number(form.closed),
+          closure_reason: form.closed > 0 ? form.closure_reason.trim() : null,
           submitted_on: submittedOn,
-        custom_fields: form.custom_fields,
-        calculated_fields: { vacant: computed.vacant, occupancy_rate: computed.occupancyRate },
-        submitted_by: currentUserId,
-        updated_by: currentUserId,
-      });
+          custom_fields: form.custom_fields,
+          calculated_fields: { vacant: computed.vacant, occupancy_rate: computed.occupancyRate },
+          submitted_by: currentUserId,
+          updated_by: currentUserId,
+        } as const;
+
+        await saveBedSubmission(roles, payload);
+
+        // Write audit log (best-effort; do not fail the save if it errors)
+        try {
+          const action = isEdit ? "EDIT" : "ADD";
+          const departmentName = departmentNameById[payload.department_id] ?? null;
+          const changes = isEdit
+            ? diffBedSubmission(beforeRow, payload)
+            : diffBedSubmission(null, payload);
+          await writeAuditLog({
+            action,
+            record_id: recordId ?? null,
+            user_id: currentUserId,
+            user_name: profile?.display_name ?? user?.email ?? null,
+            department_name: departmentName,
+            record_date: submittedOn,
+            changes: isEdit ? changes : {},
+          });
+        } catch (logError) {
+          console.warn("Audit log failed", logError);
+        }
     },
     onSuccess: async () => {
       toast({ title: "Submission saved" });
@@ -332,7 +374,26 @@ const DataEntryPage = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteBedSubmission(roles, id),
+    mutationFn: async (id: string) => {
+      const beforeRow = await fetchBedSubmissionById(id);
+      await deleteBedSubmission(roles, id);
+      try {
+        const currentUserId = await getCurrentUserId();
+        if (currentUserId) {
+          await writeAuditLog({
+            action: "DELETE",
+            record_id: id,
+            user_id: currentUserId,
+            user_name: profile?.display_name ?? user?.email ?? null,
+            department_name: beforeRow ? (departmentNameById[beforeRow.department_id] ?? null) : null,
+            record_date: beforeRow?.submitted_on ?? null,
+            changes: {},
+          });
+        }
+      } catch (logError) {
+        console.warn("Audit log failed", logError);
+      }
+    },
     onSuccess: async () => {
       toast({ title: "Submission deleted" });
       await qc.invalidateQueries({ queryKey: ["bed_submissions_today"] });
@@ -728,9 +789,15 @@ const DataEntryPage = () => {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row md:col-span-2">
-            <Button onClick={handleSaveClick} disabled={mutation.isPending}>
-              Save Entry
-            </Button>
+            {(form.id ? canEdit : canAdd) ? (
+              <Button onClick={handleSaveClick} disabled={mutation.isPending}>
+                {form.id ? "Save Changes" : "Add New Entry"}
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                You don't have permission to {form.id ? "edit" : "add"} bed entries.
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -805,16 +872,18 @@ const DataEntryPage = () => {
                     </div>
 
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditSubmission(row)}
-                        className="w-full sm:w-auto"
-                      >
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </Button>
+                      {canEdit ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditSubmission(row)}
+                          className="w-full sm:w-auto"
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </Button>
+                      ) : null}
 
                       {canDeleteSubmissions ? (
                         <Button
@@ -866,10 +935,12 @@ const DataEntryPage = () => {
                             <TableCell className="text-right">{row.closed}</TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-2">
-                                <Button type="button" size="sm" variant="outline" onClick={() => handleEditSubmission(row)}>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Edit
-                                </Button>
+                                {canEdit ? (
+                                  <Button type="button" size="sm" variant="outline" onClick={() => handleEditSubmission(row)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit
+                                  </Button>
+                                ) : null}
                                 {canDeleteSubmissions ? (
                                   <Button
                                     size="sm"

@@ -84,6 +84,7 @@ export type RoleMenuVisibility = {
   form_builder: boolean;
   users: boolean;
   data_table?: boolean;
+  audit_log?: boolean;
 };
 
 export type ClinicalRole = "doctor" | "nurse" | "staff";
@@ -106,4 +107,26 @@ export type OccupancyBenchmarkLevel = {
 
 export type OccupancyBenchmarkSettings = {
   levels: OccupancyBenchmarkLevel[];
+};
+
+export type UserEntryPermissions = {
+  user_id: string;
+  can_add: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+};
+
+export type AuditAction = "ADD" | "EDIT" | "DELETE";
+
+export type AuditLogEntry = {
+  id: string;
+  action: AuditAction;
+  table_name: string;
+  record_id: string | null;
+  user_id: string | null;
+  user_name: string | null;
+  department_name: string | null;
+  record_date: string | null;
+  changes: Record<string, { from?: unknown; to?: unknown }>;
+  created_at: string;
 };

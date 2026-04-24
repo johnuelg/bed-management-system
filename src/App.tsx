@@ -18,6 +18,7 @@ import FormBuilderPage from "./pages/FormBuilder";
 import KpiBuilderPage from "./pages/KpiBuilder";
 import UsersPage from "./pages/Users";
 import SettingsPage from "./pages/Settings";
+import AuditLogPage from "./pages/AuditLog";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
                     <Route path="/users" element={<UsersPage />} />
                   </Route>
                   <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/audit-log" element={<AuditLogPage />} />
                   <Route element={<NavVisibilityGuard settingKey="categories" />}>
                     <Route path="/categories" element={<CategoriesPage />} />
                   </Route>
