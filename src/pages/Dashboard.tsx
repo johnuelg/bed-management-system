@@ -613,87 +613,113 @@ const DashboardPage = () => {
       </div>
 
       <Card className="hospital-glass">
-        <CardHeader>
-          <CardTitle>Department Status</CardTitle>
+        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <CardTitle>
+              {departmentView === "cards" ? "Department Status" : "Department Occupancy"}
+            </CardTitle>
+            <span className="inline-flex items-center rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700">
+              {departmentStatusCards.length} Active {departmentStatusCards.length === 1 ? "Department" : "Departments"}
+            </span>
+          </div>
+          <div className="inline-flex items-center rounded-md border bg-muted p-1">
+            <button
+              type="button"
+              onClick={() => setDepartmentView("cards")}
+              className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
+                departmentView === "cards"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              aria-pressed={departmentView === "cards"}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Cards
+            </button>
+            <button
+              type="button"
+              onClick={() => setDepartmentView("table")}
+              className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
+                departmentView === "table"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              aria-pressed={departmentView === "table"}
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              Table
+            </button>
+          </div>
         </CardHeader>
         <CardContent>
-          {departmentStatusCards.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No department entries found for the selected filters.
-            </p>
+          {departmentView === "cards" ? (
+            departmentStatusCards.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No department entries found for the selected filters.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                {departmentStatusCards.map((dept) => {
+                  const clamped = Math.max(0, Math.min(100, dept.rate));
+                  return (
+                    <div
+                      key={dept.id}
+                      className="rounded-xl border bg-card p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-sm font-bold text-foreground sm:text-base">
+                          {dept.name}
+                        </h3>
+                        <StatusBadge level={dept.benchmark} size="sm" />
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                        <div>
+                          <p className="text-xl font-bold text-foreground sm:text-2xl">
+                            {dept.total}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">Total</p>
+                        </div>
+                        <div>
+                          <p className="text-xl font-bold sm:text-2xl" style={{ color: "#b91c1c" }}>
+                            {dept.occupied}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">Occupied</p>
+                        </div>
+                        <div>
+                          <p className="text-xl font-bold sm:text-2xl" style={{ color: "#16a34a" }}>
+                            {dept.vacant}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">Vacant</p>
+                        </div>
+                        <div>
+                          <p className="text-xl font-bold text-muted-foreground sm:text-2xl">
+                            {dept.closed}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">Closed</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${clamped}%`,
+                            backgroundColor: dept.benchmark?.color ?? "#b91c1c",
+                          }}
+                        />
+                      </div>
+
+                      <p className="mt-2 text-right text-xs text-muted-foreground">
+                        {dept.rate.toFixed(0)}% occupied
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-              {departmentStatusCards.map((dept) => {
-                const clamped = Math.max(0, Math.min(100, dept.rate));
-                return (
-                  <div
-                    key={dept.id}
-                    className="rounded-xl border bg-card p-4 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-sm font-bold text-foreground sm:text-base">
-                        {dept.name}
-                      </h3>
-                      <StatusBadge level={dept.benchmark} size="sm" />
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-                      <div>
-                        <p className="text-xl font-bold text-foreground sm:text-2xl">
-                          {dept.total}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">Total</p>
-                      </div>
-                      <div>
-                        <p className="text-xl font-bold sm:text-2xl" style={{ color: "#b91c1c" }}>
-                          {dept.occupied}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">Occupied</p>
-                      </div>
-                      <div>
-                        <p className="text-xl font-bold sm:text-2xl" style={{ color: "#16a34a" }}>
-                          {dept.vacant}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">Vacant</p>
-                      </div>
-                      <div>
-                        <p className="text-xl font-bold text-muted-foreground sm:text-2xl">
-                          {dept.closed}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">Closed</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${clamped}%`,
-                          backgroundColor: dept.benchmark?.color ?? "#b91c1c",
-                        }}
-                      />
-                    </div>
-
-                    <p className="mt-2 text-right text-xs text-muted-foreground">
-                      {dept.rate.toFixed(0)}% occupied
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="hospital-glass">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>Department Occupancy</CardTitle>
-          <span className="inline-flex items-center rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700">
-            {departmentStatusCards.length} Active {departmentStatusCards.length === 1 ? "Department" : "Departments"}
-          </span>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-lg border bg-card">
+            <div className="rounded-lg border bg-card">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -767,7 +793,8 @@ const DashboardPage = () => {
                 )}
               </TableBody>
             </Table>
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </section>
