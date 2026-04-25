@@ -667,7 +667,7 @@ const DashboardPage = () => {
                         className="h-full rounded-full transition-all"
                         style={{
                           width: `${clamped}%`,
-                          backgroundColor: "#b91c1c",
+                          backgroundColor: dept.benchmark?.color ?? "#b91c1c",
                         }}
                       />
                     </div>
