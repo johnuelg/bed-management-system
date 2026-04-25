@@ -282,6 +282,47 @@ const DashboardPage = () => {
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
+  const departmentStatusCards = useMemo(() => {
+    const latestByDept = new Map<
+      string,
+      { row: (typeof filteredRows)[number]; date: string; time: string }
+    >();
+
+    for (const row of filteredRows) {
+      const dt = extractUserInputDateTime(row);
+      if (!dt) continue;
+      const key = row.department_id;
+      if (!key) continue;
+      const existing = latestByDept.get(key);
+      if (!existing || `${dt.date}T${dt.time}` > `${existing.date}T${existing.time}`) {
+        latestByDept.set(key, { row, date: dt.date, time: dt.time });
+      }
+    }
+
+    return Array.from(latestByDept.entries())
+      .map(([deptId, entry]) => {
+        const department = departments.find((d) => d.id === deptId);
+        const total = Number(entry.row.total_beds) || 0;
+        const occupied = Number(entry.row.occupied) || 0;
+        const closed = Number(entry.row.closed) || 0;
+        const vacant = Math.max(total - occupied - closed, 0);
+        const scope = buildRowScope(entry.row);
+        const rate = evaluateOccupancyRate(kpiFormulas, scope);
+        const benchmark = getOccupancyBenchmark(rate);
+        return {
+          id: deptId,
+          name: department?.name ?? "Unknown department",
+          total,
+          occupied,
+          vacant,
+          closed,
+          rate,
+          benchmark,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [filteredRows, departments, kpiFormulas, benchmarkLevels]);
+
   const isFiltersDefault =
     calendarDateToIsoDate(rangeStart) === calendarDateToIsoDate(today) &&
     calendarDateToIsoDate(rangeEnd) === calendarDateToIsoDate(today) &&
@@ -568,6 +609,79 @@ const DashboardPage = () => {
           </motion.div>
         ))}
       </div>
+
+      <Card className="hospital-glass">
+        <CardHeader>
+          <CardTitle>Department Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {departmentStatusCards.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No department entries found for the selected filters.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+              {departmentStatusCards.map((dept) => {
+                const clamped = Math.max(0, Math.min(100, dept.rate));
+                return (
+                  <div
+                    key={dept.id}
+                    className="rounded-xl border bg-card p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-bold text-foreground sm:text-base">
+                        {dept.name}
+                      </h3>
+                      <StatusBadge level={dept.benchmark} size="sm" />
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                      <div>
+                        <p className="text-xl font-bold text-foreground sm:text-2xl">
+                          {dept.total}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">Total</p>
+                      </div>
+                      <div>
+                        <p className="text-xl font-bold sm:text-2xl" style={{ color: "#b91c1c" }}>
+                          {dept.occupied}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">Occupied</p>
+                      </div>
+                      <div>
+                        <p className="text-xl font-bold sm:text-2xl" style={{ color: "#16a34a" }}>
+                          {dept.vacant}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">Vacant</p>
+                      </div>
+                      <div>
+                        <p className="text-xl font-bold text-muted-foreground sm:text-2xl">
+                          {dept.closed}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">Closed</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${clamped}%`,
+                          backgroundColor: "#b91c1c",
+                        }}
+                      />
+                    </div>
+
+                    <p className="mt-2 text-right text-xs text-muted-foreground">
+                      {dept.rate.toFixed(0)}% occupied
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="hospital-glass">
         <CardHeader>
