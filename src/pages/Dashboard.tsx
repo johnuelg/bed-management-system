@@ -684,88 +684,82 @@ const DashboardPage = () => {
       </Card>
 
       <Card className="hospital-glass">
-        <CardHeader>
-          <CardTitle>All Entered Data</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>Department Occupancy</CardTitle>
+          <span className="inline-flex items-center rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700">
+            {departmentStatusCards.length} Active {departmentStatusCards.length === 1 ? "Department" : "Departments"}
+          </span>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border bg-card">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Exact Date</TableHead>
-                  <TableHead>Exact Time</TableHead>
-                  <TableHead className="text-right">Total Beds</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Occupied</TableHead>
-                  <TableHead className="text-right">Closed</TableHead>
                   <TableHead className="text-right">Vacant</TableHead>
-                  <TableHead className="text-right">Waiting Patients</TableHead>
-                  <TableHead>Reason for Closure</TableHead>
-                  <TableHead className="text-right">Occupancy Rate</TableHead>
+                  <TableHead>Occupancy</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRows.length === 0 ? (
+                {departmentStatusCards.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
                       No entries found for the selected date/time filters.
                     </TableCell>
                   </TableRow>
                 ) : (
                   <>
-                    {filteredRows.map((row) => {
-                      const userDateTime = extractUserInputDateTime(row);
-                      const customFields = (row.custom_fields as Record<string, unknown>) ?? {};
-                      const waitingDirect = customFields.waiting_patients ?? customFields.waitingPatients;
-                      const waitingDetected = Object.entries(customFields).find(([key]) =>
-                        key.toLowerCase().includes("waiting") && key.toLowerCase().includes("patient"),
-                      )?.[1];
-
-                      const waitingValue =
-                        typeof waitingDirect === "number"
-                          ? waitingDirect
-                          : typeof waitingDirect === "string"
-                            ? Number(waitingDirect) || 0
-                            : typeof waitingDetected === "number"
-                              ? waitingDetected
-                              : typeof waitingDetected === "string"
-                                ? Number(waitingDetected) || 0
-                                : 0;
-
-                      const vacant = Math.max((Number(row.total_beds) || 0) - (Number(row.occupied) || 0) - (Number(row.closed) || 0), 0);
-                      const rowScope = buildRowScope(row);
-                      const rowOccupancy = evaluateOccupancyRate(kpiFormulas, rowScope);
-                      const rowBenchmark = getOccupancyBenchmark(rowOccupancy);
-
+                    {departmentStatusCards.map((dept) => {
+                      const clamped = Math.min(Math.max(dept.rate, 0), 100);
+                      const barColor = dept.benchmark?.color ?? "#b91c1c";
                       return (
-                        <TableRow key={row.id}>
-                          <TableCell>{userDateTime?.date ?? "-"}</TableCell>
-                          <TableCell>{userDateTime?.time ?? "-"}</TableCell>
-                          <TableCell className="text-right font-medium">{row.total_beds}</TableCell>
-                          <TableCell className="text-right">{row.occupied}</TableCell>
-                          <TableCell className="text-right">{row.closed}</TableCell>
-                          <TableCell className="text-right">{vacant}</TableCell>
-                          <TableCell className="text-right">{waitingValue}</TableCell>
-                          <TableCell>{row.closure_reason || "-"}</TableCell>
-                          <TableCell className="text-right" style={{ color: rowBenchmark?.color }}>{rowOccupancy.toFixed(1)}%</TableCell>
-                          <TableCell>{renderStatusBadge(rowBenchmark)}</TableCell>
+                        <TableRow key={dept.id}>
+                          <TableCell className="font-semibold">{dept.name}</TableCell>
+                          <TableCell className="text-right font-medium">{dept.total}</TableCell>
+                          <TableCell className="text-right" style={{ color: "#b91c1c" }}>{dept.occupied}</TableCell>
+                          <TableCell className="text-right" style={{ color: "#16a34a" }}>{dept.vacant}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2 min-w-[160px]">
+                              <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{ width: `${clamped}%`, backgroundColor: barColor }}
+                                />
+                              </div>
+                              <span className="text-sm font-semibold tabular-nums" style={{ color: barColor }}>
+                                {dept.rate.toFixed(1)}%
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{renderStatusBadge(dept.benchmark)}</TableCell>
                         </TableRow>
                       );
                     })}
                     <TableRow className="bg-muted/30">
-                      <TableCell colSpan={2} className="font-semibold">Total</TableCell>
+                      <TableCell className="font-semibold">Total</TableCell>
                       <TableCell className="text-right font-semibold">{sums.total_beds}</TableCell>
-                      <TableCell className="text-right font-semibold">{sums.occupied}</TableCell>
-                      <TableCell className="text-right font-semibold">{sums.closed}</TableCell>
-                      <TableCell className="text-right font-semibold">{sums.vacant}</TableCell>
-                      <TableCell className="text-right font-semibold">{waitingPatients}</TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell className="text-right font-semibold" style={{ color: occupancyBenchmarkMatch.color }}>
-                        {occupancyRate.toFixed(1)}%
-                      </TableCell>
+                      <TableCell className="text-right font-semibold" style={{ color: "#b91c1c" }}>{sums.occupied}</TableCell>
+                      <TableCell className="text-right font-semibold" style={{ color: "#16a34a" }}>{sums.vacant}</TableCell>
                       <TableCell>
-                        {renderStatusBadge(occupancyBenchmarkMatch)}
+                        <div className="flex items-center gap-2 min-w-[160px]">
+                          <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${Math.min(Math.max(occupancyRate, 0), 100)}%`,
+                                backgroundColor: occupancyBenchmarkMatch.color,
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-semibold tabular-nums" style={{ color: occupancyBenchmarkMatch.color }}>
+                            {occupancyRate.toFixed(1)}%
+                          </span>
+                        </div>
                       </TableCell>
+                      <TableCell>{renderStatusBadge(occupancyBenchmarkMatch)}</TableCell>
                     </TableRow>
                   </>
                 )}
