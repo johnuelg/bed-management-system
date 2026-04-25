@@ -282,6 +282,47 @@ const DashboardPage = () => {
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
+  const departmentStatusCards = useMemo(() => {
+    const latestByDept = new Map<
+      string,
+      { row: (typeof filteredRows)[number]; date: string; time: string }
+    >();
+
+    for (const row of filteredRows) {
+      const dt = extractUserInputDateTime(row);
+      if (!dt) continue;
+      const key = row.department_id;
+      if (!key) continue;
+      const existing = latestByDept.get(key);
+      if (!existing || `${dt.date}T${dt.time}` > `${existing.date}T${existing.time}`) {
+        latestByDept.set(key, { row, date: dt.date, time: dt.time });
+      }
+    }
+
+    return Array.from(latestByDept.entries())
+      .map(([deptId, entry]) => {
+        const department = departments.find((d) => d.id === deptId);
+        const total = Number(entry.row.total_beds) || 0;
+        const occupied = Number(entry.row.occupied) || 0;
+        const closed = Number(entry.row.closed) || 0;
+        const vacant = Math.max(total - occupied - closed, 0);
+        const scope = buildRowScope(entry.row);
+        const rate = evaluateOccupancyRate(kpiFormulas, scope);
+        const benchmark = getOccupancyBenchmark(rate);
+        return {
+          id: deptId,
+          name: department?.name ?? "Unknown department",
+          total,
+          occupied,
+          vacant,
+          closed,
+          rate,
+          benchmark,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [filteredRows, departments, kpiFormulas, benchmarkLevels]);
+
   const isFiltersDefault =
     calendarDateToIsoDate(rangeStart) === calendarDateToIsoDate(today) &&
     calendarDateToIsoDate(rangeEnd) === calendarDateToIsoDate(today) &&
