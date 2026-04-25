@@ -478,7 +478,15 @@ const DashboardPage = () => {
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
-        {[
+        {(() => {
+          const hasEntries =
+            filteredRows.length > 0 &&
+            (sums.total_beds > 0 ||
+              sums.occupied > 0 ||
+              sums.closed > 0 ||
+              sums.vacant > 0 ||
+              waitingPatients > 0);
+          return [
           { name: "Total Beds", value: sums.total_beds },
           { name: "Occupied", value: sums.occupied },
           { name: "Closed", value: sums.closed },
@@ -499,7 +507,16 @@ const DashboardPage = () => {
             className="h-full"
           >
             <Card className="hospital-glass h-full">
-              {metric.name === "Occupancy Rate" ? (
+              {!hasEntries ? (
+                <>
+                  <CardHeader>
+                    <CardTitle className="text-sm text-muted-foreground">{metric.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm italic text-muted-foreground">No entries found</p>
+                  </CardContent>
+                </>
+              ) : metric.name === "Occupancy Rate" ? (
                 (() => {
                   const level = occupancyBenchmarkMatch;
                   const iconKey = level?.icon ?? (level ? getDefaultIconForLabel(level.label, level.key) : undefined);
@@ -609,7 +626,8 @@ const DashboardPage = () => {
               )}
             </Card>
           </motion.div>
-        ))}
+        ));
+        })()}
       </div>
 
       <Card className="hospital-glass">
