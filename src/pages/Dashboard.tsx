@@ -282,6 +282,8 @@ const DashboardPage = () => {
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
+  const [departmentView, setDepartmentView] = useState<"cards" | "table">("cards");
+
   const departmentStatusCards = useMemo(() => {
     const latestByDept = new Map<
       string,
