@@ -62,7 +62,14 @@ import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
 import { utils, writeFileXLSX } from "xlsx";
-import { buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
+import {
+  buildRowScope,
+  buildScopeWithFormulas,
+  evaluateOccupancyRate,
+  findFormulaByName,
+  formulaVariableKey,
+} from "@/lib/formula-registry";
+import type { KpiFormula } from "@/types/hospital";
 
 const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((file, ctx) => {
   if (file.size > MAX_UPLOAD_SIZE) {
@@ -168,9 +175,41 @@ const DataEntryPage = () => {
       closed,
       custom_fields: form.custom_fields,
     });
-    const occupancyRate = evaluateOccupancyRate(kpiFormulas, scope);
-    return { vacant, occupancyRate };
+    const { scope: resolvedScope, unresolved } = buildScopeWithFormulas(scope, kpiFormulas);
+    const occupancyRate = evaluateOccupancyRate(kpiFormulas, resolvedScope);
+    return { vacant, occupancyRate, scope: resolvedScope, unresolved };
   }, [form.total_beds, form.occupied, form.closed, form.custom_fields, kpiFormulas]);
+
+  // Resolve a formula-type form field to its matching KPI formula and current value.
+  // A formula field links to a KPI formula by sanitized name OR by exact label match.
+  const resolveFormulaForField = (field: FormField): { formula: KpiFormula | undefined; value: number | null } => {
+    // Try name-based match first (label === formula name)
+    let formula = findFormulaByName(kpiFormulas, field.label);
+    // Fallback: match by field_key against sanitized formula variable key
+    if (!formula) {
+      formula = kpiFormulas.find((f) => formulaVariableKey(f.name) === field.field_key);
+    }
+    if (!formula) return { formula: undefined, value: null };
+    const key = formulaVariableKey(formula.name);
+    const value = key in computed.scope ? computed.scope[key] : null;
+    return { formula, value };
+  };
+
+  // Build the calculated_fields payload: include vacant + occupancy_rate (legacy)
+  // PLUS every formula-type form field's resolved value.
+  const buildCalculatedFieldsPayload = (): Record<string, unknown> => {
+    const payload: Record<string, unknown> = {
+      vacant: computed.vacant,
+      occupancy_rate: computed.occupancyRate,
+    };
+    orderedActiveFields
+      .filter((field) => field.field_type === "formula" && field.is_active)
+      .forEach((field) => {
+        const { value } = resolveFormulaForField(field);
+        payload[field.field_key] = value;
+      });
+    return payload;
+  };
 
   const totalBedsNum = Number(form.total_beds) || 0;
   const occupiedNum = Number(form.occupied) || 0;
@@ -338,7 +377,7 @@ const DataEntryPage = () => {
           closure_reason: form.closed > 0 ? form.closure_reason.trim() : null,
           submitted_on: submittedOn,
           custom_fields: form.custom_fields,
-          calculated_fields: { vacant: computed.vacant, occupancy_rate: computed.occupancyRate },
+          calculated_fields: buildCalculatedFieldsPayload(),
           submitted_by: currentUserId,
           updated_by: currentUserId,
         } as const;
@@ -596,7 +635,42 @@ const DataEntryPage = () => {
             const editable = canEditDynamicField(field);
             const currentValue = form.custom_fields[field.field_key] ?? field.default_value ?? "";
 
-            if (field.field_type === "formula") return null;
+            if (field.field_type === "formula") {
+              const { formula, value } = resolveFormulaForField(field);
+              const isUnresolved = formula
+                ? Object.prototype.hasOwnProperty.call(computed.unresolved, formula.name)
+                : true;
+              const display =
+                value === null || value === undefined || Number.isNaN(value)
+                  ? "—"
+                  : Number.isFinite(value)
+                    ? Number(value).toFixed(2)
+                    : "—";
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label className="flex items-center gap-2">
+                    {field.label}
+                    <Badge variant="secondary" className="text-[10px] uppercase">Auto</Badge>
+                  </Label>
+                  <Input value={display} readOnly disabled className="bg-muted" />
+                  {!formula ? (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      No matching KPI formula found for "{field.label}".
+                    </p>
+                  ) : isUnresolved ? (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Formula has unresolved variables — fill required inputs or fix in KPI Builder.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Calculated automatically from <code>{formula.expression}</code>
+                    </p>
+                  )}
+                </div>
+              );
+            }
 
             if (field.field_type === "textarea") {
               return (
