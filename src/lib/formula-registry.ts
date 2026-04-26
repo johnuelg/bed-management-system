@@ -120,6 +120,142 @@ export const findFormulaByName = (
 };
 
 /**
+ * Sanitize a formula display name into a safe variable token (matches the
+ * tokenization used by the KPI Builder UI: `[A-Za-z_][A-Za-z0-9_]*`).
+ */
+export const formulaVariableKey = (name: string): string => {
+  const cleaned = name.trim().replace(/[^a-zA-Z0-9_]/g, "_");
+  if (!cleaned) return "";
+  return /^[A-Za-z_]/.test(cleaned) ? cleaned : `_${cleaned}`;
+};
+
+const RESERVED_TOKEN_SET = new Set([
+  "abs", "ceil", "floor", "round", "min", "max", "sum", "avg", "mean",
+  "sqrt", "pow", "log", "exp", "if", "and", "or", "not", "true", "false",
+  "pi", "e",
+]);
+
+const tokensFromExpression = (expression: string): string[] => {
+  const matches = expression.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const token of matches) {
+    if (RESERVED_TOKEN_SET.has(token.toLowerCase())) continue;
+    if (seen.has(token)) continue;
+    seen.add(token);
+    out.push(token);
+  }
+  return out;
+};
+
+/**
+ * Augment a base scope (from row/aggregate data) with the evaluated value of
+ * every active formula in the registry, keyed by the formula's variable name
+ * (sanitized). Formulas are evaluated in dependency order; circular references
+ * are detected and skipped (resolve to null and excluded from scope).
+ *
+ * Returned scope retains all base variables AND adds resolved formula values,
+ * enabling compound formulas to reference other formulas as variables.
+ */
+export const buildScopeWithFormulas = (
+  baseScope: FormulaScope,
+  formulas: KpiFormula[],
+): { scope: FormulaScope; unresolved: Record<string, string[]> } => {
+  const scope: FormulaScope = { ...baseScope };
+  const unresolved: Record<string, string[]> = {};
+
+  const active = formulas.filter((f) => f.is_active);
+  const byKey = new Map<string, KpiFormula>();
+  for (const formula of active) {
+    const key = formulaVariableKey(formula.name);
+    if (key) byKey.set(key, formula);
+  }
+
+  const resolving = new Set<string>();
+  const resolved = new Set<string>();
+
+  const resolve = (key: string): number | null => {
+    if (resolved.has(key)) return scope[key] ?? null;
+    const formula = byKey.get(key);
+    if (!formula) return null;
+    if (resolving.has(key)) {
+      // Circular reference — bail out for this branch.
+      unresolved[formula.name] = [...(unresolved[formula.name] ?? []), `circular:${key}`];
+      return null;
+    }
+    resolving.add(key);
+
+    const tokens = tokensFromExpression(formula.expression);
+    const missing: string[] = [];
+    for (const token of tokens) {
+      if (token in scope) continue;
+      if (byKey.has(token)) {
+        const value = resolve(token);
+        if (value === null) missing.push(token);
+      } else {
+        missing.push(token);
+      }
+    }
+
+    resolving.delete(key);
+
+    if (missing.length > 0) {
+      unresolved[formula.name] = [
+        ...(unresolved[formula.name] ?? []),
+        ...missing,
+      ];
+      resolved.add(key);
+      return null;
+    }
+
+    const value = evaluateFormula(formula, scope);
+    if (value !== null) scope[key] = value;
+    resolved.add(key);
+    return value;
+  };
+
+  for (const key of byKey.keys()) resolve(key);
+
+  return { scope, unresolved };
+};
+
+/**
+ * Detect whether adding/updating a formula with the given name + expression
+ * would create a circular dependency in the registry. Returns the cycle path
+ * if found, otherwise null.
+ */
+export const detectFormulaCycle = (
+  formulas: KpiFormula[],
+  candidate: { id?: string; name: string; expression: string },
+): string[] | null => {
+  const candidateKey = formulaVariableKey(candidate.name);
+  if (!candidateKey) return null;
+
+  const byKey = new Map<string, { id?: string; name: string; expression: string }>();
+  for (const formula of formulas) {
+    if (candidate.id && formula.id === candidate.id) continue; // replaced by candidate
+    const key = formulaVariableKey(formula.name);
+    if (key) byKey.set(key, formula);
+  }
+  byKey.set(candidateKey, candidate);
+
+  const visit = (key: string, stack: string[]): string[] | null => {
+    if (stack.includes(key)) return [...stack.slice(stack.indexOf(key)), key];
+    const node = byKey.get(key);
+    if (!node) return null;
+    const tokens = tokensFromExpression(node.expression);
+    for (const token of tokens) {
+      if (!byKey.has(token)) continue;
+      const cycle = visit(token, [...stack, key]);
+      if (cycle) return cycle;
+    }
+    return null;
+  };
+
+  return visit(candidateKey, []);
+};
+
+/**
  * Evaluate every active formula in the registry against the provided scope.
  * Returns a map keyed by formula name → numeric result (or null on failure).
  */
