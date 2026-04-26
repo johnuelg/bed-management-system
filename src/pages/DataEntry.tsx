@@ -62,7 +62,14 @@ import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
 import { utils, writeFileXLSX } from "xlsx";
-import { buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
+import {
+  buildRowScope,
+  buildScopeWithFormulas,
+  evaluateOccupancyRate,
+  findFormulaByName,
+  formulaVariableKey,
+} from "@/lib/formula-registry";
+import type { KpiFormula } from "@/types/hospital";
 
 const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((file, ctx) => {
   if (file.size > MAX_UPLOAD_SIZE) {
@@ -168,9 +175,41 @@ const DataEntryPage = () => {
       closed,
       custom_fields: form.custom_fields,
     });
-    const occupancyRate = evaluateOccupancyRate(kpiFormulas, scope);
-    return { vacant, occupancyRate };
+    const { scope: resolvedScope, unresolved } = buildScopeWithFormulas(scope, kpiFormulas);
+    const occupancyRate = evaluateOccupancyRate(kpiFormulas, resolvedScope);
+    return { vacant, occupancyRate, scope: resolvedScope, unresolved };
   }, [form.total_beds, form.occupied, form.closed, form.custom_fields, kpiFormulas]);
+
+  // Resolve a formula-type form field to its matching KPI formula and current value.
+  // A formula field links to a KPI formula by sanitized name OR by exact label match.
+  const resolveFormulaForField = (field: FormField): { formula: KpiFormula | undefined; value: number | null } => {
+    // Try name-based match first (label === formula name)
+    let formula = findFormulaByName(kpiFormulas, field.label);
+    // Fallback: match by field_key against sanitized formula variable key
+    if (!formula) {
+      formula = kpiFormulas.find((f) => formulaVariableKey(f.name) === field.field_key);
+    }
+    if (!formula) return { formula: undefined, value: null };
+    const key = formulaVariableKey(formula.name);
+    const value = key in computed.scope ? computed.scope[key] : null;
+    return { formula, value };
+  };
+
+  // Build the calculated_fields payload: include vacant + occupancy_rate (legacy)
+  // PLUS every formula-type form field's resolved value.
+  const buildCalculatedFieldsPayload = (): Record<string, unknown> => {
+    const payload: Record<string, unknown> = {
+      vacant: computed.vacant,
+      occupancy_rate: computed.occupancyRate,
+    };
+    orderedActiveFields
+      .filter((field) => field.field_type === "formula" && field.is_active)
+      .forEach((field) => {
+        const { value } = resolveFormulaForField(field);
+        payload[field.field_key] = value;
+      });
+    return payload;
+  };
 
   const totalBedsNum = Number(form.total_beds) || 0;
   const occupiedNum = Number(form.occupied) || 0;
