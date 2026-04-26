@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarIcon, Download, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { CalendarIcon, Download, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,21 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { hasAnyRole } from "@/lib/rbac";
+import { useToast } from "@/hooks/use-toast";
 import {
   calendarDateToIsoDate,
   formatSaudiIsoDateForDisplay,
@@ -19,6 +32,8 @@ import {
 } from "@/lib/date-time";
 import { buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
 import {
+  deleteAllBedSubmissions,
+  deleteBedSubmission,
   fetchBedTypes,
   fetchDashboardSubmissions,
   fetchDepartments,
@@ -86,6 +101,12 @@ const csvEscape = (value: unknown) => {
 
 const DataTablePage = () => {
   const qc = useQueryClient();
+  const { roles } = useAuth();
+  const { toast } = useToast();
+  const canDelete = hasAnyRole(roles, ["admin", "director"]);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Defaults: unfiltered (no date range, all times, all depts, all bed types)
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -283,6 +304,43 @@ const DataTablePage = () => {
     selectedDepartmentId === "all" &&
     selectedBedTypeId === "all";
 
+  const handleConfirmDeleteOne = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteBedSubmission(roles, deleteTarget.id);
+      toast({ title: "Entry deleted", description: deleteTarget.label });
+      setDeleteTarget(null);
+      void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
+    } catch (error) {
+      toast({
+        title: "Failed to delete entry",
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleConfirmDeleteAll = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteAllBedSubmissions(roles);
+      toast({ title: "All bed entries deleted" });
+      setConfirmDeleteAll(false);
+      void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
+    } catch (error) {
+      toast({
+        title: "Failed to delete entries",
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleResetFilters = () => {
     setDateRange(undefined);
     setTimeFrom("00:00");
@@ -477,6 +535,19 @@ const DataTablePage = () => {
               <Download className="mr-2 h-4 w-4" />
               Export CSV
             </Button>
+            {canDelete && (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => setConfirmDeleteAll(true)}
+                disabled={rows.length === 0}
+                className="w-full justify-center sm:flex-1"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete all
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -525,12 +596,13 @@ const DataTablePage = () => {
                     Occupancy {renderSortIcon("occupancy")}
                   </TableHead>
                   <TableHead>Status</TableHead>
+                  {canDelete && <TableHead className="w-[60px] text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={canDelete ? 13 : 12} className="py-6 text-center text-muted-foreground">
                       No entries found for the current filters.
                     </TableCell>
                   </TableRow>
@@ -553,6 +625,25 @@ const DataTablePage = () => {
                           {entry.occupancy.toFixed(1)}%
                         </TableCell>
                         <TableCell><StatusBadge level={benchmark} /></TableCell>
+                        {canDelete && (
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() =>
+                                setDeleteTarget({
+                                  id: entry.row.id,
+                                  label: `${entry.department} • ${entry.date} ${entry.time}`,
+                                })
+                              }
+                              aria-label="Delete entry"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })
@@ -596,6 +687,63 @@ const DataTablePage = () => {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this bed entry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.label}
+              <br />
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmDeleteOne();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDeleteAll} onOpenChange={setConfirmDeleteAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete ALL bed entries?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove every bed submission from the database
+              ({rows.length} {rows.length === 1 ? "record" : "records"}). This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmDeleteAll();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete all"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 };
