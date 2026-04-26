@@ -377,7 +377,7 @@ const DataEntryPage = () => {
           closure_reason: form.closed > 0 ? form.closure_reason.trim() : null,
           submitted_on: submittedOn,
           custom_fields: form.custom_fields,
-          calculated_fields: { vacant: computed.vacant, occupancy_rate: computed.occupancyRate },
+          calculated_fields: buildCalculatedFieldsPayload(),
           submitted_by: currentUserId,
           updated_by: currentUserId,
         } as const;
@@ -635,7 +635,42 @@ const DataEntryPage = () => {
             const editable = canEditDynamicField(field);
             const currentValue = form.custom_fields[field.field_key] ?? field.default_value ?? "";
 
-            if (field.field_type === "formula") return null;
+            if (field.field_type === "formula") {
+              const { formula, value } = resolveFormulaForField(field);
+              const isUnresolved = formula
+                ? Object.prototype.hasOwnProperty.call(computed.unresolved, formula.name)
+                : true;
+              const display =
+                value === null || value === undefined || Number.isNaN(value)
+                  ? "—"
+                  : Number.isFinite(value)
+                    ? Number(value).toFixed(2)
+                    : "—";
+              return (
+                <div key={field.id} className="space-y-2 md:col-span-2">
+                  <Label className="flex items-center gap-2">
+                    {field.label}
+                    <Badge variant="secondary" className="text-[10px] uppercase">Auto</Badge>
+                  </Label>
+                  <Input value={display} readOnly disabled className="bg-muted" />
+                  {!formula ? (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      No matching KPI formula found for "{field.label}".
+                    </p>
+                  ) : isUnresolved ? (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Formula has unresolved variables — fill required inputs or fix in KPI Builder.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Calculated automatically from <code>{formula.expression}</code>
+                    </p>
+                  )}
+                </div>
+              );
+            }
 
             if (field.field_type === "textarea") {
               return (
