@@ -32,6 +32,7 @@ import {
   updateKpiFormula,
 } from "@/lib/supabase-api";
 import { KpiBenchmarkEditor } from "@/components/settings/kpi-benchmark-editor";
+import { detectFormulaCycle, formulaVariableKey } from "@/lib/formula-registry";
 
 // Reserved math tokens that may appear in expressions but are NOT variables.
 const RESERVED_TOKENS = new Set([
@@ -69,16 +70,37 @@ const KpiBuilderPage = () => {
   const { data: widgets = [] } = useQuery({ queryKey: ["kpi_widgets"], queryFn: fetchKpiWidgets });
   const { data: formFields = [] } = useQuery({ queryKey: ["form_fields"], queryFn: fetchFormFields });
 
-  // Dynamic variables sourced ONLY from Form Builder fields (numeric / formula / boolean only).
-  const availableVariables = useMemo(
+  // Dynamic variables sourced from Form Builder fields (numeric / formula / boolean only).
+  const fieldVariables = useMemo(
     () =>
       formFields
         .filter((field) => field.is_active)
         .filter((field) =>
           ["number", "formula", "boolean"].includes(field.field_type),
         )
-        .map((field) => ({ key: field.field_key, label: field.label })),
+        .map((field) => ({ key: field.field_key, label: field.label, source: "field" as const })),
     [formFields],
+  );
+
+  // Saved formulas (excluding the one currently being edited) become available
+  // as variables for compound / derived formulas.
+  const formulaVariables = useMemo(
+    () =>
+      formulas
+        .filter((formula) => formula.is_active)
+        .filter((formula) => formula.id !== editingFormulaId)
+        .map((formula) => ({
+          key: formulaVariableKey(formula.name),
+          label: formula.name,
+          source: "formula" as const,
+        }))
+        .filter((variable) => variable.key.length > 0),
+    [formulas, editingFormulaId],
+  );
+
+  const availableVariables = useMemo(
+    () => [...fieldVariables, ...formulaVariables],
+    [fieldVariables, formulaVariables],
   );
 
   const availableKeySet = useMemo(
@@ -92,6 +114,20 @@ const KpiBuilderPage = () => {
     () => expressionTokens.filter((token) => !availableKeySet.has(token)),
     [expressionTokens, availableKeySet],
   );
+
+  // Self-reference guard: a formula cannot reference its own sanitized name.
+  const selfReferenceKey = useMemo(() => formulaVariableKey(formulaName), [formulaName]);
+  const selfReferences = selfReferenceKey.length > 0 && expressionTokens.includes(selfReferenceKey);
+
+  // Circular dependency guard: simulate adding the candidate and walk the graph.
+  const cyclePath = useMemo(() => {
+    if (!formulaName.trim() || !expression.trim()) return null;
+    return detectFormulaCycle(formulas, {
+      id: editingFormulaId ?? undefined,
+      name: formulaName,
+      expression,
+    });
+  }, [formulas, formulaName, expression, editingFormulaId]);
 
   const resetFormulaForm = () => {
     setEditingFormulaId(null);
@@ -170,7 +206,8 @@ const KpiBuilderPage = () => {
         <div>
           <h1 className="text-3xl font-bold">KPI Formula Builder</h1>
           <p className="text-sm text-muted-foreground">
-            Variables are sourced dynamically from Form Builder fields. Define a field there to use it here.
+            Variables come from Form Builder fields and any previously saved formula in the global registry.
+            Compose ratios, averages, and derived KPIs without duplicating logic.
           </p>
         </div>
         <Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["kpi_widgets"] })}>
@@ -229,7 +266,7 @@ const KpiBuilderPage = () => {
               <Input
                 value={expression}
                 onChange={(e) => setExpression(e.target.value)}
-                placeholder="e.g. occupied / total_beds * 100"
+                placeholder="e.g. occupied / total_beds * 100  or  Occupancy_Rate / 100"
                 className="font-mono"
               />
               {unresolvedExpressionTokens.length > 0 && (
@@ -238,18 +275,36 @@ const KpiBuilderPage = () => {
                   <span>
                     Unresolved variable{unresolvedExpressionTokens.length > 1 ? "s" : ""}:{" "}
                     <span className="font-mono">{unresolvedExpressionTokens.join(", ")}</span>
-                    {" — "}define {unresolvedExpressionTokens.length > 1 ? "these fields" : "this field"} in
-                    {" "}Form Builder, or remove from the expression.
+                    {" — "}define {unresolvedExpressionTokens.length > 1 ? "these" : "this"} in Form Builder
+                    {" "}or save a matching formula first, or remove from the expression.
+                  </span>
+                </p>
+              )}
+              {selfReferences && (
+                <p className="flex items-start gap-1 text-xs text-destructive">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>A formula cannot reference itself ({selfReferenceKey}).</span>
+                </p>
+              )}
+              {cyclePath && cyclePath.length > 0 && !selfReferences && (
+                <p className="flex items-start gap-1 text-xs text-destructive">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Circular dependency detected:{" "}
+                    <span className="font-mono">{cyclePath.join(" → ")}</span>
                   </span>
                 </p>
               )}
             </div>
             <div className="space-y-2">
-              <Label>Available Variables (from Form Builder)</Label>
+              <Label>Available Variables</Label>
+              <p className="text-xs text-muted-foreground">
+                Form Builder fields and saved formulas can be inserted as variables.
+              </p>
               {availableVariables.length === 0 ? (
                 <p className="rounded border border-dashed p-3 text-xs text-muted-foreground">
-                  No numeric or formula fields have been defined in the Form Builder yet.
-                  Add fields there to make them available as KPI variables.
+                  No numeric/formula fields exist in the Form Builder, and no formulas are saved yet.
+                  Add fields or save a formula to make them available here.
                 </p>
               ) : (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -274,6 +329,12 @@ const KpiBuilderPage = () => {
                           <span className="min-w-0 truncate">
                             <span className="font-mono text-xs">{variable.key}</span>
                             <span className="ml-2 text-xs text-muted-foreground">{variable.label}</span>
+                            <Badge
+                              variant={variable.source === "formula" ? "secondary" : "outline"}
+                              className="ml-2 text-[10px]"
+                            >
+                              {variable.source === "formula" ? "Formula" : "Field"}
+                            </Badge>
                           </span>
                         </label>
                         <Button
@@ -298,7 +359,9 @@ const KpiBuilderPage = () => {
                   formulaMutation.isPending ||
                   !formulaName.trim() ||
                   !expression.trim() ||
-                  unresolvedExpressionTokens.length > 0
+                  unresolvedExpressionTokens.length > 0 ||
+                  selfReferences ||
+                  Boolean(cyclePath && cyclePath.length > 0)
                 }
               >
                 {editingFormulaId ? "Update Formula" : "Save Formula"}
