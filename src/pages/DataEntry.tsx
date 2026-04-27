@@ -588,8 +588,13 @@ const DataEntryPage = () => {
                     min={0}
                     max={noVacantBeds ? 0 : undefined}
                     disabled={noVacantBeds}
-                    value={noVacantBeds ? 0 : form.closed}
-                    onChange={(e) => setForm((p) => ({ ...p, closed: Number(e.target.value) }))}
+                    placeholder="0"
+                    value={noVacantBeds ? 0 : form.closed === 0 ? "" : form.closed}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setForm((p) => ({ ...p, closed: raw === "" ? 0 : Number(raw) }));
+                    }}
                     aria-invalid={closedExceedsVacant}
                     className={cn(closedExceedsVacant && "border-destructive focus-visible:ring-destructive")}
                   />
