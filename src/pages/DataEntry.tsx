@@ -851,19 +851,50 @@ const DataEntryPage = () => {
           })}
 
           <div className="space-y-2">
-            <Label>Vacant (auto)</Label>
+            <Label className="flex items-center gap-2">
+              Vacant (auto)
+              <Badge variant="secondary" className="text-[10px] uppercase">Auto</Badge>
+            </Label>
             <Input
-              value={computed.vacant}
+              value={Number.isFinite(computed.vacant) ? Number(computed.vacant).toFixed(0) : "—"}
               readOnly
+              disabled
               className={cn(
+                "bg-muted",
                 computed.vacant === 0 && totalBedsNum > 0 && "border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
               )}
             />
+            <p className="text-xs text-muted-foreground">
+              {computed.vacantFromFormula
+                ? "Calculated from KPI Builder formula \u201CVacant\u201D."
+                : "Default: Total Beds \u2212 Occupied \u2212 Closed."}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              Occupied (auto)
+              <Badge variant="secondary" className="text-[10px] uppercase">Auto</Badge>
+            </Label>
+            <Input
+              value={Number.isFinite(computed.occupiedAuto) ? Number(computed.occupiedAuto).toFixed(0) : "—"}
+              readOnly
+              disabled
+              className="bg-muted"
+            />
+            <p className="text-xs text-muted-foreground">
+              {computed.occupiedFromFormula
+                ? "Calculated from KPI Builder formula \u201COccupied\u201D."
+                : "Mirrors the Occupied input."}
+            </p>
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label>Occupancy Rate (auto)</Label>
-            <Input value={`${computed.occupancyRate.toFixed(1)}%`} readOnly />
+            <Label className="flex items-center gap-2">
+              Occupancy Rate (auto)
+              <Badge variant="secondary" className="text-[10px] uppercase">Auto</Badge>
+            </Label>
+            <Input value={`${computed.occupancyRate.toFixed(1)}%`} readOnly disabled className="bg-muted" />
           </div>
 
           <div className="space-y-2 md:col-span-2">
