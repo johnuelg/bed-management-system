@@ -66,6 +66,7 @@ import {
   buildRowScope,
   buildScopeWithFormulas,
   evaluateOccupancyRate,
+  evaluateNamedFormula,
   findFormulaByName,
   formulaVariableKey,
 } from "@/lib/formula-registry";
@@ -168,7 +169,7 @@ const DataEntryPage = () => {
     const total_beds = Number(form.total_beds) || 0;
     const occupied = Number(form.occupied) || 0;
     const closed = Number(form.closed) || 0;
-    const vacant = Math.max(0, total_beds - occupied - closed);
+    const fallbackVacant = Math.max(0, total_beds - occupied - closed);
     const scope = buildRowScope({
       total_beds,
       occupied,
@@ -177,7 +178,21 @@ const DataEntryPage = () => {
     });
     const { scope: resolvedScope, unresolved } = buildScopeWithFormulas(scope, kpiFormulas);
     const occupancyRate = evaluateOccupancyRate(kpiFormulas, resolvedScope);
-    return { vacant, occupancyRate, scope: resolvedScope, unresolved };
+    // Prefer admin-defined "Vacant" / "Occupied" formulas from KPI Builder;
+    // fall back to the canonical math when no registry formula exists.
+    const vacant = evaluateNamedFormula(kpiFormulas, "Vacant", resolvedScope, fallbackVacant);
+    const occupiedAuto = evaluateNamedFormula(kpiFormulas, "Occupied", resolvedScope, occupied);
+    const vacantFromFormula = Boolean(findFormulaByName(kpiFormulas, "Vacant"));
+    const occupiedFromFormula = Boolean(findFormulaByName(kpiFormulas, "Occupied"));
+    return {
+      vacant,
+      occupancyRate,
+      occupiedAuto,
+      vacantFromFormula,
+      occupiedFromFormula,
+      scope: resolvedScope,
+      unresolved,
+    };
   }, [form.total_beds, form.occupied, form.closed, form.custom_fields, kpiFormulas]);
 
   // Resolve a formula-type form field to its matching KPI formula and current value.
@@ -201,6 +216,7 @@ const DataEntryPage = () => {
     const payload: Record<string, unknown> = {
       vacant: computed.vacant,
       occupancy_rate: computed.occupancyRate,
+      occupied_auto: computed.occupiedAuto,
     };
     orderedActiveFields
       .filter((field) => field.field_type === "formula" && field.is_active)
@@ -836,19 +852,50 @@ const DataEntryPage = () => {
           })}
 
           <div className="space-y-2">
-            <Label>Vacant (auto)</Label>
+            <Label className="flex items-center gap-2">
+              Vacant (auto)
+              <Badge variant="secondary" className="text-[10px] uppercase">Auto</Badge>
+            </Label>
             <Input
-              value={computed.vacant}
+              value={Number.isFinite(computed.vacant) ? Number(computed.vacant).toFixed(0) : "—"}
               readOnly
+              disabled
               className={cn(
+                "bg-muted",
                 computed.vacant === 0 && totalBedsNum > 0 && "border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
               )}
             />
+            <p className="text-xs text-muted-foreground">
+              {computed.vacantFromFormula
+                ? "Calculated from KPI Builder formula \u201CVacant\u201D."
+                : "Default: Total Beds \u2212 Occupied \u2212 Closed."}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              Occupied (auto)
+              <Badge variant="secondary" className="text-[10px] uppercase">Auto</Badge>
+            </Label>
+            <Input
+              value={Number.isFinite(computed.occupiedAuto) ? Number(computed.occupiedAuto).toFixed(0) : "—"}
+              readOnly
+              disabled
+              className="bg-muted"
+            />
+            <p className="text-xs text-muted-foreground">
+              {computed.occupiedFromFormula
+                ? "Calculated from KPI Builder formula \u201COccupied\u201D."
+                : "Mirrors the Occupied input."}
+            </p>
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label>Occupancy Rate (auto)</Label>
-            <Input value={`${computed.occupancyRate.toFixed(1)}%`} readOnly />
+            <Label className="flex items-center gap-2">
+              Occupancy Rate (auto)
+              <Badge variant="secondary" className="text-[10px] uppercase">Auto</Badge>
+            </Label>
+            <Input value={`${computed.occupancyRate.toFixed(1)}%`} readOnly disabled className="bg-muted" />
           </div>
 
           <div className="space-y-2 md:col-span-2">

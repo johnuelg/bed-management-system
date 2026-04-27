@@ -285,3 +285,24 @@ export const evaluateOccupancyRate = (
   if (result !== null) return result;
   return scope.total_beds > 0 ? (scope.occupied / scope.total_beds) * 100 : 0;
 };
+
+/**
+ * Generic helper: evaluate a named formula from the global registry against a
+ * scope. If no active formula with that name exists OR evaluation fails, the
+ * provided `fallback` value is returned. This is the canonical entry-point for
+ * UI surfaces (Bed Entry "auto" fields, Dashboard KPI cards) that want to
+ * prefer an admin-defined formula but still degrade gracefully.
+ */
+export const evaluateNamedFormula = (
+  formulas: KpiFormula[],
+  name: string,
+  scope: FormulaScope,
+  fallback: number,
+): number => {
+  const formula = findFormulaByName(formulas, name);
+  if (!formula) return fallback;
+  // Resolve registry dependencies first so compound formulas work.
+  const { scope: resolved } = buildScopeWithFormulas(scope, formulas);
+  const value = evaluateFormula(formula, resolved);
+  return value === null || !Number.isFinite(value) ? fallback : value;
+};

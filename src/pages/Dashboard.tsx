@@ -29,7 +29,12 @@ import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
 import { StatusBadge } from "@/components/status-badge";
 import { getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
-import { buildAggregateScope, buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
+import {
+  buildAggregateScope,
+  buildRowScope,
+  evaluateNamedFormula,
+  evaluateOccupancyRate,
+} from "@/lib/formula-registry";
 
 const SAUDI_HOLIDAYS: Record<string, string> = {
   "2025-02-22": "Founding Day",
@@ -225,6 +230,18 @@ const DashboardPage = () => {
   const occupancyRate = useMemo(
     () => evaluateOccupancyRate(kpiFormulas, aggregateScope),
     [kpiFormulas, aggregateScope],
+  );
+  // Resolve KPI Builder formulas (when defined) for the headline cards.
+  // These fall back to the raw aggregated sums when no matching formula exists.
+  const kpiCardValues = useMemo(
+    () => ({
+      total_beds: evaluateNamedFormula(kpiFormulas, "Total Beds", aggregateScope, sums.total_beds),
+      occupied: evaluateNamedFormula(kpiFormulas, "Occupied", aggregateScope, sums.occupied),
+      closed: evaluateNamedFormula(kpiFormulas, "Closed", aggregateScope, sums.closed),
+      vacant: evaluateNamedFormula(kpiFormulas, "Vacant", aggregateScope, sums.vacant),
+      waiting_patients: evaluateNamedFormula(kpiFormulas, "Waiting Patients", aggregateScope, waitingPatients),
+    }),
+    [kpiFormulas, aggregateScope, sums.total_beds, sums.occupied, sums.closed, sums.vacant, waitingPatients],
   );
   const benchmarkLevels = occupancyBenchmark?.levels ?? [
     {
@@ -487,11 +504,11 @@ const DashboardPage = () => {
               sums.vacant > 0 ||
               waitingPatients > 0);
           return [
-          { name: "Total Beds", value: sums.total_beds },
-          { name: "Occupied", value: sums.occupied },
-          { name: "Closed", value: sums.closed },
-          { name: "Vacant", value: sums.vacant },
-          { name: "Waiting Patients", value: waitingPatients },
+          { name: "Total Beds", value: Math.round(kpiCardValues.total_beds) },
+          { name: "Occupied", value: Math.round(kpiCardValues.occupied) },
+          { name: "Closed", value: Math.round(kpiCardValues.closed) },
+          { name: "Vacant", value: Math.round(kpiCardValues.vacant) },
+          { name: "Waiting Patients", value: Math.round(kpiCardValues.waiting_patients) },
             {
               name: "Occupancy Rate",
               value: `${occupancyRate.toFixed(1)}%`,
