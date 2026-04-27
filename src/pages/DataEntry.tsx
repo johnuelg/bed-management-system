@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { AlertTriangle, CalendarIcon, Download, FileSpreadsheet, LayoutGrid, Pencil, Table2 } from "lucide-react";
+import { AlertTriangle, CalendarIcon, Download, FileSpreadsheet, FileText, LayoutGrid, Pencil, Table2 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -332,6 +334,69 @@ const DataEntryPage = () => {
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Today_Submissions");
     writeFileXLSX(workbook, `bed_submissions_${getSaudiIsoDate(new Date())}.xlsx`);
+  };
+
+  const downloadPdf = () => {
+    if (rows.length === 0) {
+      toast({ title: "No submissions", description: "There is no bed data to export for today.", variant: "destructive" });
+      return;
+    }
+
+    const headers = ["Date", "Time", "Department", "Total", "Occupied", "Closed", "Reason for Closure"];
+    const body = rows.map((row) => {
+      const dt = getSubmissionDateTime(row);
+      const occupiedAuto = Number(
+        (row as unknown as { calculated_fields?: { occupied_auto?: number } }).calculated_fields?.occupied_auto ?? row.occupied,
+      ) || 0;
+      return [
+        dt.date,
+        dt.time,
+        departmentNameById[row.department_id] ?? "Unknown Department",
+        String(row.total_beds),
+        String(occupiedAuto),
+        String(row.closed),
+        row.closure_reason ?? "",
+      ];
+    });
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(14);
+    doc.text("Today's Bed Submissions", 40, 36);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Date: ${getSaudiIsoDate(new Date())}`, 40, 52);
+    doc.text(
+      `Generated: ${new Date().toLocaleString("en-GB", { timeZone: "Asia/Riyadh" })} (Asia/Riyadh)`,
+      pageWidth - 40,
+      52,
+      { align: "right" },
+    );
+
+    autoTable(doc, {
+      head: [headers],
+      body,
+      startY: 68,
+      styles: { fontSize: 9, cellPadding: 4, overflow: "linebreak" },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      margin: { left: 40, right: 40 },
+      didDrawPage: () => {
+        const pageCount = doc.getNumberOfPages();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        doc.setFontSize(8);
+        doc.setTextColor(120);
+        doc.text(
+          `Page ${doc.getCurrentPageInfo().pageNumber} of ${pageCount}`,
+          pageWidth - 40,
+          pageHeight - 20,
+          { align: "right" },
+        );
+      },
+    });
+
+    doc.save(`bed_submissions_${getSaudiIsoDate(new Date())}.pdf`);
   };
 
   const mutation = useMutation({
@@ -1020,6 +1085,10 @@ const DataEntryPage = () => {
               <Button type="button" variant="outline" size="sm" onClick={downloadXlsx}>
                 <FileSpreadsheet className="mr-2 h-4 w-4" />
                 Download XLSX
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={downloadPdf}>
+                <FileText className="mr-2 h-4 w-4" />
+                Download PDF
               </Button>
             </div>
           </div>
