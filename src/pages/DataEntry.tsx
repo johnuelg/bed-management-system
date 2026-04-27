@@ -1008,6 +1008,8 @@ const DataEntryPage = () => {
             const inputType = field.field_type === "number" ? "number" : "text";
 
             const isNegative = inputType === "number" && Boolean(negativeFieldErrors[field.field_key]);
+            const isSubsetField = (SUBSET_KEYS as readonly string[]).includes(field.field_key);
+            const showSubsetError = isSubsetField && subsetExceedsTotal;
 
             return (
               <div key={field.id} className="space-y-2 md:col-span-2">
@@ -1018,8 +1020,8 @@ const DataEntryPage = () => {
                   min={inputType === "number" ? 0 : undefined}
                   disabled={!editable}
                   value={inputType === "number" ? Number(currentValue || 0) : String(currentValue)}
-                  aria-invalid={isNegative || undefined}
-                  className={cn(isNegative && "border-destructive focus-visible:ring-destructive")}
+                  aria-invalid={isNegative || showSubsetError || undefined}
+                  className={cn((isNegative || showSubsetError) && "border-destructive focus-visible:ring-destructive")}
                   onChange={(e) => {
                     if (inputType === "number") {
                       const raw = e.target.value;
@@ -1054,6 +1056,10 @@ const DataEntryPage = () => {
                 {isNegative ? (
                   <p className="text-sm font-medium text-destructive">
                     Value cannot be negative. Minimum allowed is 0.
+                  </p>
+                ) : showSubsetError ? (
+                  <p className="text-sm font-medium text-destructive" role="alert">
+                    {SUBSET_LABELS.medical_ped} + {SUBSET_LABELS.iso_nor_pres_ped} + {SUBSET_LABELS.iso_ve_pres_ped} ({occupiedSubsetSum}) cannot exceed Total Beds ({totalBedsNum}). Please reduce one of these values.
                   </p>
                 ) : null}
               </div>
