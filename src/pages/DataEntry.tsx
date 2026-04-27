@@ -687,19 +687,30 @@ const DataEntryPage = () => {
                     onChange={(e) => {
                       const raw = e.target.value;
                       if (raw === "") {
+                        markNegative("closed", false);
                         setForm((p) => ({ ...p, closed: 0 }));
                         return;
                       }
                       const next = Number(raw);
                       if (Number.isNaN(next)) return;
+                      if (next < 0) {
+                        markNegative("closed", true);
+                        setForm((p) => ({ ...p, closed: 0 }));
+                        return;
+                      }
+                      markNegative("closed", false);
                       setForm((p) => ({ ...p, closed: next }));
                     }}
-                    aria-invalid={closedExceedsVacant}
+                    aria-invalid={closedExceedsVacant || Boolean(negativeFieldErrors.closed)}
                     aria-describedby="closed-helper"
-                    className={cn(closedExceedsVacant && "border-destructive focus-visible:ring-destructive")}
+                    className={cn((closedExceedsVacant || negativeFieldErrors.closed) && "border-destructive focus-visible:ring-destructive")}
                   />
                   <div id="closed-helper" aria-live="polite" className="min-h-[1.25rem]">
-                    {noVacantBeds ? (
+                    {negativeFieldErrors.closed ? (
+                      <p className="text-sm font-medium text-destructive">
+                        Value cannot be negative. Minimum allowed is 0.
+                      </p>
+                    ) : noVacantBeds ? (
                       <p className="text-sm text-muted-foreground">No beds available to close.</p>
                     ) : closedExceedsVacant ? (
                       <p className="text-sm font-medium text-destructive">
