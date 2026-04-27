@@ -332,6 +332,27 @@ export const deactivateUserByAdmin = async (roles: AppRole[], user_id: string, i
   return data;
 };
 
+export const fetchUserEmails = async (roles: AppRole[]): Promise<Record<string, string>> => {
+  requireRole(roles, ["admin"], "view user emails");
+  const { data, error } = await supabase.functions.invoke("admin-user-management", {
+    body: { action: "list_user_emails" },
+  });
+  if (error) throw error;
+  return (data?.emails ?? {}) as Record<string, string>;
+};
+
+export const updateUserByAdmin = async (
+  roles: AppRole[],
+  payload: { user_id: string; email?: string; password?: string; display_name?: string; role?: AppRole },
+) => {
+  requireRole(roles, ["admin"], "update users");
+  const { data, error } = await supabase.functions.invoke("admin-user-management", {
+    body: { action: "update_user", ...payload },
+  });
+  if (error) throw error;
+  return data;
+};
+
 export const fetchNavVisibilitySettings = async (): Promise<NavVisibilitySettings> => {
   const { data, error } = await db
     .from("app_settings")
