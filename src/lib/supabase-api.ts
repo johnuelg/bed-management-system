@@ -335,7 +335,7 @@ export const deactivateUserByAdmin = async (roles: AppRole[], user_id: string, i
 export const fetchUserEmails = async (roles: AppRole[]): Promise<Record<string, string>> => {
   requireRole(roles, ["admin"], "view user emails");
   const { data, error } = await supabase.functions.invoke("admin-user-management", {
-    body: { action: "list_user_emails" },
+    body: { action: "list_users" },
   });
   if (error) throw error;
   return (data?.emails ?? {}) as Record<string, string>;
