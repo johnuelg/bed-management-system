@@ -25,7 +25,7 @@ const ActionSchema = z.discriminatedUnion("action", [
     is_active: z.boolean(),
   }),
   z.object({
-    action: z.literal("list_user_emails"),
+    action: z.literal("list_users"),
   }),
   z.object({
     action: z.literal("update_user"),
@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (body.action === "list_user_emails") {
+    if (body.action === "list_users") {
       const emails: Record<string, string> = {};
       let page = 1;
       const perPage = 200;
