@@ -79,6 +79,11 @@ const UsersPage = () => {
     queryKey: ["app_settings", "nav_visibility"],
     queryFn: fetchNavVisibilitySettings,
   });
+  const { data: emailMap = {} } = useQuery({
+    queryKey: ["user_emails"],
+    queryFn: () => fetchUserEmails(roles),
+    enabled: isAdmin,
+  });
   useEffect(() => {
     if (!roleCatalog.length) return;
     if (!roleCatalog.includes(form.role)) {
