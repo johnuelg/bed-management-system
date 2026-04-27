@@ -599,14 +599,14 @@ const DataEntryPage = () => {
                   />
                   <div id="closed-helper" aria-live="polite" className="min-h-[1.25rem]">
                     {noVacantBeds ? (
-                      <p className="text-sm text-muted-foreground">No vacant beds — cannot close beds.</p>
+                      <p className="text-sm text-muted-foreground">No occupied beds — cannot close beds.</p>
                     ) : closedExceedsVacant ? (
                       <p className="text-sm font-medium text-destructive">
-                        Closed ({closedNum}) cannot exceed Vacant beds ({vacantForClosed}). Please enter a value between 0 and {vacantForClosed}.
+                        Closed ({closedNum}) cannot exceed Occupied beds ({closedLimit}). Please enter a value between 0 and {closedLimit}.
                       </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Up to {vacantForClosed} bed{vacantForClosed === 1 ? "" : "s"} available to close.
+                        Up to {closedLimit} bed{closedLimit === 1 ? "" : "s"} available to close.
                       </p>
                     )}
                   </div>
