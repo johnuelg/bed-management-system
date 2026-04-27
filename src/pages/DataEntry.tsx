@@ -240,9 +240,16 @@ const DataEntryPage = () => {
   const isoNorPresPedNum = Number(form.custom_fields?.iso_nor_pres_ped) || 0;
   const isoVePresPedNum = Number(form.custom_fields?.iso_ve_pres_ped) || 0;
   const occupiedSubsetSum = medicalPedNum + isoNorPresPedNum + isoVePresPedNum;
+  const subsetExceedsTotal = totalBedsNum > 0 && occupiedSubsetSum > totalBedsNum;
   const closedLimit = Math.max(0, totalBedsNum - occupiedSubsetSum);
-  const closedExceedsVacant = closedNum > closedLimit && !occupiedExceedsTotal;
-  const noVacantBeds = closedLimit === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
+  const closedExceedsVacant = closedNum > closedLimit && !occupiedExceedsTotal && !subsetExceedsTotal;
+  const noVacantBeds = closedLimit === 0 && totalBedsNum > 0 && !occupiedExceedsTotal && !subsetExceedsTotal;
+  const SUBSET_KEYS = ["medical_ped", "iso_nor_pres_ped", "iso_ve_pres_ped"] as const;
+  const SUBSET_LABELS: Record<string, string> = {
+    medical_ped: "Medical PED",
+    iso_nor_pres_ped: "ISO NOR PRES PED",
+    iso_ve_pres_ped: "ISO VE PRES PED",
+  };
 
   // Auto-lock Closed to 0 when there are no beds available to close.
   useEffect(() => {
