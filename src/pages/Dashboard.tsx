@@ -342,7 +342,7 @@ const DashboardPage = () => {
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredRows, departments, kpiFormulas, benchmarkLevels]);
+  }, [filteredRows, departments, departmentTotalBeds, kpiFormulas, benchmarkLevels]);
 
   const isFiltersDefault =
     calendarDateToIsoDate(rangeStart) === calendarDateToIsoDate(today) &&
