@@ -91,8 +91,8 @@ const DataEntryPage = () => {
     id: "",
     department_id: "",
     total_beds: 0,
-    occupied: 0,
-    closed: 0,
+    occupied: "" as number | "",
+    closed: "" as number | "",
     closure_reason: "",
     custom_fields: {} as Record<string, unknown>,
   };
