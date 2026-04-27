@@ -657,11 +657,11 @@ const DashboardPage = () => {
               {departmentStatusCards.length} Active {departmentStatusCards.length === 1 ? "Department" : "Departments"}
             </span>
           </div>
-          <div className="inline-flex items-center rounded-md border bg-muted p-1">
+          <div className="inline-flex w-full items-center rounded-md border bg-muted p-1 sm:w-auto">
             <button
               type="button"
               onClick={() => setDepartmentView("cards")}
-              className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
                 departmentView === "cards"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -674,7 +674,7 @@ const DashboardPage = () => {
             <button
               type="button"
               onClick={() => setDepartmentView("table")}
-              className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
                 departmentView === "table"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -686,7 +686,7 @@ const DashboardPage = () => {
             </button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-6">
           {departmentView === "cards" ? (
             departmentStatusCards.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
