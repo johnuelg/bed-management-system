@@ -259,13 +259,6 @@ const DataEntryPage = () => {
     if (form.occupied === undefined || form.occupied === null || Number.isNaN(Number(form.occupied)))
       missing.push({ key: "occupied", label: "Occupied" });
 
-    const waitingField = findWaitingPatientsField();
-    if (waitingField) {
-      const value = form.custom_fields[waitingField.field_key];
-      const isEmpty = value === undefined || value === null || String(value).trim() === "";
-      if (isEmpty) missing.push({ key: waitingField.field_key, label: waitingField.label });
-    }
-
     return missing;
   };
 
