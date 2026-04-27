@@ -804,11 +804,38 @@ const DataEntryPage = () => {
                       disabled={!editable}
                       value={timePart}
                       onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
-                        let formatted = digits;
-                        if (digits.length >= 3) {
-                          formatted = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+                        const input = e.target as HTMLInputElement;
+                        const rawValue = input.value;
+                        const selectionEnd = input.selectionEnd ?? rawValue.length;
+                        const prevValue = timePart;
+
+                        // Detect deletion of the colon: if user backspaced over ":",
+                        // also drop the digit before it so the deletion feels natural.
+                        let working = rawValue;
+                        const colonRemoved =
+                          prevValue.includes(":") &&
+                          !rawValue.includes(":") &&
+                          rawValue.length === prevValue.length - 1 &&
+                          selectionEnd === 2;
+                        if (colonRemoved) {
+                          working = rawValue.slice(0, 1) + rawValue.slice(2);
                         }
+
+                        const digits = working.replace(/\D/g, "").slice(0, 4);
+                        const formatted =
+                          digits.length >= 3
+                            ? `${digits.slice(0, 2)}:${digits.slice(2)}`
+                            : digits;
+
+                        // Compute new caret position based on how many digits are
+                        // before the original caret in the raw input.
+                        const digitsBeforeCaret = rawValue
+                          .slice(0, selectionEnd)
+                          .replace(/\D/g, "").length;
+                        let nextCaret = digitsBeforeCaret;
+                        if (formatted.includes(":") && nextCaret > 2) nextCaret += 1;
+                        if (nextCaret > formatted.length) nextCaret = formatted.length;
+
                         setForm((prev) => ({
                           ...prev,
                           custom_fields: {
@@ -816,6 +843,15 @@ const DataEntryPage = () => {
                             [field.field_key]: datePart ? `${datePart}T${formatted}` : `T${formatted}`,
                           },
                         }));
+
+                        // Restore caret after React re-renders the controlled value.
+                        requestAnimationFrame(() => {
+                          try {
+                            input.setSelectionRange(nextCaret, nextCaret);
+                          } catch {
+                            /* ignore */
+                          }
+                        });
                       }}
                       onBlur={(e) => {
                         const digits = e.target.value.replace(/\D/g, "");
