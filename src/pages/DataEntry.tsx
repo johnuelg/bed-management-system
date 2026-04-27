@@ -339,7 +339,7 @@ const DataEntryPage = () => {
       if (!form.department_id) throw new Error("Department is required");
       if (form.closed > 0 && !form.closure_reason.trim()) throw new Error("Reason for closure is required");
 
-      const missingRequiredDateField = dynamicFields.find((field) => {
+      const invalidDateField = dynamicFields.find((field) => {
         if (field.field_type !== "date" || !field.is_required) return false;
         const rawValue = form.custom_fields[field.field_key];
         if (rawValue === undefined || rawValue === null) return true;
@@ -349,13 +349,17 @@ const DataEntryPage = () => {
 
         const [datePart, timePart] = normalizedValue.split("T");
         const hasValidDate = /^\d{4}-\d{2}-\d{2}$/.test(datePart ?? "");
-        const hasValidTime = /^\d{2}:\d{2}$/.test(timePart ?? "");
+        const timeMatch = /^(\d{2}):(\d{2})$/.exec(timePart ?? "");
+        const hasValidTime =
+          !!timeMatch && Number(timeMatch[1]) <= 23 && Number(timeMatch[2]) <= 59;
 
         return !hasValidDate || !hasValidTime;
       });
 
-      if (missingRequiredDateField) {
-        throw new Error(`${missingRequiredDateField.label} is required and must include both date and time`);
+      if (invalidDateField) {
+        throw new Error(
+          `${invalidDateField.label} requires a valid date and time (HH:MM, 00:00–23:59)`,
+        );
       }
 
       const currentUserId = await getCurrentUserId();
