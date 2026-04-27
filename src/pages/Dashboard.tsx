@@ -811,9 +811,9 @@ const DashboardPage = () => {
                     })}
                     <TableRow className="bg-muted/30">
                       <TableCell className="font-semibold">Total</TableCell>
-                      <TableCell className="text-right font-semibold">{sums.total_beds}</TableCell>
-                      <TableCell className="text-right font-semibold" style={{ color: "#b91c1c" }}>{sums.occupied}</TableCell>
-                      <TableCell className="text-right font-semibold" style={{ color: "#16a34a" }}>{sums.vacant}</TableCell>
+                      <TableCell className="text-right font-semibold">{Math.round(kpiCardValues.total_beds)}</TableCell>
+                      <TableCell className="text-right font-semibold" style={{ color: "#b91c1c" }}>{Math.round(kpiCardValues.occupied)}</TableCell>
+                      <TableCell className="text-right font-semibold" style={{ color: "#16a34a" }}>{Math.round(kpiCardValues.vacant)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 min-w-[160px]">
                           <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
