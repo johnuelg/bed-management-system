@@ -554,6 +554,10 @@ const DataEntryPage = () => {
       focusFieldByKey("occupied");
       return;
     }
+    if (subsetExceedsTotal) {
+      focusFieldByKey("medical_ped");
+      return;
+    }
     if (closedExceedsVacant) {
       focusFieldByKey("closed");
       return;
