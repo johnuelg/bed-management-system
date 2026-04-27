@@ -754,8 +754,8 @@ const DashboardPage = () => {
               </div>
             )
           ) : (
-            <div className="rounded-lg border bg-card">
-            <Table>
+            <div className="overflow-x-auto rounded-lg border bg-card">
+            <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Department</TableHead>
