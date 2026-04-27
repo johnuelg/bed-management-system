@@ -751,6 +751,23 @@ const DataEntryPage = () => {
               const [rawDatePart, rawTimePart = ""] = raw.includes("T") ? raw.split("T") : [raw, ""];
               const datePart = /^\d{4}-\d{2}-\d{2}$/.test(rawDatePart) ? rawDatePart : "";
               const timePart = /^\d{2}:\d{2}$/.test(rawTimePart) ? rawTimePart : "";
+              // Use the raw typed value (may be partial like "1" or "12:" or "25:99") so users see what they typed and we can validate it.
+              const displayedTime = rawTimePart;
+              const timeDigits = rawTimePart.replace(/\D/g, "");
+              let timeError = "";
+              if (timeDigits.length > 0) {
+                if (timeDigits.length < 3) {
+                  timeError = "Enter a complete time in HH:MM format";
+                } else {
+                  const hh = parseInt(timeDigits.slice(0, 2), 10);
+                  const mm = parseInt(timeDigits.slice(2, 4).padEnd(2, "0"), 10);
+                  if (hh > 23 || mm > 59) {
+                    timeError = "Time must be between 00:00 and 23:59";
+                  } else if (timeDigits.length === 3) {
+                    timeError = "Enter a complete time in HH:MM format";
+                  }
+                }
+              }
 
               return (
                 <div key={field.id} className="space-y-2 md:col-span-2">
