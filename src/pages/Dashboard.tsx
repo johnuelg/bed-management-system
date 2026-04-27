@@ -126,24 +126,27 @@ const DashboardPage = () => {
     const fromMinutes = toMinutes(timeFrom);
     const toMinutesValue = toMinutes(timeTo);
     const wrapsMidnight = fromMinutes > toMinutesValue;
-    const dateFrom = rangeStartIso <= rangeEndIso ? rangeStartIso : rangeEndIso;
-    const dateTo = rangeStartIso <= rangeEndIso ? rangeEndIso : rangeStartIso;
 
-    return rows.filter((row) => {
+    return dateFilteredRows.filter((row) => {
       const userDateTime = extractUserInputDateTime(row);
       if (!userDateTime) return false;
-
-      if (userDateTime.date < dateFrom || userDateTime.date > dateTo) return false;
-
       const valueMinutes = toMinutes(userDateTime.time);
-
       if (wrapsMidnight) {
         return valueMinutes >= fromMinutes || valueMinutes <= toMinutesValue;
       }
-
       return valueMinutes >= fromMinutes && valueMinutes <= toMinutesValue;
     });
-  }, [rows, timeFrom, timeTo, rangeStartIso, rangeEndIso]);
+  }, [dateFilteredRows, timeFrom, timeTo]);
+
+  // Reset time filters if the chosen time no longer exists in the data
+  useEffect(() => {
+    if (timeFrom !== "00:00" && !availableTimes.includes(timeFrom)) {
+      setTimeFrom("00:00");
+    }
+    if (timeTo !== "23:59" && !availableTimes.includes(timeTo)) {
+      setTimeTo("23:59");
+    }
+  }, [availableTimes, timeFrom, timeTo]);
 
   const departmentOptions = useMemo(() => {
     const availableDepartmentIds = new Set(
