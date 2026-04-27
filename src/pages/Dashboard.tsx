@@ -78,6 +78,11 @@ const DashboardPage = () => {
     queryFn: fetchKpiFormulas,
   });
 
+  const { data: departmentTotalBeds = {} } = useQuery({
+    queryKey: ["app_settings", "department_total_beds"],
+    queryFn: fetchDepartmentTotalBeds,
+  });
+
   const extractUserInputDateTime = (row: (typeof rows)[number]) => {
     const customFields = (row.custom_fields as Record<string, unknown>) ?? {};
 
