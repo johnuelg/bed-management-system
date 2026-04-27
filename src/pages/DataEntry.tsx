@@ -1086,6 +1086,10 @@ const DataEntryPage = () => {
                 <FileSpreadsheet className="mr-2 h-4 w-4" />
                 Download XLSX
               </Button>
+              <Button type="button" variant="outline" size="sm" onClick={downloadPdf}>
+                <FileText className="mr-2 h-4 w-4" />
+                Download PDF
+              </Button>
             </div>
           </div>
 
