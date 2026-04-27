@@ -372,7 +372,7 @@ const DataEntryPage = () => {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!form.department_id) throw new Error("Department is required");
-      if (form.closed > 0 && !form.closure_reason.trim()) throw new Error("Reason for closure is required");
+      if (closedNum > 0 && !form.closure_reason.trim()) throw new Error("Reason for closure is required");
 
       const missingRequiredDateField = dynamicFields.find((field) => {
         if (field.field_type !== "date" || !field.is_required) return false;
