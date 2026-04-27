@@ -809,29 +809,6 @@ const DashboardPage = () => {
                         </TableRow>
                       );
                     })}
-                    <TableRow className="bg-muted/30">
-                      <TableCell className="font-semibold">Total</TableCell>
-                      <TableCell className="text-right font-semibold">{Math.round(kpiCardValues.total_beds)}</TableCell>
-                      <TableCell className="text-right font-semibold" style={{ color: "#b91c1c" }}>{Math.round(kpiCardValues.occupied)}</TableCell>
-                      <TableCell className="text-right font-semibold" style={{ color: "#16a34a" }}>{Math.round(kpiCardValues.vacant)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 min-w-[160px]">
-                          <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(Math.max(occupancyRate, 0), 100)}%`,
-                                backgroundColor: occupancyBenchmarkMatch.color,
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm font-semibold tabular-nums" style={{ color: occupancyBenchmarkMatch.color }}>
-                            {occupancyRate.toFixed(1)}%
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{renderStatusBadge(occupancyBenchmarkMatch)}</TableCell>
-                    </TableRow>
                   </>
                 )}
               </TableBody>
