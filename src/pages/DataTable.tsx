@@ -212,15 +212,38 @@ const DataTablePage = () => {
   const enrichedRows = useMemo(() => {
     return filteredRows.map((row) => {
       const dt = extractUserInputDateTime(row);
-      const vacant = Math.max((Number(row.total_beds) || 0) - (Number(row.occupied) || 0) - (Number(row.closed) || 0), 0);
+      // Fall back to custom_fields when top-level columns are missing/zero.
+      // This protects historical entries where Occupied/Closed/Total were captured
+      // via dynamic form fields (custom_fields) instead of the dedicated columns.
+      const totalBedsRaw = Number(row.total_beds) || 0;
+      const occupiedRaw = Number(row.occupied) || 0;
+      const closedRaw = Number(row.closed) || 0;
+      const totalBeds = totalBedsRaw > 0
+        ? totalBedsRaw
+        : readCustomNumber(row, "total_beds");
+      const occupied = occupiedRaw > 0
+        ? occupiedRaw
+        : readCustomNumber(row, "occupied");
+      const closed = closedRaw > 0
+        ? closedRaw
+        : readCustomNumber(row, "closed");
+      const vacant = Math.max(totalBeds - occupied - closed, 0);
       const waiting = extractWaiting(row);
-      const scope = buildRowScope(row);
+      const scope = buildRowScope({
+        ...row,
+        total_beds: totalBeds,
+        occupied,
+        closed,
+      });
       const occupancy = evaluateOccupancyRate(kpiFormulas, scope);
       return {
         row,
         date: dt?.date ?? "",
         time: dt?.time ?? "",
         department: departmentMap.get(row.department_id) ?? "-",
+        totalBeds,
+        occupied,
+        closed,
         vacant,
         waiting,
         occupancy,
@@ -251,16 +274,16 @@ const DataTablePage = () => {
           bv = b.department;
           break;
         case "total_beds":
-          av = Number(a.row.total_beds) || 0;
-          bv = Number(b.row.total_beds) || 0;
+          av = a.totalBeds;
+          bv = b.totalBeds;
           break;
         case "occupied":
-          av = Number(a.row.occupied) || 0;
-          bv = Number(b.row.occupied) || 0;
+          av = a.occupied;
+          bv = b.occupied;
           break;
         case "closed":
-          av = Number(a.row.closed) || 0;
-          bv = Number(b.row.closed) || 0;
+          av = a.closed;
+          bv = b.closed;
           break;
         case "vacant":
           av = a.vacant;
@@ -390,9 +413,9 @@ const DataTablePage = () => {
           entry.date,
           entry.time,
           entry.department,
-          entry.row.total_beds,
-          entry.row.occupied,
-          entry.row.closed,
+          entry.totalBeds,
+          entry.occupied,
+          entry.closed,
           entry.vacant,
           entry.waiting,
           entry.medicalPed,
@@ -443,9 +466,9 @@ const DataTablePage = () => {
         entry.date,
         entry.time,
         entry.department,
-        String(entry.row.total_beds),
-        String(entry.row.occupied),
-        String(entry.row.closed),
+        String(entry.totalBeds),
+        String(entry.occupied),
+        String(entry.closed),
         String(entry.vacant),
         String(entry.waiting),
         String(entry.medicalPed),
@@ -695,9 +718,9 @@ const DataTablePage = () => {
                         <TableCell>{entry.date || "-"}</TableCell>
                         <TableCell>{entry.time || "-"}</TableCell>
                         <TableCell>{entry.department}</TableCell>
-                        <TableCell className="text-right font-medium">{entry.row.total_beds}</TableCell>
-                        <TableCell className="text-right">{entry.row.occupied}</TableCell>
-                        <TableCell className="text-right">{entry.row.closed}</TableCell>
+                        <TableCell className="text-right font-medium">{entry.totalBeds}</TableCell>
+                        <TableCell className="text-right">{entry.occupied}</TableCell>
+                        <TableCell className="text-right">{entry.closed}</TableCell>
                         <TableCell className="text-right">{entry.vacant}</TableCell>
                         <TableCell className="text-right">{entry.waiting}</TableCell>
                         <TableCell className="text-right">{entry.medicalPed}</TableCell>
