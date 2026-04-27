@@ -255,7 +255,9 @@ const DataEntryPage = () => {
       const raw = String(form.custom_fields[dateField.field_key] ?? "");
       const [d = "", t = ""] = raw.split("T");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) missing.push({ key: `${dateField.field_key}__date`, label: "Date" });
-      if (!/^\d{2}:\d{2}$/.test(t)) missing.push({ key: `${dateField.field_key}__time`, label: "Time" });
+      const timeMatch = /^(\d{2}):(\d{2})$/.exec(t);
+      const timeValid = !!timeMatch && Number(timeMatch[1]) <= 23 && Number(timeMatch[2]) <= 59;
+      if (!timeValid) missing.push({ key: `${dateField.field_key}__time`, label: "Time" });
     }
 
     if (!form.department_id) missing.push({ key: "department_id", label: "Department" });
