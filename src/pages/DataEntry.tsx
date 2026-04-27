@@ -751,6 +751,23 @@ const DataEntryPage = () => {
               const [rawDatePart, rawTimePart = ""] = raw.includes("T") ? raw.split("T") : [raw, ""];
               const datePart = /^\d{4}-\d{2}-\d{2}$/.test(rawDatePart) ? rawDatePart : "";
               const timePart = /^\d{2}:\d{2}$/.test(rawTimePart) ? rawTimePart : "";
+              // Use the raw typed value (may be partial like "1" or "12:" or "25:99") so users see what they typed and we can validate it.
+              const displayedTime = rawTimePart;
+              const timeDigits = rawTimePart.replace(/\D/g, "");
+              let timeError = "";
+              if (timeDigits.length > 0) {
+                if (timeDigits.length < 3) {
+                  timeError = "Enter a complete time in HH:MM format";
+                } else {
+                  const hh = parseInt(timeDigits.slice(0, 2), 10);
+                  const mm = parseInt(timeDigits.slice(2, 4).padEnd(2, "0"), 10);
+                  if (hh > 23 || mm > 59) {
+                    timeError = "Time must be between 00:00 and 23:59";
+                  } else if (timeDigits.length === 3) {
+                    timeError = "Enter a complete time in HH:MM format";
+                  }
+                }
+              }
 
               return (
                 <div key={field.id} className="space-y-2 md:col-span-2">
@@ -794,80 +811,73 @@ const DataEntryPage = () => {
                       </PopoverContent>
                     </Popover>
 
-                    <Input
-                      ref={setFieldRef(`${field.field_key}__time`) as never}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={5}
-                      placeholder="_:__"
-                      aria-label="Time (24-hour format, 00:00 to 23:59)"
-                      disabled={!editable}
-                      value={timePart}
-                      onChange={(e) => {
-                        const input = e.target as HTMLInputElement;
-                        const rawValue = input.value;
-                        const selectionEnd = input.selectionEnd ?? rawValue.length;
-                        const prevValue = timePart;
+                    <div className="space-y-1">
+                      <Input
+                        ref={setFieldRef(`${field.field_key}__time`) as never}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={5}
+                        placeholder="_:__"
+                        aria-label="Time (24-hour format, 00:00 to 23:59)"
+                        aria-invalid={timeError ? true : undefined}
+                        disabled={!editable}
+                        value={displayedTime}
+                        className={cn(timeError && "border-destructive focus-visible:ring-destructive")}
+                        onChange={(e) => {
+                          const input = e.target as HTMLInputElement;
+                          const rawValue = input.value;
+                          const selectionEnd = input.selectionEnd ?? rawValue.length;
+                          const prevValue = displayedTime;
 
-                        // Detect deletion of the colon: if user backspaced over ":",
-                        // also drop the digit before it so the deletion feels natural.
-                        let working = rawValue;
-                        const colonRemoved =
-                          prevValue.includes(":") &&
-                          !rawValue.includes(":") &&
-                          rawValue.length === prevValue.length - 1 &&
-                          selectionEnd === 2;
-                        if (colonRemoved) {
-                          working = rawValue.slice(0, 1) + rawValue.slice(2);
-                        }
-
-                        const digits = working.replace(/\D/g, "").slice(0, 4);
-                        const formatted =
-                          digits.length >= 3
-                            ? `${digits.slice(0, 2)}:${digits.slice(2)}`
-                            : digits;
-
-                        // Compute new caret position based on how many digits are
-                        // before the original caret in the raw input.
-                        const digitsBeforeCaret = rawValue
-                          .slice(0, selectionEnd)
-                          .replace(/\D/g, "").length;
-                        let nextCaret = digitsBeforeCaret;
-                        if (formatted.includes(":") && nextCaret > 2) nextCaret += 1;
-                        if (nextCaret > formatted.length) nextCaret = formatted.length;
-
-                        setForm((prev) => ({
-                          ...prev,
-                          custom_fields: {
-                            ...prev.custom_fields,
-                            [field.field_key]: datePart ? `${datePart}T${formatted}` : `T${formatted}`,
-                          },
-                        }));
-
-                        // Restore caret after React re-renders the controlled value.
-                        requestAnimationFrame(() => {
-                          try {
-                            input.setSelectionRange(nextCaret, nextCaret);
-                          } catch {
-                            /* ignore */
+                          // Detect deletion of the colon: if user backspaced over ":",
+                          // also drop the digit before it so the deletion feels natural.
+                          let working = rawValue;
+                          const colonRemoved =
+                            prevValue.includes(":") &&
+                            !rawValue.includes(":") &&
+                            rawValue.length === prevValue.length - 1 &&
+                            selectionEnd === 2;
+                          if (colonRemoved) {
+                            working = rawValue.slice(0, 1) + rawValue.slice(2);
                           }
-                        });
-                      }}
-                      onBlur={(e) => {
-                        const digits = e.target.value.replace(/\D/g, "");
-                        if (!digits) return;
-                        const hh = Math.min(23, parseInt(digits.slice(0, 2) || "0", 10));
-                        const mm = Math.min(59, parseInt(digits.slice(2, 4) || "0", 10));
-                        const norm = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-                        setForm((prev) => ({
-                          ...prev,
-                          custom_fields: {
-                            ...prev.custom_fields,
-                            [field.field_key]: datePart ? `${datePart}T${norm}` : `T${norm}`,
-                          },
-                        }));
-                      }}
-                    />
+
+                          const digits = working.replace(/\D/g, "").slice(0, 4);
+                          const formatted =
+                            digits.length >= 3
+                              ? `${digits.slice(0, 2)}:${digits.slice(2)}`
+                              : digits;
+
+                          // Compute new caret position based on how many digits are
+                          // before the original caret in the raw input.
+                          const digitsBeforeCaret = rawValue
+                            .slice(0, selectionEnd)
+                            .replace(/\D/g, "").length;
+                          let nextCaret = digitsBeforeCaret;
+                          if (formatted.includes(":") && nextCaret > 2) nextCaret += 1;
+                          if (nextCaret > formatted.length) nextCaret = formatted.length;
+
+                          setForm((prev) => ({
+                            ...prev,
+                            custom_fields: {
+                              ...prev.custom_fields,
+                              [field.field_key]: datePart ? `${datePart}T${formatted}` : `T${formatted}`,
+                            },
+                          }));
+
+                          // Restore caret after React re-renders the controlled value.
+                          requestAnimationFrame(() => {
+                            try {
+                              input.setSelectionRange(nextCaret, nextCaret);
+                            } catch {
+                              /* ignore */
+                            }
+                          });
+                        }}
+                      />
+                      {timeError && (
+                        <p className="text-xs text-destructive" role="alert">{timeError}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
