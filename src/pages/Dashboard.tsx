@@ -26,7 +26,7 @@ import {
   fetchOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
 import { supabase } from "@/integrations/supabase/client";
-import type { DateRange } from "react-day-picker";
+
 import { StatusBadge } from "@/components/status-badge";
 import { getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
 import {
@@ -48,11 +48,12 @@ const SAUDI_HOLIDAYS: Record<string, string> = {
 const DashboardPage = () => {
   const qc = useQueryClient();
   const today = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate()), []);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: today, to: today });
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(today);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
-  const rangeStart = dateRange?.from ?? today;
-  const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
+  const rangeStart = selectedDate ?? today;
+  const rangeEnd = selectedDate ?? today;
 
   const rangeStartIso = useMemo(() => calendarDateToIsoDate(rangeStart), [rangeStart]);
   const rangeEndIso = useMemo(() => calendarDateToIsoDate(rangeEnd), [rangeEnd]);
@@ -187,15 +188,11 @@ const DashboardPage = () => {
     return !availableDateSet.has(calendarDateToIsoDate(value));
   };
 
-  const formattedRangeLabel = `${formatSaudiIsoDateForDisplay(rangeStartIso, {
+  const formattedRangeLabel = formatSaudiIsoDateForDisplay(rangeStartIso, {
     year: "numeric",
     month: "short",
     day: "numeric",
-  })} - ${formatSaudiIsoDateForDisplay(rangeEndIso, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  })}`;
+  });
 
   const sums = aggregateSubmissionSums(filteredRows);
   const waitingPatients = filteredRows.reduce((total, row) => {
