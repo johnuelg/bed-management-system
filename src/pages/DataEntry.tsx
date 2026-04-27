@@ -772,20 +772,41 @@ const DataEntryPage = () => {
 
                     <Input
                       ref={setFieldRef(`${field.field_key}__time`) as never}
-                      type="time"
-                      step={60}
-                      lang="en-GB"
-                      pattern="[0-9]{2}:[0-9]{2}"
-                      placeholder="HH:MM"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={5}
+                      pattern="^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                      placeholder="HH:MM (24h)"
+                      aria-label="Time (24-hour format, 00:00 to 23:59)"
                       disabled={!editable}
                       value={timePart}
                       onChange={(e) => {
-                        const nextTime = e.target.value;
+                        // Auto-format: digits only, insert ":" after 2 digits, clamp to 24h range
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
+                        let formatted = digits;
+                        if (digits.length >= 3) {
+                          formatted = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+                        }
                         setForm((prev) => ({
                           ...prev,
                           custom_fields: {
                             ...prev.custom_fields,
-                            [field.field_key]: datePart ? `${datePart}T${nextTime}` : `T${nextTime}`,
+                            [field.field_key]: datePart ? `${datePart}T${formatted}` : `T${formatted}`,
+                          },
+                        }));
+                      }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        const m = v.match(/^(\d{1,2}):?(\d{0,2})$/);
+                        if (!m) return;
+                        const hh = Math.min(23, parseInt(m[1] || "0", 10));
+                        const mm = Math.min(59, parseInt(m[2] || "0", 10));
+                        const normalized = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+                        setForm((prev) => ({
+                          ...prev,
+                          custom_fields: {
+                            ...prev.custom_fields,
+                            [field.field_key]: datePart ? `${datePart}T${normalized}` : `T${normalized}`,
                           },
                         }));
                       }}
