@@ -993,24 +993,55 @@ const DataEntryPage = () => {
 
             const inputType = field.field_type === "number" ? "number" : "text";
 
+            const isNegative = inputType === "number" && Boolean(negativeFieldErrors[field.field_key]);
+
             return (
               <div key={field.id} className="space-y-2 md:col-span-2">
                 <Label>{field.label}{field.is_required ? " *" : ""}</Label>
                 <Input
                   ref={setFieldRef(field.field_key) as never}
                   type={inputType}
+                  min={inputType === "number" ? 0 : undefined}
                   disabled={!editable}
                   value={inputType === "number" ? Number(currentValue || 0) : String(currentValue)}
-                  onChange={(e) =>
+                  aria-invalid={isNegative || undefined}
+                  className={cn(isNegative && "border-destructive focus-visible:ring-destructive")}
+                  onChange={(e) => {
+                    if (inputType === "number") {
+                      const raw = e.target.value;
+                      const num = Number(raw);
+                      if (raw !== "" && !Number.isNaN(num) && num < 0) {
+                        markNegative(field.field_key, true);
+                        setForm((prev) => ({
+                          ...prev,
+                          custom_fields: { ...prev.custom_fields, [field.field_key]: 0 },
+                        }));
+                        return;
+                      }
+                      markNegative(field.field_key, false);
+                      setForm((prev) => ({
+                        ...prev,
+                        custom_fields: {
+                          ...prev.custom_fields,
+                          [field.field_key]: raw === "" ? 0 : num,
+                        },
+                      }));
+                      return;
+                    }
                     setForm((prev) => ({
                       ...prev,
                       custom_fields: {
                         ...prev.custom_fields,
-                        [field.field_key]: inputType === "number" ? Number(e.target.value) : e.target.value,
+                        [field.field_key]: e.target.value,
                       },
-                    }))
-                  }
+                    }));
+                  }}
                 />
+                {isNegative ? (
+                  <p className="text-sm font-medium text-destructive">
+                    Value cannot be negative. Minimum allowed is 0.
+                  </p>
+                ) : null}
               </div>
             );
           })}
