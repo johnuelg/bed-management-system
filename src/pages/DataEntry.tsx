@@ -297,7 +297,7 @@ const DataEntryPage = () => {
 
     return {
       date: formatSaudiDateTime(sourceDate, { year: "numeric", month: "short", day: "numeric" }),
-      time: formatSaudiDateTime(sourceDate, { hour: "2-digit", minute: "2-digit", hour12: true }),
+      time: formatSaudiDateTime(sourceDate, { hour: "2-digit", minute: "2-digit", hour12: false }),
     };
   };
 
