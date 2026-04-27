@@ -458,13 +458,40 @@ const DashboardPage = () => {
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">From Time</label>
-              <Input type="time" value={timeFrom} onChange={(event) => setTimeFrom(event.target.value)} />
+              <Select value={timeFrom} onValueChange={setTimeFrom}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="00:00">Any time</SelectItem>
+                  {availableTimes.map((time) => (
+                    <SelectItem key={`from-${time}`} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">To Time</label>
-              <Input type="time" value={timeTo} onChange={(event) => setTimeTo(event.target.value)} />
+              <Select value={timeTo} onValueChange={setTimeTo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="23:59">Any time</SelectItem>
+                  {availableTimes.map((time) => (
+                    <SelectItem key={`to-${time}`} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+          {availableTimes.length === 0 && (
+            <p className="text-xs text-muted-foreground">No bed entry times available for the selected date range.</p>
+          )}
 
           <div className="grid grid-cols-1 gap-2">
             <div className="space-y-1">
