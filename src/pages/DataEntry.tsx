@@ -411,7 +411,7 @@ const DataEntryPage = () => {
           total_beds: canEditAllBedEntryFields ? Number(form.total_beds) : 0,
           occupied: Number(form.occupied),
           closed: Number(form.closed),
-          closure_reason: form.closed > 0 ? form.closure_reason.trim() : null,
+          closure_reason: closedNum > 0 ? form.closure_reason.trim() : null,
           submitted_on: submittedOn,
           custom_fields: form.custom_fields,
           calculated_fields: buildCalculatedFieldsPayload(),
