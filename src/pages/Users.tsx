@@ -6,25 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowDown, ArrowUp, Plus, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
   createUserByAdmin,
   deactivateUserByAdmin,
-  fetchAllUserEntryPermissions,
   fetchNavVisibilitySettings,
   fetchProfiles,
   fetchRoleCatalog,
   fetchUserRoles,
-  saveUserEntryPermissions,
   saveNavVisibilitySettings,
   saveRoleCatalog,
   setUserRole,
 } from "@/lib/supabase-api";
 import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibility-settings";
-import type { AppRole, NavVisibilitySettings, UserEntryPermissions } from "@/types/hospital";
-import { cn } from "@/lib/utils";
+import type { AppRole, NavVisibilitySettings } from "@/types/hospital";
 
 const defaultNavSettings: NavVisibilitySettings = {
   admin: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
@@ -33,8 +30,6 @@ const defaultNavSettings: NavVisibilitySettings = {
   nurse: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
   staff: { dashboard: true, data_entry: true, kpi_builder: true, categories: true, form_builder: true, users: true },
 };
-
-const DEFAULT_PERMS: Omit<UserEntryPermissions, "user_id"> = { can_add: true, can_edit: true, can_delete: false };
 
 const UsersPage = () => {
   const { roles, user } = useAuth();
@@ -52,11 +47,6 @@ const UsersPage = () => {
     queryKey: ["app_settings", "nav_visibility"],
     queryFn: fetchNavVisibilitySettings,
   });
-  const { data: permissionsMap = {} } = useQuery({
-    queryKey: ["user_entry_permissions"],
-    queryFn: fetchAllUserEntryPermissions,
-  });
-
   useEffect(() => {
     if (!roleCatalog.length) return;
     if (!roleCatalog.includes(form.role)) {
@@ -106,28 +96,6 @@ const UsersPage = () => {
     },
     onError: (error) => toast({ title: "Status update failed", description: (error as Error).message, variant: "destructive" }),
   });
-
-  const permissionsMutation = useMutation({
-    mutationFn: (payload: UserEntryPermissions) => {
-      if (!user?.id) throw new Error("You must be signed in.");
-      return saveUserEntryPermissions(roles, payload, user.id);
-    },
-    onSuccess: async () => {
-      toast({ title: "Permissions updated" });
-      await queryClient.invalidateQueries({ queryKey: ["user_entry_permissions"] });
-    },
-    onError: (error) => toast({ title: "Permissions save failed", description: (error as Error).message, variant: "destructive" }),
-  });
-
-  const togglePermission = (userId: string, key: "can_add" | "can_edit" | "can_delete") => {
-    const existing = permissionsMap[userId];
-    const current: UserEntryPermissions = existing
-      ? existing
-      : { user_id: userId, ...DEFAULT_PERMS };
-    const next: UserEntryPermissions = { ...current, [key]: !current[key] };
-    queryClient.setQueryData(["user_entry_permissions"], { ...permissionsMap, [userId]: next });
-    permissionsMutation.mutate(next);
-  };
 
   const settingsMutation = useMutation({
     mutationFn: (settings: NavVisibilitySettings) => {
@@ -318,16 +286,15 @@ const UsersPage = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Bed Entry Permissions</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((row) => {
-                const perms = permissionsMap[row.user_id] ?? { user_id: row.user_id, ...DEFAULT_PERMS };
+                const isSelf = row.user_id === user?.id;
                 return (
                 <TableRow key={row.id}>
-                  <TableCell>{row.display_name ?? "Unnamed"}</TableCell>
+                  <TableCell>{row.display_name ?? "Unnamed"}{isSelf ? " (You)" : ""}</TableCell>
                   <TableCell>
                     <Select
                       value={row.role}
@@ -346,43 +313,23 @@ const UsersPage = () => {
                     </Select>
                   </TableCell>
                   <TableCell>{row.is_active ? "Active" : "Inactive"}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {([
-                        { key: "can_add" as const, Icon: Plus, label: "Can Add" },
-                        { key: "can_edit" as const, Icon: Pencil, label: "Can Edit" },
-                        { key: "can_delete" as const, Icon: Trash2, label: "Can Delete" },
-                      ]).map(({ key, Icon, label }) => {
-                        const enabled = perms[key];
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            role="switch"
-                            aria-checked={enabled}
-                            aria-label={`${label} for ${row.display_name ?? "user"}`}
-                            disabled={permissionsMutation.isPending}
-                            onClick={() => togglePermission(row.user_id, key)}
-                            title={`${label}: ${enabled ? "On" : "Off"}`}
-                            className={cn(
-                              "inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors",
-                              enabled
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border bg-muted text-muted-foreground/60 hover:border-primary/50",
-                              permissionsMutation.isPending && "opacity-60",
-                            )}
-                          >
-                            <Icon className="h-4 w-4" />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </TableCell>
                   <TableCell className="text-right">
                     <Button
                       size="sm"
                       variant={row.is_active ? "destructive" : "secondary"}
-                      onClick={() => activeMutation.mutate({ userId: row.user_id, active: !row.is_active })}
+                      disabled={isSelf}
+                      title={isSelf ? "You cannot deactivate your own account" : undefined}
+                      onClick={() => {
+                        if (isSelf) {
+                          toast({
+                            title: "Action blocked",
+                            description: "You cannot deactivate or delete your own account.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        activeMutation.mutate({ userId: row.user_id, active: !row.is_active });
+                      }}
                     >
                       {row.is_active ? "Deactivate" : "Activate"}
                     </Button>
