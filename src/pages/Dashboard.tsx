@@ -357,15 +357,13 @@ const DashboardPage = () => {
   const isFiltersDefault =
     calendarDateToIsoDate(rangeStart) === calendarDateToIsoDate(today) &&
     calendarDateToIsoDate(rangeEnd) === calendarDateToIsoDate(today) &&
-    timeFrom === "00:00" &&
-    timeTo === "23:59" &&
+    selectedTime === "all" &&
     selectedDepartmentId === "all";
 
   const handleResetFilters = () => {
     const freshToday = isoDateToCalendarDate(getSaudiIsoDate());
     setDateRange({ from: freshToday, to: freshToday });
-    setTimeFrom("00:00");
-    setTimeTo("23:59");
+    setSelectedTime("all");
     setSelectedDepartmentId("all");
     void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
   };
