@@ -560,6 +560,17 @@ const DataTablePage = () => {
               <Download className="mr-2 h-4 w-4" />
               Export CSV
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleExportPdf}
+              disabled={sortedRows.length === 0}
+              className="w-full justify-center sm:flex-1"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Download PDF
+            </Button>
             {canDelete && (
               <Button
                 type="button"
