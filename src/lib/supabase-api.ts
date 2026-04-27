@@ -477,6 +477,7 @@ export const saveDepartmentTotalBeds = async (
   if (error) throw error;
 };
 
+export const fetchDepartments = async (): Promise<Department[]> => {
   const { data, error } = await db.from("departments").select("id,name,code,sort_order,is_active").order("sort_order", { ascending: true });
   if (error) throw error;
   return data ?? [];
