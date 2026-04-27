@@ -216,6 +216,7 @@ const DataEntryPage = () => {
     const payload: Record<string, unknown> = {
       vacant: computed.vacant,
       occupancy_rate: computed.occupancyRate,
+      occupied_auto: computed.occupiedAuto,
     };
     orderedActiveFields
       .filter((field) => field.field_type === "formula" && field.is_active)
