@@ -658,7 +658,8 @@ const DataEntryPage = () => {
             }
 
             if (field.field_key === "closure_reason") {
-              if (form.closed <= 0) return null;
+              if (closedNum <= 0) return null;
+              const showError = !form.closure_reason.trim();
               return (
                 <div key={field.id} className="space-y-2 md:col-span-2">
                   <Label>{field.label} *</Label>
@@ -666,7 +667,14 @@ const DataEntryPage = () => {
                     value={form.closure_reason}
                     onChange={(e) => setForm((p) => ({ ...p, closure_reason: e.target.value }))}
                     placeholder="Required when Closed is greater than 0"
+                    aria-invalid={showError}
+                    className={cn(showError && "border-destructive focus-visible:ring-destructive")}
                   />
+                  {showError ? (
+                    <p className="text-sm font-medium text-destructive">
+                      Please provide a reason — required when Closed beds is greater than 0.
+                    </p>
+                  ) : null}
                 </div>
               );
             }
