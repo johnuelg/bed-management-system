@@ -281,9 +281,15 @@ export const evaluateOccupancyRate = (
   scope: FormulaScope,
 ): number => {
   const formula = findFormulaByName(formulas, "Occupancy Rate");
-  const result = evaluateFormula(formula, scope);
+  // Resolve registry dependencies first so compound formulas (e.g. Occupancy
+  // Rate referencing a formula-defined Vacant or Occupied) evaluate correctly.
+  const { scope: resolved } = buildScopeWithFormulas(scope, formulas);
+  const result = evaluateFormula(formula, resolved);
   if (result !== null) return result;
-  return scope.total_beds > 0 ? (scope.occupied / scope.total_beds) * 100 : 0;
+  // Fallback: prefer registry-resolved Occupied / Total Beds when available.
+  const total = resolved.total_beds ?? scope.total_beds ?? 0;
+  const occupied = resolved.occupied ?? scope.occupied ?? 0;
+  return total > 0 ? (occupied / total) * 100 : 0;
 };
 
 /**
