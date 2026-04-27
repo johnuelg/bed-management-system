@@ -205,7 +205,24 @@ const DashboardPage = () => {
 
     return total;
   }, 0);
-  const aggregateScope = useMemo(() => buildAggregateScope(filteredRows), [filteredRows]);
+
+  // Assigned total beds come from admin-managed Categories settings, not from
+  // submissions. When filtered to a single department, only that department's
+  // assigned count contributes; "All departments" sums every active assignment.
+  const assignedTotalBeds = useMemo(() => {
+    if (selectedDepartmentId !== "all") {
+      return Number(departmentTotalBeds[selectedDepartmentId] ?? 0) || 0;
+    }
+    return departments.reduce(
+      (sum, dept) => sum + (Number(departmentTotalBeds[dept.id] ?? 0) || 0),
+      0,
+    );
+  }, [departmentTotalBeds, departments, selectedDepartmentId]);
+
+  const aggregateScope = useMemo(
+    () => ({ ...buildAggregateScope(filteredRows), total_beds: assignedTotalBeds }),
+    [filteredRows, assignedTotalBeds],
+  );
   const occupancyRate = useMemo(
     () => evaluateOccupancyRate(kpiFormulas, aggregateScope),
     [kpiFormulas, aggregateScope],
@@ -214,13 +231,13 @@ const DashboardPage = () => {
   // These fall back to the raw aggregated sums when no matching formula exists.
   const kpiCardValues = useMemo(
     () => ({
-      total_beds: evaluateNamedFormula(kpiFormulas, "Total Beds", aggregateScope, sums.total_beds),
+      total_beds: assignedTotalBeds,
       occupied: evaluateNamedFormula(kpiFormulas, "Occupied", aggregateScope, sums.occupied),
       closed: evaluateNamedFormula(kpiFormulas, "Closed", aggregateScope, sums.closed),
       vacant: evaluateNamedFormula(kpiFormulas, "Vacant", aggregateScope, sums.vacant),
       waiting_patients: evaluateNamedFormula(kpiFormulas, "Waiting Patients", aggregateScope, waitingPatients),
     }),
-    [kpiFormulas, aggregateScope, sums.total_beds, sums.occupied, sums.closed, sums.vacant, waitingPatients],
+    [kpiFormulas, aggregateScope, assignedTotalBeds, sums.occupied, sums.closed, sums.vacant, waitingPatients],
   );
   const benchmarkLevels = occupancyBenchmark?.levels ?? [
     {
