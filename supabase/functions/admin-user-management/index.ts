@@ -177,6 +177,64 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (body.action === "list_user_emails") {
+      const emails: Record<string, string> = {};
+      let page = 1;
+      const perPage = 200;
+      while (true) {
+        const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
+        if (error) throw error;
+        const users = data?.users ?? [];
+        for (const u of users) {
+          if (u.email) emails[u.id] = u.email;
+        }
+        if (users.length < perPage) break;
+        page += 1;
+        if (page > 50) break;
+      }
+      return new Response(JSON.stringify({ success: true, emails }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (body.action === "update_user") {
+      const authUpdate: { email?: string; password?: string; email_confirm?: boolean } = {};
+      if (body.email) {
+        authUpdate.email = body.email;
+        authUpdate.email_confirm = true;
+      }
+      if (body.password) authUpdate.password = body.password;
+
+      if (Object.keys(authUpdate).length > 0) {
+        const { error: authError } = await adminClient.auth.admin.updateUserById(body.user_id, authUpdate);
+        if (authError) throw authError;
+      }
+
+      if (typeof body.display_name === "string" && body.display_name.length > 0) {
+        const { error: profileError } = await adminClient
+          .from("profiles")
+          .update({ display_name: body.display_name })
+          .eq("user_id", body.user_id);
+        if (profileError) throw profileError;
+      }
+
+      if (body.role) {
+        const { error: roleDeleteError } = await adminClient
+          .from("user_roles")
+          .delete()
+          .eq("user_id", body.user_id);
+        if (roleDeleteError) throw roleDeleteError;
+        const { error: roleInsertError } = await adminClient
+          .from("user_roles")
+          .insert({ user_id: body.user_id, role: body.role });
+        if (roleInsertError) throw roleInsertError;
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unsupported action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
