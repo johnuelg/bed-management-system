@@ -321,20 +321,28 @@ const DashboardPage = () => {
     return Array.from(latestByDept.entries())
       .map(([deptId, entry]) => {
         const department = departments.find((d) => d.id === deptId);
-        const total = Number(entry.row.total_beds) || 0;
-        const occupied = Number(entry.row.occupied) || 0;
-        const closed = Number(entry.row.closed) || 0;
-        const vacant = Math.max(total - occupied - closed, 0);
         const scope = buildRowScope(entry.row);
+        const totalRaw = Number(entry.row.total_beds) || 0;
+        const occupiedRaw = Number(entry.row.occupied) || 0;
+        const closedRaw = Number(entry.row.closed) || 0;
+        const vacantFallback = Math.max(totalRaw - occupiedRaw - closedRaw, 0);
+        // Resolve each metric via the global KPI Formula Registry so admin-defined
+        // formulas (e.g. Vacant, Occupied) drive the card values consistently with
+        // the Bed Entry form. Falls back to the raw saved column when no formula
+        // is registered for that metric.
+        const total = evaluateNamedFormula(kpiFormulas, "Total Beds", scope, totalRaw);
+        const occupied = evaluateNamedFormula(kpiFormulas, "Occupied", scope, occupiedRaw);
+        const closed = evaluateNamedFormula(kpiFormulas, "Closed", scope, closedRaw);
+        const vacant = evaluateNamedFormula(kpiFormulas, "Vacant", scope, vacantFallback);
         const rate = evaluateOccupancyRate(kpiFormulas, scope);
         const benchmark = getOccupancyBenchmark(rate);
         return {
           id: deptId,
           name: department?.name ?? "Unknown department",
-          total,
-          occupied,
-          vacant,
-          closed,
+          total: Math.round(total),
+          occupied: Math.round(occupied),
+          vacant: Math.round(vacant),
+          closed: Math.round(closed),
           rate,
           benchmark,
         };
@@ -803,9 +811,9 @@ const DashboardPage = () => {
                     })}
                     <TableRow className="bg-muted/30">
                       <TableCell className="font-semibold">Total</TableCell>
-                      <TableCell className="text-right font-semibold">{sums.total_beds}</TableCell>
-                      <TableCell className="text-right font-semibold" style={{ color: "#b91c1c" }}>{sums.occupied}</TableCell>
-                      <TableCell className="text-right font-semibold" style={{ color: "#16a34a" }}>{sums.vacant}</TableCell>
+                      <TableCell className="text-right font-semibold">{Math.round(kpiCardValues.total_beds)}</TableCell>
+                      <TableCell className="text-right font-semibold" style={{ color: "#b91c1c" }}>{Math.round(kpiCardValues.occupied)}</TableCell>
+                      <TableCell className="text-right font-semibold" style={{ color: "#16a34a" }}>{Math.round(kpiCardValues.vacant)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 min-w-[160px]">
                           <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
