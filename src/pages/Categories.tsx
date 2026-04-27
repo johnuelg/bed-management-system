@@ -28,27 +28,45 @@ import {
 } from "@/lib/supabase-api";
 
 const CategoriesPage = () => {
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const qc = useQueryClient();
-  const [dept, setDept] = useState({ name: "", code: "" });
+  const [dept, setDept] = useState({ name: "", code: "", total_beds: 0 });
   const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
   const [departmentToDelete, setDepartmentToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
+  const { data: departmentTotalBeds = {} } = useQuery({
+    queryKey: ["department-total-beds"],
+    queryFn: fetchDepartmentTotalBeds,
+  });
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["departments"] });
+    await qc.invalidateQueries({ queryKey: ["department-total-beds"] });
+  };
+
+  const persistTotalBeds = async (departmentId: string, totalBeds: number) => {
+    if (!user) return;
+    const next = { ...departmentTotalBeds, [departmentId]: Math.max(0, Math.floor(totalBeds || 0)) };
+    await saveDepartmentTotalBeds(roles, next, user.id);
   };
 
   const deptMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (editingDepartmentId) {
-        return updateDepartment(roles, editingDepartmentId, { ...dept });
+        await updateDepartment(roles, editingDepartmentId, { name: dept.name, code: dept.code });
+        await persistTotalBeds(editingDepartmentId, dept.total_beds);
+        return;
       }
-      return saveDepartment(roles, { ...dept });
+      await saveDepartment(roles, { name: dept.name, code: dept.code });
+      // Look up newly created department by code to capture id
+      const { data: created } = await import("@/integrations/supabase/client").then(({ supabase }) =>
+        supabase.from("departments").select("id").eq("code", dept.code).maybeSingle(),
+      );
+      if (created?.id) await persistTotalBeds(created.id, dept.total_beds);
     },
     onSuccess: async () => {
-      setDept({ name: "", code: "" });
+      setDept({ name: "", code: "", total_beds: 0 });
       setEditingDepartmentId(null);
       toast({ title: editingDepartmentId ? "Department updated" : "Department saved" });
       await refresh();
@@ -57,10 +75,17 @@ const CategoriesPage = () => {
   });
 
   const deleteDepartmentMutation = useMutation({
-    mutationFn: (id: string) => deleteDepartment(roles, id),
+    mutationFn: async (id: string) => {
+      await deleteDepartment(roles, id);
+      if (user && id in departmentTotalBeds) {
+        const next = { ...departmentTotalBeds };
+        delete next[id];
+        await saveDepartmentTotalBeds(roles, next, user.id);
+      }
+    },
     onSuccess: async () => {
       if (editingDepartmentId) {
-        setDept({ name: "", code: "" });
+        setDept({ name: "", code: "", total_beds: 0 });
         setEditingDepartmentId(null);
       }
       toast({ title: "Department deleted" });
