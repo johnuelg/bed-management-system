@@ -799,6 +799,9 @@ const DataEntryPage = () => {
                       ref={setFieldRef(`${field.field_key}__time`) as never}
                       type="time"
                       step={60}
+                      lang="en-GB"
+                      pattern="[0-9]{2}:[0-9]{2}"
+                      placeholder="HH:MM"
                       disabled={!editable}
                       value={timePart}
                       onChange={(e) => {
