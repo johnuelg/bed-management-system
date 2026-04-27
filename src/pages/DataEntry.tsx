@@ -46,7 +46,6 @@ import {
   deleteBedSubmission,
   diffBedSubmission,
   fetchBedSubmissionById,
-  fetchBedTypes,
   fetchDepartments,
   fetchFormFields,
   fetchKpiFormulas,
@@ -97,7 +96,6 @@ const DataEntryPage = () => {
   const initialForm = {
     id: "",
     department_id: "",
-    bed_type_id: "",
     total_beds: 0,
     occupied: 0,
     closed: 0,
@@ -116,7 +114,6 @@ const DataEntryPage = () => {
   const resetForm = () => setForm(initialForm);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
-  const { data: bedTypes = [] } = useQuery({ queryKey: ["bed_types"], queryFn: fetchBedTypes });
   const { data: formFields = [] } = useQuery({ queryKey: ["form_fields"], queryFn: fetchFormFields });
   const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
   const { data: kpiFormulas = [] } = useQuery({ queryKey: ["kpi_formulas"], queryFn: fetchKpiFormulas });
@@ -158,11 +155,6 @@ const DataEntryPage = () => {
   const departmentNameById = useMemo(
     () => Object.fromEntries(departments.map((department) => [department.id, department.name])),
     [departments],
-  );
-
-  const bedTypeNameById = useMemo(
-    () => Object.fromEntries(bedTypes.map((bedType) => [bedType.id, bedType.name])),
-    [bedTypes],
   );
 
   const computed = useMemo(() => {
@@ -265,7 +257,6 @@ const DataEntryPage = () => {
     }
 
     if (!form.department_id) missing.push({ key: "department_id", label: "Department" });
-    if (!form.bed_type_id) missing.push({ key: "bed_type_id", label: "Bed Type" });
     if (!form.total_beds || Number(form.total_beds) <= 0) missing.push({ key: "total_beds", label: "Total Beds" });
     if (form.occupied === undefined || form.occupied === null || Number.isNaN(Number(form.occupied)))
       missing.push({ key: "occupied", label: "Occupied" });
@@ -285,14 +276,13 @@ const DataEntryPage = () => {
       rows.map((row) => ({
         date: row.submitted_on,
         department: departmentNameById[row.department_id] ?? "Unknown Department",
-        bed_type: row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified",
         total_beds: row.total_beds,
         occupied: row.occupied,
         closed: row.closed,
         closure_reason: row.closure_reason ?? "",
         submitted_by: row.submitted_by,
       })),
-    [rows, departmentNameById, bedTypeNameById],
+    [rows, departmentNameById],
   );
 
   const getSubmissionDateTime = (row: (typeof rows)[number]) => {
@@ -310,7 +300,6 @@ const DataEntryPage = () => {
     setForm({
       id: row.id,
       department_id: row.department_id,
-      bed_type_id: row.bed_type_id ?? "",
       total_beds: row.total_beds,
       occupied: row.occupied,
       closed: row.closed,
@@ -386,7 +375,7 @@ const DataEntryPage = () => {
         const payload = {
           id: recordId,
           department_id: form.department_id,
-          bed_type_id: form.bed_type_id || null,
+          bed_type_id: null,
           total_beds: canEditAllBedEntryFields ? Number(form.total_beds) : 0,
           occupied: Number(form.occupied),
           closed: Number(form.closed),
@@ -550,23 +539,7 @@ const DataEntryPage = () => {
             }
 
             if (field.field_key === "bed_type_id") {
-              return (
-                <div key={field.id} className="space-y-2">
-                  <Label>{field.label}</Label>
-                  <Select value={form.bed_type_id} onValueChange={(value) => setForm((p) => ({ ...p, bed_type_id: value }))}>
-                    <SelectTrigger ref={setFieldRef("bed_type_id") as never}>
-                      <SelectValue placeholder="Optional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {bedTypes.filter((b) => b.is_active).map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
+              return null;
             }
 
             if (field.field_key === "total_beds") {
@@ -985,9 +958,6 @@ const DataEntryPage = () => {
                       </p>
                       <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
                       <p className="text-sm text-muted-foreground">
-                        Bed Type: {row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
                         Total {row.total_beds} • Occupied {row.occupied} • Closed {row.closed}
                       </p>
                     </div>
@@ -1034,7 +1004,6 @@ const DataEntryPage = () => {
                         <TableHead>Date</TableHead>
                         <TableHead>Time</TableHead>
                         <TableHead>Department</TableHead>
-                        <TableHead>Bed Type</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                         <TableHead className="text-right">Occupied</TableHead>
                         <TableHead className="text-right">Closed</TableHead>
@@ -1050,7 +1019,6 @@ const DataEntryPage = () => {
                             <TableCell>{dateTime.date}</TableCell>
                             <TableCell>{dateTime.time}</TableCell>
                             <TableCell>{departmentNameById[row.department_id] ?? "Unknown Department"}</TableCell>
-                            <TableCell>{row.bed_type_id ? (bedTypeNameById[row.bed_type_id] ?? "Unknown Bed Type") : "Not specified"}</TableCell>
                             <TableCell className="text-right">{row.total_beds}</TableCell>
                             <TableCell className="text-right">{row.occupied}</TableCell>
                             <TableCell className="text-right">{row.closed}</TableCell>

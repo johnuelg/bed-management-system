@@ -18,15 +18,10 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  deleteBedType,
   deleteDepartment,
-  fetchBedTypes,
   fetchDepartments,
-  saveBedType,
   saveDepartment,
-  toggleBedTypeActive,
   toggleDepartmentActive,
-  updateBedType,
   updateDepartment,
 } from "@/lib/supabase-api";
 
@@ -34,18 +29,13 @@ const CategoriesPage = () => {
   const { roles } = useAuth();
   const qc = useQueryClient();
   const [dept, setDept] = useState({ name: "", code: "" });
-  const [bedType, setBedType] = useState({ name: "" });
   const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
-  const [editingBedTypeId, setEditingBedTypeId] = useState<string | null>(null);
   const [departmentToDelete, setDepartmentToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [bedTypeToDelete, setBedTypeToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
-  const { data: bedTypes = [] } = useQuery({ queryKey: ["bed_types"], queryFn: fetchBedTypes });
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["departments"] });
-    await qc.invalidateQueries({ queryKey: ["bed_types"] });
   };
 
   const deptMutation = useMutation({
@@ -77,43 +67,14 @@ const CategoriesPage = () => {
     onError: (error) => toast({ title: "Delete failed", description: (error as Error).message, variant: "destructive" }),
   });
 
-  const bedMutation = useMutation({
-    mutationFn: () => {
-      if (editingBedTypeId) {
-        return updateBedType(roles, editingBedTypeId, { ...bedType });
-      }
-      return saveBedType(roles, { ...bedType });
-    },
-    onSuccess: async () => {
-      setBedType({ name: "" });
-      setEditingBedTypeId(null);
-      toast({ title: editingBedTypeId ? "Bed type updated" : "Bed type saved" });
-      await refresh();
-    },
-    onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
-  });
-
-  const deleteBedTypeMutation = useMutation({
-    mutationFn: (id: string) => deleteBedType(roles, id),
-    onSuccess: async () => {
-      if (editingBedTypeId) {
-        setBedType({ name: "" });
-        setEditingBedTypeId(null);
-      }
-      toast({ title: "Bed type deleted" });
-      await refresh();
-    },
-    onError: (error) => toast({ title: "Delete failed", description: (error as Error).message, variant: "destructive" }),
-  });
-
   return (
     <section className="space-y-5 sm:space-y-6">
       <header>
-        <h1 className="text-2xl font-bold sm:text-3xl">Departments & Bed Types</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Departments</h1>
         <p className="text-sm text-muted-foreground">Soft delete is used to preserve historical bed records.</p>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Departments</CardTitle>
@@ -187,71 +148,6 @@ const CategoriesPage = () => {
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Bed Types</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Name</Label>
-              <Input value={bedType.name} onChange={(e) => setBedType({ name: e.target.value })} />
-            </div>
-            {editingBedTypeId ? (
-              <p className="text-sm text-muted-foreground">Editing Bed Type: Name is loaded below.</p>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => bedMutation.mutate()}>
-                {editingBedTypeId ? "Update Bed Type" : "Add Bed Type"}
-              </Button>
-              {editingBedTypeId ? (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setEditingBedTypeId(null);
-                    setBedType({ name: "" });
-                  }}
-                >
-                  Cancel Edit
-                </Button>
-              ) : null}
-            </div>
-            <div className="space-y-3">
-              {bedTypes.map((item) => (
-                <div key={item.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="font-semibold">{item.name}</p>
-                  <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setEditingBedTypeId(item.id);
-                        setBedType({ name: item.name });
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => setBedTypeToDelete({ id: item.id, name: item.name })}
-                      disabled={deleteBedTypeMutation.isPending}
-                    >
-                      Delete
-                    </Button>
-                    <span>{item.is_active ? "Active" : "Inactive"}</span>
-                    <Switch
-                      checked={item.is_active}
-                      onCheckedChange={(checked) => {
-                        void toggleBedTypeActive(roles, item.id, checked).then(refresh);
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <AlertDialog open={Boolean(departmentToDelete)} onOpenChange={(open) => !open && setDepartmentToDelete(null)}>
@@ -271,31 +167,6 @@ const CategoriesPage = () => {
                   deleteDepartmentMutation.mutate(departmentToDelete.id);
                 }
                 setDepartmentToDelete(null);
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={Boolean(bedTypeToDelete)} onOpenChange={(open) => !open && setBedTypeToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete bed type?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove <span className="font-semibold">{bedTypeToDelete?.name}</span>. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (bedTypeToDelete) {
-                  deleteBedTypeMutation.mutate(bedTypeToDelete.id);
-                }
-                setBedTypeToDelete(null);
               }}
             >
               Delete
