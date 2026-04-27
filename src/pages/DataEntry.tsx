@@ -618,6 +618,11 @@ const DataEntryPage = () => {
               );
             }
 
+            if (field.field_key === "input_room_no._of_single_room") {
+              const singleRoomEnabled = form.custom_fields?.single_room;
+              if (!(singleRoomEnabled === true || singleRoomEnabled === "true")) return null;
+            }
+
             if (field.field_key === "closure_reason") {
               if (form.closed <= 0) return null;
               return (
