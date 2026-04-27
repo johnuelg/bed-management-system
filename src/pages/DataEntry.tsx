@@ -527,7 +527,16 @@ const DataEntryPage = () => {
               return (
                 <div key={field.id} className="space-y-2">
                   <Label>{field.label}</Label>
-                  <Select value={form.department_id} onValueChange={(value) => setForm((p) => ({ ...p, department_id: value }))}>
+                  <Select
+                    value={form.department_id}
+                    onValueChange={(value) =>
+                      setForm((p) => ({
+                        ...p,
+                        department_id: value,
+                        total_beds: departmentTotalBeds[value] ?? 0,
+                      }))
+                    }
+                  >
                     <SelectTrigger ref={setFieldRef("department_id") as never}>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
@@ -550,15 +559,18 @@ const DataEntryPage = () => {
             if (field.field_key === "total_beds") {
               return (
                 <div key={field.id} className="space-y-2">
-                  <Label>{field.label}</Label>
+                  <Label>{field.label} (auto)</Label>
                   <Input
                     ref={setFieldRef("total_beds") as never}
                     type="number"
                     min={0}
-                    disabled={!canEditAllBedEntryFields}
+                    readOnly
                     value={form.total_beds}
-                    onChange={(e) => setForm((p) => ({ ...p, total_beds: Number(e.target.value) }))}
+                    className="bg-muted"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Auto-populated from the selected Department's capacity. Manage in Categories.
+                  </p>
                 </div>
               );
             }
