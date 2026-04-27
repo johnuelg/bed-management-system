@@ -49,7 +49,7 @@ const DashboardPage = () => {
   const qc = useQueryClient();
   const today = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate()), []);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: today, to: today });
-  const [selectedTime, setSelectedTime] = useState<string>("all");
+  const [selectedTime, setSelectedTime] = useState<string>("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
   const rangeStart = dateRange?.from ?? today;
   const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
@@ -117,17 +117,21 @@ const DashboardPage = () => {
   }, [dateFilteredRows]);
 
   const dateTimeFilteredRows = useMemo(() => {
-    if (selectedTime === "all") return dateFilteredRows;
+    if (!selectedTime) return dateFilteredRows;
     return dateFilteredRows.filter((row) => {
       const userDateTime = extractUserInputDateTime(row);
       return userDateTime?.time === selectedTime;
     });
   }, [dateFilteredRows, selectedTime]);
 
-  // Reset time filter if the chosen time no longer exists in the data
+  // Auto-select a valid time when the current selection isn't available
   useEffect(() => {
-    if (selectedTime !== "all" && !availableTimes.includes(selectedTime)) {
-      setSelectedTime("all");
+    if (availableTimes.length === 0) {
+      if (selectedTime !== "") setSelectedTime("");
+      return;
+    }
+    if (!availableTimes.includes(selectedTime)) {
+      setSelectedTime(availableTimes[availableTimes.length - 1]);
     }
   }, [availableTimes, selectedTime]);
 
@@ -352,13 +356,11 @@ const DashboardPage = () => {
   const isFiltersDefault =
     calendarDateToIsoDate(rangeStart) === calendarDateToIsoDate(today) &&
     calendarDateToIsoDate(rangeEnd) === calendarDateToIsoDate(today) &&
-    selectedTime === "all" &&
     selectedDepartmentId === "all";
 
   const handleResetFilters = () => {
     const freshToday = isoDateToCalendarDate(getSaudiIsoDate());
     setDateRange({ from: freshToday, to: freshToday });
-    setSelectedTime("all");
     setSelectedDepartmentId("all");
     void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
   };
@@ -438,12 +440,15 @@ const DashboardPage = () => {
 
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Time</label>
-            <Select value={selectedTime} onValueChange={setSelectedTime}>
+            <Select
+              value={selectedTime || undefined}
+              onValueChange={setSelectedTime}
+              disabled={availableTimes.length === 0}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="All times" />
+                <SelectValue placeholder="Select time" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All times</SelectItem>
                 {availableTimes.map((time) => (
                   <SelectItem key={time} value={time}>
                     {time}
