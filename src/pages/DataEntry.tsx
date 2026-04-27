@@ -641,12 +641,29 @@ const DataEntryPage = () => {
                     onFocus={(e) => e.currentTarget.select()}
                     onChange={(e) => {
                       const raw = e.target.value;
-                      setForm((p) => ({ ...p, occupied: raw === "" ? 0 : Number(raw) }));
+                      if (raw === "") {
+                        markNegative("occupied", false);
+                        setForm((p) => ({ ...p, occupied: 0 }));
+                        return;
+                      }
+                      const next = Number(raw);
+                      if (Number.isNaN(next)) return;
+                      if (next < 0) {
+                        markNegative("occupied", true);
+                        setForm((p) => ({ ...p, occupied: 0 }));
+                        return;
+                      }
+                      markNegative("occupied", false);
+                      setForm((p) => ({ ...p, occupied: next }));
                     }}
-                    aria-invalid={occupiedExceedsTotal}
-                    className={cn(occupiedExceedsTotal && "border-destructive focus-visible:ring-destructive")}
+                    aria-invalid={occupiedExceedsTotal || Boolean(negativeFieldErrors.occupied)}
+                    className={cn((occupiedExceedsTotal || negativeFieldErrors.occupied) && "border-destructive focus-visible:ring-destructive")}
                   />
-                  {occupiedExceedsTotal ? (
+                  {negativeFieldErrors.occupied ? (
+                    <p className="text-sm font-medium text-destructive">
+                      Value cannot be negative. Minimum allowed is 0.
+                    </p>
+                  ) : occupiedExceedsTotal ? (
                     <p className="text-sm font-medium text-destructive">
                       Occupied cannot exceed Total Beds ({totalBedsNum}).
                     </p>
