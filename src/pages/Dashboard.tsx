@@ -357,7 +357,7 @@ const DashboardPage = () => {
 
   const handleResetFilters = () => {
     const freshToday = isoDateToCalendarDate(getSaudiIsoDate());
-    setDateRange({ from: freshToday, to: freshToday });
+    setSelectedDate(freshToday);
     setSelectedDepartmentId("all");
     void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
   };
@@ -397,7 +397,7 @@ const DashboardPage = () => {
         </div>
 
         <div className="grid w-full gap-2 sm:w-auto sm:min-w-[360px]">
-          <Popover>
+          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -406,11 +406,16 @@ const DashboardPage = () => {
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
               <Calendar
-                mode="range"
-                selected={dateRange}
-                onSelect={setDateRange}
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                  if (date) {
+                    setSelectedDate(date);
+                    setDatePickerOpen(false);
+                  }
+                }}
                 today={today}
-                numberOfMonths={2}
+                numberOfMonths={1}
                 className="p-3 pointer-events-auto"
                 disabled={isDateDisabled}
                 modifiers={{
