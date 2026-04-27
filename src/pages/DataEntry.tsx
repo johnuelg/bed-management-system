@@ -891,16 +891,6 @@ const DataEntryPage = () => {
             <Input value={`${computed.occupancyRate.toFixed(1)}%`} readOnly disabled className="bg-muted" />
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label>Upload Document (2MB max)</Label>
-            <Input
-              type="file"
-              accept=".csv,.xlsx,.pdf,.doc,.png,.jpg,.jpeg"
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                void onUpload(e.target.files?.[0]);
-              }}
-            />
-          </div>
 
           <div className="flex flex-col gap-2 sm:flex-row md:col-span-2">
             {(form.id ? canEdit : canAdd) ? (
