@@ -683,7 +683,7 @@ const DataTablePage = () => {
               <TableBody>
                 {paginatedRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={canDelete ? 12 : 11} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={canDelete ? 17 : 16} className="py-6 text-center text-muted-foreground">
                       No entries found for the current filters.
                     </TableCell>
                   </TableRow>
