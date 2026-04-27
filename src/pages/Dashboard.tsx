@@ -29,7 +29,12 @@ import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "react-day-picker";
 import { StatusBadge } from "@/components/status-badge";
 import { getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
-import { buildAggregateScope, buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
+import {
+  buildAggregateScope,
+  buildRowScope,
+  evaluateNamedFormula,
+  evaluateOccupancyRate,
+} from "@/lib/formula-registry";
 
 const SAUDI_HOLIDAYS: Record<string, string> = {
   "2025-02-22": "Founding Day",
@@ -225,6 +230,18 @@ const DashboardPage = () => {
   const occupancyRate = useMemo(
     () => evaluateOccupancyRate(kpiFormulas, aggregateScope),
     [kpiFormulas, aggregateScope],
+  );
+  // Resolve KPI Builder formulas (when defined) for the headline cards.
+  // These fall back to the raw aggregated sums when no matching formula exists.
+  const kpiCardValues = useMemo(
+    () => ({
+      total_beds: evaluateNamedFormula(kpiFormulas, "Total Beds", aggregateScope, sums.total_beds),
+      occupied: evaluateNamedFormula(kpiFormulas, "Occupied", aggregateScope, sums.occupied),
+      closed: evaluateNamedFormula(kpiFormulas, "Closed", aggregateScope, sums.closed),
+      vacant: evaluateNamedFormula(kpiFormulas, "Vacant", aggregateScope, sums.vacant),
+      waiting_patients: evaluateNamedFormula(kpiFormulas, "Waiting Patients", aggregateScope, waitingPatients),
+    }),
+    [kpiFormulas, aggregateScope, sums.total_beds, sums.occupied, sums.closed, sums.vacant, waitingPatients],
   );
   const benchmarkLevels = occupancyBenchmark?.levels ?? [
     {
