@@ -437,7 +437,46 @@ export const saveOccupancyBenchmarkSettings = async (
   if (error) throw error;
 };
 
-export const fetchDepartments = async (): Promise<Department[]> => {
+export type DepartmentTotalBedsMap = Record<string, number>;
+
+const normalizeDepartmentTotalBeds = (value: unknown): DepartmentTotalBedsMap => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const result: DepartmentTotalBedsMap = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n >= 0) result[k] = Math.floor(n);
+  }
+  return result;
+};
+
+export const fetchDepartmentTotalBeds = async (): Promise<DepartmentTotalBedsMap> => {
+  const { data, error } = await db
+    .from("app_settings")
+    .select("setting_value")
+    .eq("setting_key", DEPARTMENT_TOTAL_BEDS_KEY)
+    .maybeSingle();
+  if (error) throw error;
+  return normalizeDepartmentTotalBeds(data?.setting_value);
+};
+
+export const saveDepartmentTotalBeds = async (
+  roles: AppRole[],
+  map: DepartmentTotalBedsMap,
+  userId: string,
+) => {
+  requireRole(roles, ["admin"], "manage department total beds");
+  const normalized = normalizeDepartmentTotalBeds(map);
+  const { error } = await db.from("app_settings").upsert(
+    {
+      setting_key: DEPARTMENT_TOTAL_BEDS_KEY,
+      setting_value: normalized,
+      updated_by: userId,
+    },
+    { onConflict: "setting_key" },
+  );
+  if (error) throw error;
+};
+
   const { data, error } = await db.from("departments").select("id,name,code,sort_order,is_active").order("sort_order", { ascending: true });
   if (error) throw error;
   return data ?? [];
