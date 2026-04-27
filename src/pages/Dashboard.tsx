@@ -588,7 +588,7 @@ const DashboardPage = () => {
                         <StatusIcon
                           size={64}
                           aria-hidden
-                          className="pointer-events-none absolute right-3 top-3 transition-all duration-300 group-hover:rotate-[-4deg]"
+                          className="pointer-events-none absolute right-2 top-2 h-10 w-10 transition-all duration-300 group-hover:rotate-[-4deg] sm:right-3 sm:top-3 sm:h-16 sm:w-16"
                           style={{
                             color: accent,
                             opacity: 0.13,
@@ -602,10 +602,10 @@ const DashboardPage = () => {
                         />
                       ) : null}
 
-                      <div className="relative flex h-full min-w-0 flex-col gap-3 pr-16 sm:pr-20">
-                        <p className="text-sm text-muted-foreground">{metric.name}</p>
+                      <div className="relative flex h-full min-w-0 flex-col gap-2 pr-12 sm:gap-3 sm:pr-20">
+                        <p className="text-xs text-muted-foreground sm:text-sm">{metric.name}</p>
                         <p
-                          className="text-3xl font-bold leading-tight sm:text-4xl"
+                          className="text-2xl font-bold leading-tight sm:text-4xl"
                           style={{ color: accent }}
                         >
                           {metric.value}
