@@ -274,16 +274,16 @@ const DataTablePage = () => {
           bv = b.department;
           break;
         case "total_beds":
-          av = Number(a.row.total_beds) || 0;
-          bv = Number(b.row.total_beds) || 0;
+          av = a.totalBeds;
+          bv = b.totalBeds;
           break;
         case "occupied":
-          av = Number(a.row.occupied) || 0;
-          bv = Number(b.row.occupied) || 0;
+          av = a.occupied;
+          bv = b.occupied;
           break;
         case "closed":
-          av = Number(a.row.closed) || 0;
-          bv = Number(b.row.closed) || 0;
+          av = a.closed;
+          bv = b.closed;
           break;
         case "vacant":
           av = a.vacant;
