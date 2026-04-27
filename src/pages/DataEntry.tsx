@@ -221,12 +221,16 @@ const DataEntryPage = () => {
   const occupiedNum = Number(form.occupied) || 0;
   const closedNum = Number(form.closed) || 0;
   const occupiedExceedsTotal = occupiedNum > totalBedsNum;
-  // Per business rule: Closed cannot exceed Vacant (auto = Total Beds − Occupied)
-  const closedLimit = Math.max(0, totalBedsNum - occupiedNum);
+  // Per business rule: Closed cannot exceed Total Beds − (Medical PED + ISO NOR PRES PED + ISO VE PRES PED)
+  const medicalPedNum = Number(form.custom_fields?.medical_ped) || 0;
+  const isoNorPresPedNum = Number(form.custom_fields?.iso_nor_pres_ped) || 0;
+  const isoVePresPedNum = Number(form.custom_fields?.iso_ve_pres_ped) || 0;
+  const occupiedSubsetSum = medicalPedNum + isoNorPresPedNum + isoVePresPedNum;
+  const closedLimit = Math.max(0, totalBedsNum - occupiedSubsetSum);
   const closedExceedsVacant = closedNum > closedLimit && !occupiedExceedsTotal;
   const noVacantBeds = closedLimit === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
 
-  // Auto-lock Closed to 0 when there are no occupied beds available to close.
+  // Auto-lock Closed to 0 when there are no beds available to close.
   useEffect(() => {
     if (noVacantBeds && form.closed !== 0) {
       setForm((prev) => ({ ...prev, closed: 0 }));
@@ -599,10 +603,10 @@ const DataEntryPage = () => {
                   />
                   <div id="closed-helper" aria-live="polite" className="min-h-[1.25rem]">
                     {noVacantBeds ? (
-                      <p className="text-sm text-muted-foreground">No vacant beds — cannot close beds.</p>
+                      <p className="text-sm text-muted-foreground">No beds available to close.</p>
                     ) : closedExceedsVacant ? (
                       <p className="text-sm font-medium text-destructive">
-                        Closed ({closedNum}) cannot exceed Vacant beds ({closedLimit}). Please enter a value between 0 and {closedLimit}.
+                        Closed ({closedNum}) cannot exceed {closedLimit} bed{closedLimit === 1 ? "" : "s"} available to close. Please enter a value between 0 and {closedLimit}.
                       </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">
