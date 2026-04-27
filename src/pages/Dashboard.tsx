@@ -21,6 +21,7 @@ import {
   aggregateSubmissionSums,
   fetchDashboardSubmissions,
   fetchDepartments,
+  fetchDepartmentTotalBeds,
   fetchKpiFormulas,
   fetchOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
