@@ -49,8 +49,7 @@ const DashboardPage = () => {
   const qc = useQueryClient();
   const today = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate()), []);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: today, to: today });
-  const [timeFrom, setTimeFrom] = useState("00:00");
-  const [timeTo, setTimeTo] = useState("23:59");
+  const [selectedTime, setSelectedTime] = useState<string>("all");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
   const rangeStart = dateRange?.from ?? today;
   const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
