@@ -116,9 +116,21 @@ const CategoriesPage = () => {
                 <Label>Code</Label>
                 <Input value={dept.code} onChange={(e) => setDept((p) => ({ ...p, code: e.target.value.toUpperCase() }))} />
               </div>
+              <div className="space-y-2">
+                <Label>Total Beds</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={dept.total_beds}
+                  onChange={(e) => setDept((p) => ({ ...p, total_beds: Number(e.target.value) }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Auto-fills the Total Beds field in Bed Entry when this department is selected.
+                </p>
+              </div>
             </div>
             {editingDepartmentId ? (
-              <p className="text-sm text-muted-foreground">Editing Department: Name and Code are loaded below.</p>
+              <p className="text-sm text-muted-foreground">Editing Department: Name, Code, and Total Beds are loaded below.</p>
             ) : null}
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => deptMutation.mutate()}>
@@ -129,7 +141,7 @@ const CategoriesPage = () => {
                   variant="outline"
                   onClick={() => {
                     setEditingDepartmentId(null);
-                    setDept({ name: "", code: "" });
+                    setDept({ name: "", code: "", total_beds: 0 });
                   }}
                 >
                   Cancel Edit
@@ -141,7 +153,9 @@ const CategoriesPage = () => {
                 <div key={item.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.code}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.code} • Total Beds: {departmentTotalBeds[item.id] ?? 0}
+                    </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
                     <Button
@@ -149,7 +163,7 @@ const CategoriesPage = () => {
                       variant="outline"
                       onClick={() => {
                         setEditingDepartmentId(item.id);
-                        setDept({ name: item.name, code: item.code });
+                        setDept({ name: item.name, code: item.code, total_beds: departmentTotalBeds[item.id] ?? 0 });
                       }}
                     >
                       Edit
