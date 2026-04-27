@@ -179,20 +179,22 @@ Deno.serve(async (req) => {
 
     if (body.action === "list_users") {
       const emails: Record<string, string> = {};
+      const userList: Array<{ id: string; email: string | null; created_at?: string }> = [];
       let page = 1;
       const perPage = 200;
       while (true) {
         const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
         if (error) throw error;
-        const users = data?.users ?? [];
-        for (const u of users) {
+        const pageUsers = data?.users ?? [];
+        for (const u of pageUsers) {
           if (u.email) emails[u.id] = u.email;
+          userList.push({ id: u.id, email: u.email ?? null, created_at: u.created_at });
         }
-        if (users.length < perPage) break;
+        if (pageUsers.length < perPage) break;
         page += 1;
         if (page > 50) break;
       }
-      return new Response(JSON.stringify({ success: true, emails }), {
+      return new Response(JSON.stringify({ success: true, emails, users: userList }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
