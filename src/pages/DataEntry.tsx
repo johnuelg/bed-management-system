@@ -453,23 +453,6 @@ const DataEntryPage = () => {
     onError: (error) => toast({ title: "Delete failed", description: (error as Error).message, variant: "destructive" }),
   });
 
-  const onUpload = async (file?: File) => {
-    if (!file) return;
-    const parsed = fileSchema.safeParse(file);
-    if (!parsed.success) {
-      toast({ title: "Upload rejected", description: parsed.error.issues[0].message, variant: "destructive" });
-      return;
-    }
-
-    try {
-      const currentUserId = await getCurrentUserId();
-      if (!currentUserId) throw new Error("No authenticated user");
-      await uploadDocument(currentUserId, file);
-      toast({ title: "Document uploaded" });
-    } catch (error) {
-      toast({ title: "Upload failed", description: (error as Error).message, variant: "destructive" });
-    }
-  };
 
   const focusFieldByKey = (key: string) => {
     const el = fieldRefs.current[key];
