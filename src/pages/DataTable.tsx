@@ -667,6 +667,11 @@ const DataTablePage = () => {
                   <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("waiting")}>
                     Waiting {renderSortIcon("waiting")}
                   </TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Medical Ped</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Iso Nor Pres Ped</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Iso Ve Pres Ped</TableHead>
+                  <TableHead className="text-center whitespace-nowrap">Single Room</TableHead>
+                  <TableHead className="whitespace-nowrap">Room No. &amp; Reason</TableHead>
                   <TableHead>Reason for Closure</TableHead>
                   <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("occupancy")}>
                     Occupancy {renderSortIcon("occupancy")}
