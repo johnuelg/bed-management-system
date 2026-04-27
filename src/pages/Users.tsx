@@ -57,6 +57,17 @@ const UsersPage = () => {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ email: "", password: "", display_name: "", role: "admin" as AppRole });
   const [newRoleName, setNewRoleName] = useState("");
+  const [editTarget, setEditTarget] = useState<null | {
+    user_id: string;
+    email: string;
+    display_name: string;
+    role: AppRole;
+  }>(null);
+  const [editForm, setEditForm] = useState({ email: "", display_name: "", password: "", role: "" as AppRole });
+  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+  const [confirmEditOpen, setConfirmEditOpen] = useState(false);
+
+  const isAdmin = roles.includes("admin");
 
   const { data: profiles = [] } = useQuery({ queryKey: ["profiles"], queryFn: fetchProfiles });
   const { data: roleMap = {} } = useQuery({ queryKey: ["user_roles"], queryFn: () => fetchUserRoles() });
