@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarIcon, Download, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
+import { CalendarIcon, Download, FileText, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import type { DateRange } from "react-day-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
