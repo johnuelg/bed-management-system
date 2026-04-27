@@ -103,6 +103,15 @@ const DataEntryPage = () => {
   const [submissionView, setSubmissionView] = useState<"card" | "table">("card");
   const [submissionToDelete, setSubmissionToDelete] = useState<{ id: string; departmentName: string } | null>(null);
   const [missingFields, setMissingFields] = useState<Array<{ key: string; label: string }>>([]);
+  const [negativeFieldErrors, setNegativeFieldErrors] = useState<Record<string, boolean>>({});
+  const markNegative = (key: string, isNeg: boolean) =>
+    setNegativeFieldErrors((prev) => {
+      if (Boolean(prev[key]) === isNeg) return prev;
+      const next = { ...prev };
+      if (isNeg) next[key] = true;
+      else delete next[key];
+      return next;
+    });
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
   const setFieldRef = (key: string) => (el: HTMLElement | null) => {
     fieldRefs.current[key] = el;
