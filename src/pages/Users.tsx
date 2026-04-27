@@ -135,6 +135,20 @@ const UsersPage = () => {
     onError: (error) => toast({ title: "Status update failed", description: (error as Error).message, variant: "destructive" }),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (payload: { user_id: string; email?: string; password?: string; display_name?: string; role?: AppRole }) =>
+      updateUserByAdmin(roles, payload),
+    onSuccess: async () => {
+      toast({ title: "User updated" });
+      setEditTarget(null);
+      setConfirmEditOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["user_roles"] });
+      await queryClient.invalidateQueries({ queryKey: ["user_emails"] });
+    },
+    onError: (error) => toast({ title: "Update failed", description: (error as Error).message, variant: "destructive" }),
+  });
+
   const settingsMutation = useMutation({
     mutationFn: (settings: NavVisibilitySettings) => {
       if (!user?.id) throw new Error("You must be signed in to save settings.");
