@@ -605,9 +605,11 @@ const DataEntryPage = () => {
                         Closed ({closedNum}) cannot exceed Vacant beds ({vacantForClosed}). Please enter a value between 0 and {vacantForClosed}.
                       </p>
                     ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Up to {vacantForClosed} bed{vacantForClosed === 1 ? "" : "s"} available to close.
-                      </p>
+                      <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
+                        <span>Occupied: <span className="font-medium text-foreground">{occupiedNum}</span></span>
+                        <span>Closed: <span className="font-medium text-foreground">{closedNum}</span></span>
+                        <span>Available: <span className="font-medium text-foreground">{Math.max(0, vacantForClosed - closedNum)}</span></span>
+                      </div>
                     )}
                   </div>
                 </div>
