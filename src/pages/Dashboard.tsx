@@ -544,8 +544,7 @@ const DashboardPage = () => {
                   const progressId = `occupancy-progress-${index}`;
                   return (
                     <div
-                      className="group relative h-full w-full overflow-hidden rounded-lg"
-                      style={{ padding: "20px 24px" }}
+                      className="group relative h-full w-full overflow-hidden rounded-lg p-3 sm:p-5"
                     >
                       <style>{`
                         @keyframes occupancy-shimmer-${index} {
