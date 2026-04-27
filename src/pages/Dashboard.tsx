@@ -122,30 +122,19 @@ const DashboardPage = () => {
   }, [dateFilteredRows]);
 
   const dateTimeFilteredRows = useMemo(() => {
-    const fromMinutes = toMinutes(timeFrom);
-    const toMinutesValue = toMinutes(timeTo);
-    const wrapsMidnight = fromMinutes > toMinutesValue;
-
+    if (selectedTime === "all") return dateFilteredRows;
     return dateFilteredRows.filter((row) => {
       const userDateTime = extractUserInputDateTime(row);
-      if (!userDateTime) return false;
-      const valueMinutes = toMinutes(userDateTime.time);
-      if (wrapsMidnight) {
-        return valueMinutes >= fromMinutes || valueMinutes <= toMinutesValue;
-      }
-      return valueMinutes >= fromMinutes && valueMinutes <= toMinutesValue;
+      return userDateTime?.time === selectedTime;
     });
-  }, [dateFilteredRows, timeFrom, timeTo]);
+  }, [dateFilteredRows, selectedTime]);
 
-  // Reset time filters if the chosen time no longer exists in the data
+  // Reset time filter if the chosen time no longer exists in the data
   useEffect(() => {
-    if (timeFrom !== "00:00" && !availableTimes.includes(timeFrom)) {
-      setTimeFrom("00:00");
+    if (selectedTime !== "all" && !availableTimes.includes(selectedTime)) {
+      setSelectedTime("all");
     }
-    if (timeTo !== "23:59" && !availableTimes.includes(timeTo)) {
-      setTimeTo("23:59");
-    }
-  }, [availableTimes, timeFrom, timeTo]);
+  }, [availableTimes, selectedTime]);
 
   const departmentOptions = useMemo(() => {
     const availableDepartmentIds = new Set(
