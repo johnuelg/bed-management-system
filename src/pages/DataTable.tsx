@@ -718,9 +718,9 @@ const DataTablePage = () => {
                         <TableCell>{entry.date || "-"}</TableCell>
                         <TableCell>{entry.time || "-"}</TableCell>
                         <TableCell>{entry.department}</TableCell>
-                        <TableCell className="text-right font-medium">{entry.row.total_beds}</TableCell>
-                        <TableCell className="text-right">{entry.row.occupied}</TableCell>
-                        <TableCell className="text-right">{entry.row.closed}</TableCell>
+                        <TableCell className="text-right font-medium">{entry.totalBeds}</TableCell>
+                        <TableCell className="text-right">{entry.occupied}</TableCell>
+                        <TableCell className="text-right">{entry.closed}</TableCell>
                         <TableCell className="text-right">{entry.vacant}</TableCell>
                         <TableCell className="text-right">{entry.waiting}</TableCell>
                         <TableCell className="text-right">{entry.medicalPed}</TableCell>
