@@ -103,28 +103,50 @@ const DashboardPage = () => {
     return (Number.isNaN(hours) ? 0 : hours) * 60 + (Number.isNaN(minutes) ? 0 : minutes);
   };
 
+  const dateFilteredRows = useMemo(() => {
+    const dateFrom = rangeStartIso <= rangeEndIso ? rangeStartIso : rangeEndIso;
+    const dateTo = rangeStartIso <= rangeEndIso ? rangeEndIso : rangeStartIso;
+    return rows.filter((row) => {
+      const userDateTime = extractUserInputDateTime(row);
+      if (!userDateTime) return false;
+      return userDateTime.date >= dateFrom && userDateTime.date <= dateTo;
+    });
+  }, [rows, rangeStartIso, rangeEndIso]);
+
+  const availableTimes = useMemo(() => {
+    const set = new Set<string>();
+    dateFilteredRows.forEach((row) => {
+      const dt = extractUserInputDateTime(row);
+      if (dt?.time) set.add(dt.time);
+    });
+    return Array.from(set).sort();
+  }, [dateFilteredRows]);
+
   const dateTimeFilteredRows = useMemo(() => {
     const fromMinutes = toMinutes(timeFrom);
     const toMinutesValue = toMinutes(timeTo);
     const wrapsMidnight = fromMinutes > toMinutesValue;
-    const dateFrom = rangeStartIso <= rangeEndIso ? rangeStartIso : rangeEndIso;
-    const dateTo = rangeStartIso <= rangeEndIso ? rangeEndIso : rangeStartIso;
 
-    return rows.filter((row) => {
+    return dateFilteredRows.filter((row) => {
       const userDateTime = extractUserInputDateTime(row);
       if (!userDateTime) return false;
-
-      if (userDateTime.date < dateFrom || userDateTime.date > dateTo) return false;
-
       const valueMinutes = toMinutes(userDateTime.time);
-
       if (wrapsMidnight) {
         return valueMinutes >= fromMinutes || valueMinutes <= toMinutesValue;
       }
-
       return valueMinutes >= fromMinutes && valueMinutes <= toMinutesValue;
     });
-  }, [rows, timeFrom, timeTo, rangeStartIso, rangeEndIso]);
+  }, [dateFilteredRows, timeFrom, timeTo]);
+
+  // Reset time filters if the chosen time no longer exists in the data
+  useEffect(() => {
+    if (timeFrom !== "00:00" && !availableTimes.includes(timeFrom)) {
+      setTimeFrom("00:00");
+    }
+    if (timeTo !== "23:59" && !availableTimes.includes(timeTo)) {
+      setTimeTo("23:59");
+    }
+  }, [availableTimes, timeFrom, timeTo]);
 
   const departmentOptions = useMemo(() => {
     const availableDepartmentIds = new Set(
@@ -436,13 +458,40 @@ const DashboardPage = () => {
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">From Time</label>
-              <Input type="time" value={timeFrom} onChange={(event) => setTimeFrom(event.target.value)} />
+              <Select value={timeFrom} onValueChange={setTimeFrom}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="00:00">Any time</SelectItem>
+                  {availableTimes.map((time) => (
+                    <SelectItem key={`from-${time}`} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">To Time</label>
-              <Input type="time" value={timeTo} onChange={(event) => setTimeTo(event.target.value)} />
+              <Select value={timeTo} onValueChange={setTimeTo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="23:59">Any time</SelectItem>
+                  {availableTimes.map((time) => (
+                    <SelectItem key={`to-${time}`} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+          {availableTimes.length === 0 && (
+            <p className="text-xs text-muted-foreground">No bed entry times available for the selected date range.</p>
+          )}
 
           <div className="grid grid-cols-1 gap-2">
             <div className="space-y-1">
