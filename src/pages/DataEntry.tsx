@@ -116,7 +116,10 @@ const DataEntryPage = () => {
   const setFieldRef = (key: string) => (el: HTMLElement | null) => {
     fieldRefs.current[key] = el;
   };
-  const resetForm = () => setForm(initialForm);
+  const resetForm = () => {
+    setForm(initialForm);
+    setNegativeFieldErrors({});
+  };
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
   const { data: departmentTotalBeds = {} } = useQuery({
