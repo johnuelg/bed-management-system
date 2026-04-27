@@ -1,12 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowDown, ArrowUp, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -15,10 +34,12 @@ import {
   fetchNavVisibilitySettings,
   fetchProfiles,
   fetchRoleCatalog,
+  fetchUserEmails,
   fetchUserRoles,
   saveNavVisibilitySettings,
   saveRoleCatalog,
   setUserRole,
+  updateUserByAdmin,
 } from "@/lib/supabase-api";
 import { NavVisibilitySettingsEditor } from "@/components/settings/nav-visibility-settings";
 import type { AppRole, NavVisibilitySettings } from "@/types/hospital";
