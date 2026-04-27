@@ -34,7 +34,6 @@ import { buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
 import {
   deleteAllBedSubmissions,
   deleteBedSubmission,
-  fetchBedTypes,
   fetchDashboardSubmissions,
   fetchDepartments,
   fetchKpiFormulas,
@@ -46,7 +45,6 @@ type SortKey =
   | "date"
   | "time"
   | "department"
-  | "bed_type"
   | "total_beds"
   | "occupied"
   | "closed"
@@ -113,7 +111,6 @@ const DataTablePage = () => {
   const [timeFrom, setTimeFrom] = useState("00:00");
   const [timeTo, setTimeTo] = useState("23:59");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
-  const [selectedBedTypeId, setSelectedBedTypeId] = useState<string>("all");
 
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -125,7 +122,6 @@ const DataTablePage = () => {
     queryFn: fetchDashboardSubmissions,
   });
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
-  const { data: bedTypes = [] } = useQuery({ queryKey: ["bed_types"], queryFn: fetchBedTypes });
   const { data: occupancyBenchmark } = useQuery({
     queryKey: ["app_settings", "occupancy_benchmark"],
     queryFn: fetchOccupancyBenchmarkSettings,
@@ -141,7 +137,6 @@ const DataTablePage = () => {
     }) ?? benchmarkLevels[benchmarkLevels.length - 1];
 
   const departmentMap = useMemo(() => new Map(departments.map((d) => [d.id, d.name])), [departments]);
-  const bedTypeMap = useMemo(() => new Map(bedTypes.map((b) => [b.id, b.name])), [bedTypes]);
 
   const dateFilteredRows = useMemo(() => {
     const fromMinutes = toMinutes(timeFrom);
@@ -174,22 +169,10 @@ const DataTablePage = () => {
 
   const departmentOptions = useMemo(() => {
     const ids = new Set(
-      dateFilteredRows
-        .filter((row) => selectedBedTypeId === "all" || row.bed_type_id === selectedBedTypeId)
-        .map((row) => row.department_id),
+      dateFilteredRows.map((row) => row.department_id),
     );
     return departments.filter((d) => ids.has(d.id));
-  }, [dateFilteredRows, departments, selectedBedTypeId]);
-
-  const bedTypeOptions = useMemo(() => {
-    const ids = new Set(
-      dateFilteredRows
-        .filter((row) => selectedDepartmentId === "all" || row.department_id === selectedDepartmentId)
-        .map((row) => row.bed_type_id)
-        .filter((id): id is string => Boolean(id)),
-    );
-    return bedTypes.filter((b) => ids.has(b.id));
-  }, [dateFilteredRows, bedTypes, selectedDepartmentId]);
+  }, [dateFilteredRows, departments]);
 
   useEffect(() => {
     if (selectedDepartmentId !== "all" && !departmentOptions.some((d) => d.id === selectedDepartmentId)) {
@@ -197,20 +180,13 @@ const DataTablePage = () => {
     }
   }, [departmentOptions, selectedDepartmentId]);
 
-  useEffect(() => {
-    if (selectedBedTypeId !== "all" && !bedTypeOptions.some((b) => b.id === selectedBedTypeId)) {
-      setSelectedBedTypeId("all");
-    }
-  }, [bedTypeOptions, selectedBedTypeId]);
-
   const filteredRows = useMemo(
     () =>
       dateFilteredRows.filter((row) => {
         if (selectedDepartmentId !== "all" && row.department_id !== selectedDepartmentId) return false;
-        if (selectedBedTypeId !== "all" && row.bed_type_id !== selectedBedTypeId) return false;
         return true;
       }),
-    [dateFilteredRows, selectedDepartmentId, selectedBedTypeId],
+    [dateFilteredRows, selectedDepartmentId],
   );
 
   const enrichedRows = useMemo(() => {
@@ -225,13 +201,12 @@ const DataTablePage = () => {
         date: dt?.date ?? "",
         time: dt?.time ?? "",
         department: departmentMap.get(row.department_id) ?? "-",
-        bed_type: row.bed_type_id ? (bedTypeMap.get(row.bed_type_id) ?? "-") : "-",
         vacant,
         waiting,
         occupancy,
       };
     });
-  }, [filteredRows, kpiFormulas, departmentMap, bedTypeMap]);
+  }, [filteredRows, kpiFormulas, departmentMap]);
 
   const sortedRows = useMemo(() => {
     const compare = (a: typeof enrichedRows[number], b: typeof enrichedRows[number]) => {
@@ -249,10 +224,6 @@ const DataTablePage = () => {
         case "department":
           av = a.department;
           bv = b.department;
-          break;
-        case "bed_type":
-          av = a.bed_type;
-          bv = b.bed_type;
           break;
         case "total_beds":
           av = Number(a.row.total_beds) || 0;
@@ -301,8 +272,7 @@ const DataTablePage = () => {
     !dateRange &&
     timeFrom === "00:00" &&
     timeTo === "23:59" &&
-    selectedDepartmentId === "all" &&
-    selectedBedTypeId === "all";
+    selectedDepartmentId === "all";
 
   const handleConfirmDeleteOne = async () => {
     if (!deleteTarget) return;
@@ -346,7 +316,6 @@ const DataTablePage = () => {
     setTimeFrom("00:00");
     setTimeTo("23:59");
     setSelectedDepartmentId("all");
-    setSelectedBedTypeId("all");
     setPage(1);
     void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
   };
@@ -374,7 +343,6 @@ const DataTablePage = () => {
       "Date",
       "Time",
       "Department",
-      "Bed Type",
       "Total Beds",
       "Occupied",
       "Closed",
@@ -392,7 +360,6 @@ const DataTablePage = () => {
           entry.date,
           entry.time,
           entry.department,
-          entry.bed_type,
           entry.row.total_beds,
           entry.row.occupied,
           entry.row.closed,
