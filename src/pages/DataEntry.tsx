@@ -53,10 +53,8 @@ import {
   fetchUserEntryPermissions,
   getCurrentUserId,
   saveBedSubmission,
-  uploadDocument,
   writeAuditLog,
 } from "@/lib/supabase-api";
-import { MAX_UPLOAD_SIZE } from "@/lib/file-upload";
 import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
