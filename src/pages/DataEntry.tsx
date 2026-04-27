@@ -579,14 +579,29 @@ const DataEntryPage = () => {
                     ref={setFieldRef("closed") as never}
                     type="number"
                     min={0}
-                    max={noVacantBeds ? 0 : undefined}
+                    max={noVacantBeds ? 0 : vacantForClosed}
                     disabled={noVacantBeds}
                     placeholder="0"
                     value={noVacantBeds ? 0 : form.closed === 0 ? "" : form.closed}
                     onFocus={(e) => e.currentTarget.select()}
                     onChange={(e) => {
                       const raw = e.target.value;
-                      setForm((p) => ({ ...p, closed: raw === "" ? 0 : Number(raw) }));
+                      if (raw === "") {
+                        setForm((p) => ({ ...p, closed: 0 }));
+                        return;
+                      }
+                      const next = Number(raw);
+                      if (Number.isNaN(next)) return;
+                      if (next > vacantForClosed) {
+                        toast({
+                          variant: "destructive",
+                          title: "Invalid value",
+                          description: `Closed cannot exceed Vacant beds (${vacantForClosed}).`,
+                        });
+                        setForm((p) => ({ ...p, closed: vacantForClosed }));
+                        return;
+                      }
+                      setForm((p) => ({ ...p, closed: next }));
                     }}
                     aria-invalid={closedExceedsVacant}
                     className={cn(closedExceedsVacant && "border-destructive focus-visible:ring-destructive")}
