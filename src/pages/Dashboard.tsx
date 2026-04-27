@@ -495,7 +495,7 @@ const DashboardPage = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-3 2xl:grid-cols-6">
         {(() => {
           const hasEntries =
             filteredRows.length > 0 &&
@@ -527,11 +527,11 @@ const DashboardPage = () => {
             <Card className="hospital-glass h-full">
               {!hasEntries ? (
                 <>
-                  <CardHeader>
-                    <CardTitle className="text-sm text-muted-foreground">{metric.name}</CardTitle>
+                  <CardHeader className="p-3 pb-1 sm:p-6 sm:pb-2">
+                    <CardTitle className="text-xs text-muted-foreground sm:text-sm">{metric.name}</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm italic text-muted-foreground">No entries found</p>
+                  <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                    <p className="text-xs italic text-muted-foreground sm:text-sm">No entries found</p>
                   </CardContent>
                 </>
               ) : metric.name === "Occupancy Rate" ? (
@@ -544,8 +544,7 @@ const DashboardPage = () => {
                   const progressId = `occupancy-progress-${index}`;
                   return (
                     <div
-                      className="group relative h-full w-full overflow-hidden rounded-lg"
-                      style={{ padding: "20px 24px" }}
+                      className="group relative h-full w-full overflow-hidden rounded-lg p-3 sm:p-5"
                     >
                       <style>{`
                         @keyframes occupancy-shimmer-${index} {
@@ -589,7 +588,7 @@ const DashboardPage = () => {
                         <StatusIcon
                           size={64}
                           aria-hidden
-                          className="pointer-events-none absolute right-3 top-3 transition-all duration-300 group-hover:rotate-[-4deg]"
+                          className="pointer-events-none absolute right-2 top-2 h-10 w-10 transition-all duration-300 group-hover:rotate-[-4deg] sm:right-3 sm:top-3 sm:h-16 sm:w-16"
                           style={{
                             color: accent,
                             opacity: 0.13,
@@ -603,10 +602,10 @@ const DashboardPage = () => {
                         />
                       ) : null}
 
-                      <div className="relative flex h-full min-w-0 flex-col gap-3 pr-16 sm:pr-20">
-                        <p className="text-sm text-muted-foreground">{metric.name}</p>
+                      <div className="relative flex h-full min-w-0 flex-col gap-2 pr-12 sm:gap-3 sm:pr-20">
+                        <p className="text-xs text-muted-foreground sm:text-sm">{metric.name}</p>
                         <p
-                          className="text-3xl font-bold leading-tight sm:text-4xl"
+                          className="text-2xl font-bold leading-tight sm:text-4xl"
                           style={{ color: accent }}
                         >
                           {metric.value}
@@ -634,11 +633,11 @@ const DashboardPage = () => {
                 })()
               ) : (
                 <>
-                  <CardHeader>
-                    <CardTitle className="text-sm text-muted-foreground">{metric.name}</CardTitle>
+                  <CardHeader className="p-3 pb-1 sm:p-6 sm:pb-2">
+                    <CardTitle className="text-xs text-muted-foreground sm:text-sm">{metric.name}</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold sm:text-3xl">{metric.value}</p>
+                  <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                    <p className="text-xl font-bold sm:text-3xl">{metric.value}</p>
                   </CardContent>
                 </>
               )}
@@ -649,20 +648,20 @@ const DashboardPage = () => {
       </div>
 
       <Card className="hospital-glass">
-        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <CardTitle>
+        <CardHeader className="flex flex-col gap-3 space-y-0 p-4 sm:p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <CardTitle className="text-base sm:text-lg">
               {departmentView === "cards" ? "Department Status" : "Department Occupancy"}
             </CardTitle>
-            <span className="inline-flex items-center rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700">
+            <span className="inline-flex items-center rounded-full bg-teal-100 px-2.5 py-0.5 text-[11px] font-semibold text-teal-700 sm:px-3 sm:py-1 sm:text-xs">
               {departmentStatusCards.length} Active {departmentStatusCards.length === 1 ? "Department" : "Departments"}
             </span>
           </div>
-          <div className="inline-flex items-center rounded-md border bg-muted p-1">
+          <div className="inline-flex w-full items-center rounded-md border bg-muted p-1 sm:w-auto">
             <button
               type="button"
               onClick={() => setDepartmentView("cards")}
-              className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
                 departmentView === "cards"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -675,7 +674,7 @@ const DashboardPage = () => {
             <button
               type="button"
               onClick={() => setDepartmentView("table")}
-              className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
                 departmentView === "table"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -687,7 +686,7 @@ const DashboardPage = () => {
             </button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-6">
           {departmentView === "cards" ? (
             departmentStatusCards.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
@@ -755,8 +754,8 @@ const DashboardPage = () => {
               </div>
             )
           ) : (
-            <div className="rounded-lg border bg-card">
-            <Table>
+            <div className="overflow-x-auto rounded-lg border bg-card">
+            <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Department</TableHead>
