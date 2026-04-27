@@ -212,15 +212,38 @@ const DataTablePage = () => {
   const enrichedRows = useMemo(() => {
     return filteredRows.map((row) => {
       const dt = extractUserInputDateTime(row);
-      const vacant = Math.max((Number(row.total_beds) || 0) - (Number(row.occupied) || 0) - (Number(row.closed) || 0), 0);
+      // Fall back to custom_fields when top-level columns are missing/zero.
+      // This protects historical entries where Occupied/Closed/Total were captured
+      // via dynamic form fields (custom_fields) instead of the dedicated columns.
+      const totalBedsRaw = Number(row.total_beds) || 0;
+      const occupiedRaw = Number(row.occupied) || 0;
+      const closedRaw = Number(row.closed) || 0;
+      const totalBeds = totalBedsRaw > 0
+        ? totalBedsRaw
+        : readCustomNumber(row, "total_beds");
+      const occupied = occupiedRaw > 0
+        ? occupiedRaw
+        : readCustomNumber(row, "occupied");
+      const closed = closedRaw > 0
+        ? closedRaw
+        : readCustomNumber(row, "closed");
+      const vacant = Math.max(totalBeds - occupied - closed, 0);
       const waiting = extractWaiting(row);
-      const scope = buildRowScope(row);
+      const scope = buildRowScope({
+        ...row,
+        total_beds: totalBeds,
+        occupied,
+        closed,
+      });
       const occupancy = evaluateOccupancyRate(kpiFormulas, scope);
       return {
         row,
         date: dt?.date ?? "",
         time: dt?.time ?? "",
         department: departmentMap.get(row.department_id) ?? "-",
+        totalBeds,
+        occupied,
+        closed,
         vacant,
         waiting,
         occupancy,
