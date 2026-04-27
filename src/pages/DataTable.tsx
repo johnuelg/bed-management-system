@@ -224,6 +224,11 @@ const DataTablePage = () => {
         vacant,
         waiting,
         occupancy,
+        medicalPed: readCustomNumber(row, "medical_ped"),
+        isoNorPresPed: readCustomNumber(row, "iso_nor_pres_ped"),
+        isoVePresPed: readCustomNumber(row, "iso_ve_pres_ped"),
+        singleRoom: readCustomBool(row, "single_room"),
+        roomNoReason: readCustomString(row, "input_room_no._of_single_room"),
       };
     });
   }, [filteredRows, kpiFormulas, departmentMap]);
