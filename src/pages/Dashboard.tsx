@@ -527,11 +527,11 @@ const DashboardPage = () => {
             <Card className="hospital-glass h-full">
               {!hasEntries ? (
                 <>
-                  <CardHeader>
-                    <CardTitle className="text-sm text-muted-foreground">{metric.name}</CardTitle>
+                  <CardHeader className="p-3 pb-1 sm:p-6 sm:pb-2">
+                    <CardTitle className="text-xs text-muted-foreground sm:text-sm">{metric.name}</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm italic text-muted-foreground">No entries found</p>
+                  <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                    <p className="text-xs italic text-muted-foreground sm:text-sm">No entries found</p>
                   </CardContent>
                 </>
               ) : metric.name === "Occupancy Rate" ? (
