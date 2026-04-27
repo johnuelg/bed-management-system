@@ -226,10 +226,51 @@ const DataEntryPage = () => {
   const closedExceedsVacant = closedNum > vacantForClosed && !occupiedExceedsTotal;
   const noVacantBeds = vacantForClosed === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
 
-  // Auto-lock Closed to 0 when there are no vacant beds.
+  // ---------- Progressive top-down gating ----------
+  // Order: Date/Time → Department → Occupied → Closed → Closure Reason → other dynamic fields
+  const requiredDateField = useMemo(
+    () => dynamicFields.find((field) => field.field_type === "date" && field.is_required),
+    [dynamicFields],
+  );
+  const dateTimeComplete = useMemo(() => {
+    if (!requiredDateField) return true;
+    const raw = String(form.custom_fields[requiredDateField.field_key] ?? "");
+    const [d = "", t = ""] = raw.split("T");
+    return /^\d{4}-\d{2}-\d{2}$/.test(d) && /^\d{2}:\d{2}$/.test(t);
+  }, [requiredDateField, form.custom_fields]);
+  const departmentComplete = Boolean(form.department_id) && totalBedsNum > 0;
+  const occupiedComplete =
+    form.occupied !== "" && !Number.isNaN(occupiedNum) && !occupiedExceedsTotal;
+  const closedComplete =
+    noVacantBeds || (form.closed !== "" && !Number.isNaN(closedNum) && !closedExceedsVacant);
+  const closureReasonComplete = closedNum > 0 ? form.closure_reason.trim().length > 0 : true;
+
+  const gates = {
+    date: true, // always enabled (top of chain)
+    department: dateTimeComplete,
+    occupied: dateTimeComplete && departmentComplete,
+    closed: dateTimeComplete && departmentComplete && occupiedComplete,
+    closureReason: dateTimeComplete && departmentComplete && occupiedComplete && closedComplete && closedNum > 0,
+    rest: dateTimeComplete && departmentComplete && occupiedComplete && closedComplete && closureReasonComplete,
+  };
+
+  const lockedHint = (label: string) => `Complete ${label} above to enable this field.`;
+
+  // Detect a "Single Room" boolean field for companion text input
+  const singleRoomFieldKey = useMemo(() => {
+    const f = dynamicFields.find((field) => {
+      if (field.field_type !== "boolean") return false;
+      const k = field.field_key.toLowerCase();
+      const l = field.label.toLowerCase();
+      return k.includes("single") && k.includes("room") || (l.includes("single") && l.includes("room"));
+    });
+    return f?.field_key ?? null;
+  }, [dynamicFields]);
+
+  // Auto-lock Closed to "" when there are no vacant beds.
   useEffect(() => {
-    if (noVacantBeds && form.closed !== 0) {
-      setForm((prev) => ({ ...prev, closed: 0 }));
+    if (noVacantBeds && form.closed !== "" && form.closed !== 0) {
+      setForm((prev) => ({ ...prev, closed: "" }));
     }
   }, [noVacantBeds, form.closed]);
 
