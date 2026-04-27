@@ -20,7 +20,9 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   deleteDepartment,
   fetchDepartments,
+  fetchDepartmentTotalBeds,
   saveDepartment,
+  saveDepartmentTotalBeds,
   toggleDepartmentActive,
   updateDepartment,
 } from "@/lib/supabase-api";
