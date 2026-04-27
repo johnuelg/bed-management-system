@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -86,6 +87,23 @@ const extractWaiting = (row: BedSubmission) => {
   if (typeof detected === "number") return detected;
   if (typeof detected === "string") return Number(detected) || 0;
   return 0;
+};
+
+const readCustomNumber = (row: BedSubmission, key: string) => {
+  const v = (row.custom_fields as Record<string, unknown>)?.[key];
+  if (typeof v === "number") return v;
+  if (typeof v === "string") return Number(v) || 0;
+  return 0;
+};
+
+const readCustomBool = (row: BedSubmission, key: string) => {
+  const v = (row.custom_fields as Record<string, unknown>)?.[key];
+  return v === true || v === "true";
+};
+
+const readCustomString = (row: BedSubmission, key: string) => {
+  const v = (row.custom_fields as Record<string, unknown>)?.[key];
+  return v === null || v === undefined ? "" : String(v);
 };
 
 const toMinutes = (time: string) => {
@@ -206,6 +224,11 @@ const DataTablePage = () => {
         vacant,
         waiting,
         occupancy,
+        medicalPed: readCustomNumber(row, "medical_ped"),
+        isoNorPresPed: readCustomNumber(row, "iso_nor_pres_ped"),
+        isoVePresPed: readCustomNumber(row, "iso_ve_pres_ped"),
+        singleRoom: readCustomBool(row, "single_room"),
+        roomNoReason: readCustomString(row, "input_room_no._of_single_room"),
       };
     });
   }, [filteredRows, kpiFormulas, departmentMap]);
@@ -350,6 +373,11 @@ const DataTablePage = () => {
       "Closed",
       "Vacant",
       "Waiting Patients",
+      "Medical Ped",
+      "Iso Nor Pres Ped",
+      "Iso Ve Pres Ped",
+      "Single Room",
+      "Room No. & Reason",
       "Reason for Closure",
       "Occupancy Rate (%)",
       "Status",
@@ -367,6 +395,11 @@ const DataTablePage = () => {
           entry.row.closed,
           entry.vacant,
           entry.waiting,
+          entry.medicalPed,
+          entry.isoNorPresPed,
+          entry.isoVePresPed,
+          entry.singleRoom ? "Yes" : "No",
+          entry.roomNoReason,
           entry.row.closure_reason || "",
           entry.occupancy.toFixed(1),
           benchmark?.label ?? "",
@@ -395,6 +428,11 @@ const DataTablePage = () => {
       "Closed",
       "Vacant",
       "Waiting",
+      "Med Ped",
+      "Iso Nor Pres Ped",
+      "Iso Ve Pres Ped",
+      "Single Room",
+      "Room No. & Reason",
       "Reason",
       "Occupancy %",
       "Status",
@@ -410,6 +448,11 @@ const DataTablePage = () => {
         String(entry.row.closed),
         String(entry.vacant),
         String(entry.waiting),
+        String(entry.medicalPed),
+        String(entry.isoNorPresPed),
+        String(entry.isoVePresPed),
+        entry.singleRoom ? "Yes" : "No",
+        entry.roomNoReason,
         entry.row.closure_reason || "",
         `${entry.occupancy.toFixed(1)}%`,
         benchmark?.label ?? "",
@@ -624,6 +667,11 @@ const DataTablePage = () => {
                   <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("waiting")}>
                     Waiting {renderSortIcon("waiting")}
                   </TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Medical Ped</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Iso Nor Pres Ped</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Iso Ve Pres Ped</TableHead>
+                  <TableHead className="text-center whitespace-nowrap">Single Room</TableHead>
+                  <TableHead className="whitespace-nowrap">Room No. &amp; Reason</TableHead>
                   <TableHead>Reason for Closure</TableHead>
                   <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("occupancy")}>
                     Occupancy {renderSortIcon("occupancy")}
@@ -635,7 +683,7 @@ const DataTablePage = () => {
               <TableBody>
                 {paginatedRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={canDelete ? 12 : 11} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={canDelete ? 17 : 16} className="py-6 text-center text-muted-foreground">
                       No entries found for the current filters.
                     </TableCell>
                   </TableRow>
@@ -652,6 +700,17 @@ const DataTablePage = () => {
                         <TableCell className="text-right">{entry.row.closed}</TableCell>
                         <TableCell className="text-right">{entry.vacant}</TableCell>
                         <TableCell className="text-right">{entry.waiting}</TableCell>
+                        <TableCell className="text-right">{entry.medicalPed}</TableCell>
+                        <TableCell className="text-right">{entry.isoNorPresPed}</TableCell>
+                        <TableCell className="text-right">{entry.isoVePresPed}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex justify-center">
+                            <Checkbox checked={entry.singleRoom} disabled aria-label="Single Room available" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[220px] whitespace-normal break-words">
+                          {entry.roomNoReason || "-"}
+                        </TableCell>
                         <TableCell>{entry.row.closure_reason || "-"}</TableCell>
                         <TableCell className="text-right" style={{ color: benchmark?.color }}>
                           {entry.occupancy.toFixed(1)}%
