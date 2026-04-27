@@ -25,7 +25,7 @@ const ActionSchema = z.discriminatedUnion("action", [
     is_active: z.boolean(),
   }),
   z.object({
-    action: z.literal("list_user_emails"),
+    action: z.literal("list_users"),
   }),
   z.object({
     action: z.literal("update_user"),
