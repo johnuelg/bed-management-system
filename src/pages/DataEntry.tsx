@@ -240,9 +240,16 @@ const DataEntryPage = () => {
   const isoNorPresPedNum = Number(form.custom_fields?.iso_nor_pres_ped) || 0;
   const isoVePresPedNum = Number(form.custom_fields?.iso_ve_pres_ped) || 0;
   const occupiedSubsetSum = medicalPedNum + isoNorPresPedNum + isoVePresPedNum;
+  const subsetExceedsTotal = totalBedsNum > 0 && occupiedSubsetSum > totalBedsNum;
   const closedLimit = Math.max(0, totalBedsNum - occupiedSubsetSum);
-  const closedExceedsVacant = closedNum > closedLimit && !occupiedExceedsTotal;
-  const noVacantBeds = closedLimit === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
+  const closedExceedsVacant = closedNum > closedLimit && !occupiedExceedsTotal && !subsetExceedsTotal;
+  const noVacantBeds = closedLimit === 0 && totalBedsNum > 0 && !occupiedExceedsTotal && !subsetExceedsTotal;
+  const SUBSET_KEYS = ["medical_ped", "iso_nor_pres_ped", "iso_ve_pres_ped"] as const;
+  const SUBSET_LABELS: Record<string, string> = {
+    medical_ped: "Medical PED",
+    iso_nor_pres_ped: "ISO NOR PRES PED",
+    iso_ve_pres_ped: "ISO VE PRES PED",
+  };
 
   // Auto-lock Closed to 0 when there are no beds available to close.
   useEffect(() => {
@@ -545,6 +552,10 @@ const DataEntryPage = () => {
     }
     if (occupiedExceedsTotal) {
       focusFieldByKey("occupied");
+      return;
+    }
+    if (subsetExceedsTotal) {
+      focusFieldByKey("medical_ped");
       return;
     }
     if (closedExceedsVacant) {
@@ -997,6 +1008,8 @@ const DataEntryPage = () => {
             const inputType = field.field_type === "number" ? "number" : "text";
 
             const isNegative = inputType === "number" && Boolean(negativeFieldErrors[field.field_key]);
+            const isSubsetField = (SUBSET_KEYS as readonly string[]).includes(field.field_key);
+            const showSubsetError = isSubsetField && subsetExceedsTotal;
 
             return (
               <div key={field.id} className="space-y-2 md:col-span-2">
@@ -1007,8 +1020,8 @@ const DataEntryPage = () => {
                   min={inputType === "number" ? 0 : undefined}
                   disabled={!editable}
                   value={inputType === "number" ? Number(currentValue || 0) : String(currentValue)}
-                  aria-invalid={isNegative || undefined}
-                  className={cn(isNegative && "border-destructive focus-visible:ring-destructive")}
+                  aria-invalid={isNegative || showSubsetError || undefined}
+                  className={cn((isNegative || showSubsetError) && "border-destructive focus-visible:ring-destructive")}
                   onChange={(e) => {
                     if (inputType === "number") {
                       const raw = e.target.value;
@@ -1043,6 +1056,10 @@ const DataEntryPage = () => {
                 {isNegative ? (
                   <p className="text-sm font-medium text-destructive">
                     Value cannot be negative. Minimum allowed is 0.
+                  </p>
+                ) : showSubsetError ? (
+                  <p className="text-sm font-medium text-destructive" role="alert">
+                    {SUBSET_LABELS.medical_ped} + {SUBSET_LABELS.iso_nor_pres_ped} + {SUBSET_LABELS.iso_ve_pres_ped} ({occupiedSubsetSum}) cannot exceed Total Beds ({totalBedsNum}). Please reduce one of these values.
                   </p>
                 ) : null}
               </div>
