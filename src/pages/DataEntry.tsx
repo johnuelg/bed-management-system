@@ -559,8 +559,13 @@ const DataEntryPage = () => {
                     ref={setFieldRef("occupied") as never}
                     type="number"
                     min={0}
-                    value={form.occupied}
-                    onChange={(e) => setForm((p) => ({ ...p, occupied: Number(e.target.value) }))}
+                    placeholder="0"
+                    value={form.occupied === 0 ? "" : form.occupied}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setForm((p) => ({ ...p, occupied: raw === "" ? 0 : Number(raw) }));
+                    }}
                     aria-invalid={occupiedExceedsTotal}
                     className={cn(occupiedExceedsTotal && "border-destructive focus-visible:ring-destructive")}
                   />
