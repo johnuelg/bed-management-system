@@ -700,6 +700,17 @@ const DataTablePage = () => {
                         <TableCell className="text-right">{entry.row.closed}</TableCell>
                         <TableCell className="text-right">{entry.vacant}</TableCell>
                         <TableCell className="text-right">{entry.waiting}</TableCell>
+                        <TableCell className="text-right">{entry.medicalPed}</TableCell>
+                        <TableCell className="text-right">{entry.isoNorPresPed}</TableCell>
+                        <TableCell className="text-right">{entry.isoVePresPed}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex justify-center">
+                            <Checkbox checked={entry.singleRoom} disabled aria-label="Single Room available" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[220px] whitespace-normal break-words">
+                          {entry.roomNoReason || "-"}
+                        </TableCell>
                         <TableCell>{entry.row.closure_reason || "-"}</TableCell>
                         <TableCell className="text-right" style={{ color: benchmark?.color }}>
                           {entry.occupancy.toFixed(1)}%
