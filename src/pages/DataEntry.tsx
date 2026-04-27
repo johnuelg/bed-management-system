@@ -103,11 +103,23 @@ const DataEntryPage = () => {
   const [submissionView, setSubmissionView] = useState<"card" | "table">("card");
   const [submissionToDelete, setSubmissionToDelete] = useState<{ id: string; departmentName: string } | null>(null);
   const [missingFields, setMissingFields] = useState<Array<{ key: string; label: string }>>([]);
+  const [negativeFieldErrors, setNegativeFieldErrors] = useState<Record<string, boolean>>({});
+  const markNegative = (key: string, isNeg: boolean) =>
+    setNegativeFieldErrors((prev) => {
+      if (Boolean(prev[key]) === isNeg) return prev;
+      const next = { ...prev };
+      if (isNeg) next[key] = true;
+      else delete next[key];
+      return next;
+    });
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
   const setFieldRef = (key: string) => (el: HTMLElement | null) => {
     fieldRefs.current[key] = el;
   };
-  const resetForm = () => setForm(initialForm);
+  const resetForm = () => {
+    setForm(initialForm);
+    setNegativeFieldErrors({});
+  };
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
   const { data: departmentTotalBeds = {} } = useQuery({
@@ -632,12 +644,29 @@ const DataEntryPage = () => {
                     onFocus={(e) => e.currentTarget.select()}
                     onChange={(e) => {
                       const raw = e.target.value;
-                      setForm((p) => ({ ...p, occupied: raw === "" ? 0 : Number(raw) }));
+                      if (raw === "") {
+                        markNegative("occupied", false);
+                        setForm((p) => ({ ...p, occupied: 0 }));
+                        return;
+                      }
+                      const next = Number(raw);
+                      if (Number.isNaN(next)) return;
+                      if (next < 0) {
+                        markNegative("occupied", true);
+                        setForm((p) => ({ ...p, occupied: 0 }));
+                        return;
+                      }
+                      markNegative("occupied", false);
+                      setForm((p) => ({ ...p, occupied: next }));
                     }}
-                    aria-invalid={occupiedExceedsTotal}
-                    className={cn(occupiedExceedsTotal && "border-destructive focus-visible:ring-destructive")}
+                    aria-invalid={occupiedExceedsTotal || Boolean(negativeFieldErrors.occupied)}
+                    className={cn((occupiedExceedsTotal || negativeFieldErrors.occupied) && "border-destructive focus-visible:ring-destructive")}
                   />
-                  {occupiedExceedsTotal ? (
+                  {negativeFieldErrors.occupied ? (
+                    <p className="text-sm font-medium text-destructive">
+                      Value cannot be negative. Minimum allowed is 0.
+                    </p>
+                  ) : occupiedExceedsTotal ? (
                     <p className="text-sm font-medium text-destructive">
                       Occupied cannot exceed Total Beds ({totalBedsNum}).
                     </p>
@@ -661,19 +690,30 @@ const DataEntryPage = () => {
                     onChange={(e) => {
                       const raw = e.target.value;
                       if (raw === "") {
+                        markNegative("closed", false);
                         setForm((p) => ({ ...p, closed: 0 }));
                         return;
                       }
                       const next = Number(raw);
                       if (Number.isNaN(next)) return;
+                      if (next < 0) {
+                        markNegative("closed", true);
+                        setForm((p) => ({ ...p, closed: 0 }));
+                        return;
+                      }
+                      markNegative("closed", false);
                       setForm((p) => ({ ...p, closed: next }));
                     }}
-                    aria-invalid={closedExceedsVacant}
+                    aria-invalid={closedExceedsVacant || Boolean(negativeFieldErrors.closed)}
                     aria-describedby="closed-helper"
-                    className={cn(closedExceedsVacant && "border-destructive focus-visible:ring-destructive")}
+                    className={cn((closedExceedsVacant || negativeFieldErrors.closed) && "border-destructive focus-visible:ring-destructive")}
                   />
                   <div id="closed-helper" aria-live="polite" className="min-h-[1.25rem]">
-                    {noVacantBeds ? (
+                    {negativeFieldErrors.closed ? (
+                      <p className="text-sm font-medium text-destructive">
+                        Value cannot be negative. Minimum allowed is 0.
+                      </p>
+                    ) : noVacantBeds ? (
                       <p className="text-sm text-muted-foreground">No beds available to close.</p>
                     ) : closedExceedsVacant ? (
                       <p className="text-sm font-medium text-destructive">
@@ -956,24 +996,55 @@ const DataEntryPage = () => {
 
             const inputType = field.field_type === "number" ? "number" : "text";
 
+            const isNegative = inputType === "number" && Boolean(negativeFieldErrors[field.field_key]);
+
             return (
               <div key={field.id} className="space-y-2 md:col-span-2">
                 <Label>{field.label}{field.is_required ? " *" : ""}</Label>
                 <Input
                   ref={setFieldRef(field.field_key) as never}
                   type={inputType}
+                  min={inputType === "number" ? 0 : undefined}
                   disabled={!editable}
                   value={inputType === "number" ? Number(currentValue || 0) : String(currentValue)}
-                  onChange={(e) =>
+                  aria-invalid={isNegative || undefined}
+                  className={cn(isNegative && "border-destructive focus-visible:ring-destructive")}
+                  onChange={(e) => {
+                    if (inputType === "number") {
+                      const raw = e.target.value;
+                      const num = Number(raw);
+                      if (raw !== "" && !Number.isNaN(num) && num < 0) {
+                        markNegative(field.field_key, true);
+                        setForm((prev) => ({
+                          ...prev,
+                          custom_fields: { ...prev.custom_fields, [field.field_key]: 0 },
+                        }));
+                        return;
+                      }
+                      markNegative(field.field_key, false);
+                      setForm((prev) => ({
+                        ...prev,
+                        custom_fields: {
+                          ...prev.custom_fields,
+                          [field.field_key]: raw === "" ? 0 : num,
+                        },
+                      }));
+                      return;
+                    }
                     setForm((prev) => ({
                       ...prev,
                       custom_fields: {
                         ...prev.custom_fields,
-                        [field.field_key]: inputType === "number" ? Number(e.target.value) : e.target.value,
+                        [field.field_key]: e.target.value,
                       },
-                    }))
-                  }
+                    }));
+                  }}
                 />
+                {isNegative ? (
+                  <p className="text-sm font-medium text-destructive">
+                    Value cannot be negative. Minimum allowed is 0.
+                  </p>
+                ) : null}
               </div>
             );
           })}
