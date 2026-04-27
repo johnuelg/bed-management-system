@@ -1031,7 +1031,7 @@ const DataEntryPage = () => {
                       </p>
                       <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
                       <p className="text-sm text-muted-foreground">
-                        Total {row.total_beds} • Occupied {row.occupied} • Closed {row.closed}
+                        Total {row.total_beds} • Occupied {Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0} • Closed {row.closed}
                       </p>
                     </div>
 
@@ -1093,7 +1093,7 @@ const DataEntryPage = () => {
                             <TableCell>{dateTime.time}</TableCell>
                             <TableCell>{departmentNameById[row.department_id] ?? "Unknown Department"}</TableCell>
                             <TableCell className="text-right">{row.total_beds}</TableCell>
-                            <TableCell className="text-right">{row.occupied}</TableCell>
+                            <TableCell className="text-right">{Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0}</TableCell>
                             <TableCell className="text-right">{row.closed}</TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-2">
