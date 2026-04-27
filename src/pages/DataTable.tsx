@@ -444,7 +444,7 @@ const DataTablePage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2">
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Department</label>
               <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId}>
@@ -456,22 +456,6 @@ const DataTablePage = () => {
                   {departmentOptions.map((department) => (
                     <SelectItem key={department.id} value={department.id}>
                       {department.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Bed Type</label>
-              <Select value={selectedBedTypeId} onValueChange={setSelectedBedTypeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All bed types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All bed types</SelectItem>
-                  {bedTypeOptions.map((bedType) => (
-                    <SelectItem key={bedType.id} value={bedType.id}>
-                      {bedType.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -540,9 +524,6 @@ const DataTablePage = () => {
                   <TableHead className="cursor-pointer select-none" onClick={() => handleSort("department")}>
                     Department {renderSortIcon("department")}
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort("bed_type")}>
-                    Bed Type {renderSortIcon("bed_type")}
-                  </TableHead>
                   <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("total_beds")}>
                     Total Beds {renderSortIcon("total_beds")}
                   </TableHead>
@@ -569,7 +550,7 @@ const DataTablePage = () => {
               <TableBody>
                 {paginatedRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={canDelete ? 13 : 12} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={canDelete ? 12 : 11} className="py-6 text-center text-muted-foreground">
                       No entries found for the current filters.
                     </TableCell>
                   </TableRow>
@@ -581,7 +562,6 @@ const DataTablePage = () => {
                         <TableCell>{entry.date || "-"}</TableCell>
                         <TableCell>{entry.time || "-"}</TableCell>
                         <TableCell>{entry.department}</TableCell>
-                        <TableCell>{entry.bed_type}</TableCell>
                         <TableCell className="text-right font-medium">{entry.row.total_beds}</TableCell>
                         <TableCell className="text-right">{entry.row.occupied}</TableCell>
                         <TableCell className="text-right">{entry.row.closed}</TableCell>
