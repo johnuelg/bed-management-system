@@ -221,12 +221,12 @@ const DataEntryPage = () => {
   const occupiedNum = Number(form.occupied) || 0;
   const closedNum = Number(form.closed) || 0;
   const occupiedExceedsTotal = occupiedNum > totalBedsNum;
-  // Per business rule: Vacant for Closed validation = Total Beds − Occupied
-  const vacantForClosed = Math.max(0, totalBedsNum - occupiedNum);
-  const closedExceedsVacant = closedNum > vacantForClosed && !occupiedExceedsTotal;
-  const noVacantBeds = vacantForClosed === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
+  // Per business rule: Closed cannot exceed Occupied beds
+  const closedLimit = Math.max(0, occupiedNum);
+  const closedExceedsVacant = closedNum > closedLimit && !occupiedExceedsTotal;
+  const noVacantBeds = closedLimit === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
 
-  // Auto-lock Closed to 0 when there are no vacant beds.
+  // Auto-lock Closed to 0 when there are no occupied beds available to close.
   useEffect(() => {
     if (noVacantBeds && form.closed !== 0) {
       setForm((prev) => ({ ...prev, closed: 0 }));
@@ -599,14 +599,14 @@ const DataEntryPage = () => {
                   />
                   <div id="closed-helper" aria-live="polite" className="min-h-[1.25rem]">
                     {noVacantBeds ? (
-                      <p className="text-sm text-muted-foreground">No vacant beds — cannot close beds.</p>
+                      <p className="text-sm text-muted-foreground">No occupied beds — cannot close beds.</p>
                     ) : closedExceedsVacant ? (
                       <p className="text-sm font-medium text-destructive">
-                        Closed ({closedNum}) cannot exceed Vacant beds ({vacantForClosed}). Please enter a value between 0 and {vacantForClosed}.
+                        Closed ({closedNum}) cannot exceed Occupied beds ({closedLimit}). Please enter a value between 0 and {closedLimit}.
                       </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Up to {vacantForClosed} bed{vacantForClosed === 1 ? "" : "s"} available to close.
+                        Up to {closedLimit} bed{closedLimit === 1 ? "" : "s"} available to close.
                       </p>
                     )}
                   </div>
