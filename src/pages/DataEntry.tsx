@@ -91,8 +91,8 @@ const DataEntryPage = () => {
     id: "",
     department_id: "",
     total_beds: 0,
-    occupied: "" as number | "",
-    closed: "" as number | "",
+    occupied: 0,
+    closed: 0,
     closure_reason: "",
     custom_fields: {} as Record<string, unknown>,
   };
@@ -226,51 +226,10 @@ const DataEntryPage = () => {
   const closedExceedsVacant = closedNum > vacantForClosed && !occupiedExceedsTotal;
   const noVacantBeds = vacantForClosed === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
 
-  // ---------- Progressive top-down gating ----------
-  // Order: Date/Time → Department → Occupied → Closed → Closure Reason → other dynamic fields
-  const requiredDateField = useMemo(
-    () => dynamicFields.find((field) => field.field_type === "date" && field.is_required),
-    [dynamicFields],
-  );
-  const dateTimeComplete = useMemo(() => {
-    if (!requiredDateField) return true;
-    const raw = String(form.custom_fields[requiredDateField.field_key] ?? "");
-    const [d = "", t = ""] = raw.split("T");
-    return /^\d{4}-\d{2}-\d{2}$/.test(d) && /^\d{2}:\d{2}$/.test(t);
-  }, [requiredDateField, form.custom_fields]);
-  const departmentComplete = Boolean(form.department_id) && totalBedsNum > 0;
-  const occupiedComplete =
-    form.occupied !== "" && !Number.isNaN(occupiedNum) && !occupiedExceedsTotal;
-  const closedComplete =
-    noVacantBeds || (form.closed !== "" && !Number.isNaN(closedNum) && !closedExceedsVacant);
-  const closureReasonComplete = closedNum > 0 ? form.closure_reason.trim().length > 0 : true;
-
-  const gates = {
-    date: true, // always enabled (top of chain)
-    department: dateTimeComplete,
-    occupied: dateTimeComplete && departmentComplete,
-    closed: dateTimeComplete && departmentComplete && occupiedComplete,
-    closureReason: dateTimeComplete && departmentComplete && occupiedComplete && closedComplete && closedNum > 0,
-    rest: dateTimeComplete && departmentComplete && occupiedComplete && closedComplete && closureReasonComplete,
-  };
-
-  const lockedHint = (label: string) => `Complete ${label} above to enable this field.`;
-
-  // Detect a "Single Room" boolean field for companion text input
-  const singleRoomFieldKey = useMemo(() => {
-    const f = dynamicFields.find((field) => {
-      if (field.field_type !== "boolean") return false;
-      const k = field.field_key.toLowerCase();
-      const l = field.label.toLowerCase();
-      return k.includes("single") && k.includes("room") || (l.includes("single") && l.includes("room"));
-    });
-    return f?.field_key ?? null;
-  }, [dynamicFields]);
-
-  // Auto-lock Closed to "" when there are no vacant beds.
+  // Auto-lock Closed to 0 when there are no vacant beds.
   useEffect(() => {
-    if (noVacantBeds && form.closed !== "" && form.closed !== 0) {
-      setForm((prev) => ({ ...prev, closed: "" }));
+    if (noVacantBeds && form.closed !== 0) {
+      setForm((prev) => ({ ...prev, closed: 0 }));
     }
   }, [noVacantBeds, form.closed]);
 
@@ -372,7 +331,7 @@ const DataEntryPage = () => {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!form.department_id) throw new Error("Department is required");
-      if (closedNum > 0 && !form.closure_reason.trim()) throw new Error("Reason for closure is required");
+      if (form.closed > 0 && !form.closure_reason.trim()) throw new Error("Reason for closure is required");
 
       const missingRequiredDateField = dynamicFields.find((field) => {
         if (field.field_type !== "date" || !field.is_required) return false;
@@ -411,7 +370,7 @@ const DataEntryPage = () => {
           total_beds: canEditAllBedEntryFields ? Number(form.total_beds) : 0,
           occupied: Number(form.occupied),
           closed: Number(form.closed),
-          closure_reason: closedNum > 0 ? form.closure_reason.trim() : null,
+          closure_reason: form.closed > 0 ? form.closure_reason.trim() : null,
           submitted_on: submittedOn,
           custom_fields: form.custom_fields,
           calculated_fields: buildCalculatedFieldsPayload(),
@@ -534,12 +493,10 @@ const DataEntryPage = () => {
         <CardContent className="grid gap-4 md:grid-cols-2">
           {orderedActiveFields.map((field) => {
             if (field.field_key === "department_id") {
-              const disabled = !gates.department;
               return (
                 <div key={field.id} className="space-y-2">
-                  <Label className={cn(disabled && "text-muted-foreground")}>{field.label} *</Label>
+                  <Label>{field.label}</Label>
                   <Select
-                    disabled={disabled}
                     value={form.department_id}
                     onValueChange={(value) =>
                       setForm((p) => ({
@@ -550,7 +507,7 @@ const DataEntryPage = () => {
                     }
                   >
                     <SelectTrigger ref={setFieldRef("department_id") as never}>
-                      <SelectValue placeholder={disabled ? "Complete Date/Time first" : "Select department"} />
+                      <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
                       {departments.filter((d) => d.is_active).map((item) => (
@@ -560,13 +517,6 @@ const DataEntryPage = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  {disabled ? (
-                    <p className="text-xs text-muted-foreground">{lockedHint("Date/Time")}</p>
-                  ) : form.department_id && totalBedsNum === 0 ? (
-                    <p className="text-sm font-medium text-destructive">
-                      Selected department has no Total Beds configured. Set capacity in Categories.
-                    </p>
-                  ) : null}
                 </div>
               );
             }
@@ -584,8 +534,7 @@ const DataEntryPage = () => {
                     type="number"
                     min={0}
                     readOnly
-                    value={totalBedsNum > 0 ? form.total_beds : ""}
-                    placeholder="—"
+                    value={form.total_beds}
                     className="bg-muted"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -596,95 +545,61 @@ const DataEntryPage = () => {
             }
 
             if (field.field_key === "occupied") {
-              const disabled = !gates.occupied;
-              const isEmpty = form.occupied === "";
-              const isNegative = !isEmpty && occupiedNum < 0;
               return (
                 <div key={field.id} className="space-y-2">
-                  <Label className={cn(disabled && "text-muted-foreground")}>{field.label} *</Label>
+                  <Label>{field.label}</Label>
                   <Input
                     ref={setFieldRef("occupied") as never}
                     type="number"
-                    inputMode="numeric"
-                    step={1}
                     min={0}
-                    max={totalBedsNum}
-                    disabled={disabled}
-                    placeholder={disabled ? "" : "Enter occupied beds"}
-                    value={form.occupied}
+                    placeholder="0"
+                    value={form.occupied === 0 ? "" : form.occupied}
                     onFocus={(e) => e.currentTarget.select()}
                     onChange={(e) => {
                       const raw = e.target.value;
-                      if (raw === "") {
-                        setForm((p) => ({ ...p, occupied: "" }));
-                        return;
-                      }
-                      // Strip decimals/non-integer, allow only whole numbers
-                      const next = Number(raw);
-                      if (Number.isNaN(next)) return;
-                      setForm((p) => ({ ...p, occupied: Math.trunc(next) }));
+                      setForm((p) => ({ ...p, occupied: raw === "" ? 0 : Number(raw) }));
                     }}
-                    aria-invalid={occupiedExceedsTotal || isNegative}
-                    aria-describedby="occupied-helper"
-                    className={cn((occupiedExceedsTotal || isNegative) && "border-destructive focus-visible:ring-destructive")}
+                    aria-invalid={occupiedExceedsTotal}
+                    className={cn(occupiedExceedsTotal && "border-destructive focus-visible:ring-destructive")}
                   />
-                  <div id="occupied-helper" aria-live="polite" className="min-h-[1.25rem]">
-                    {disabled ? (
-                      <p className="text-xs text-muted-foreground">{lockedHint("Department")}</p>
-                    ) : isNegative ? (
-                      <p className="text-sm font-medium text-destructive">Occupied must be 0 or greater.</p>
-                    ) : occupiedExceedsTotal ? (
-                      <p className="text-sm font-medium text-destructive">
-                        Occupied ({occupiedNum}) cannot exceed Total Beds ({totalBedsNum}).
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Whole number between 0 and {totalBedsNum}.
-                      </p>
-                    )}
-                  </div>
+                  {occupiedExceedsTotal ? (
+                    <p className="text-sm font-medium text-destructive">
+                      Occupied cannot exceed Total Beds ({totalBedsNum}).
+                    </p>
+                  ) : null}
                 </div>
               );
             }
 
             if (field.field_key === "closed") {
-              const disabled = !gates.closed || noVacantBeds;
-              const isNegative = form.closed !== "" && closedNum < 0;
               return (
                 <div key={field.id} className="space-y-2">
-                  <Label className={cn(disabled && !noVacantBeds && "text-muted-foreground")}>{field.label} *</Label>
+                  <Label>{field.label}</Label>
                   <Input
                     ref={setFieldRef("closed") as never}
                     type="number"
-                    inputMode="numeric"
-                    step={1}
                     min={0}
-                    max={vacantForClosed}
-                    disabled={disabled}
-                    placeholder={!gates.closed ? "" : noVacantBeds ? "" : "Enter closed beds"}
-                    value={noVacantBeds ? "" : form.closed}
+                    disabled={noVacantBeds}
+                    placeholder="0"
+                    value={noVacantBeds ? 0 : form.closed === 0 ? "" : form.closed}
                     onFocus={(e) => e.currentTarget.select()}
                     onChange={(e) => {
                       const raw = e.target.value;
                       if (raw === "") {
-                        setForm((p) => ({ ...p, closed: "" }));
+                        setForm((p) => ({ ...p, closed: 0 }));
                         return;
                       }
                       const next = Number(raw);
                       if (Number.isNaN(next)) return;
-                      setForm((p) => ({ ...p, closed: Math.trunc(next) }));
+                      setForm((p) => ({ ...p, closed: next }));
                     }}
-                    aria-invalid={closedExceedsVacant || isNegative}
+                    aria-invalid={closedExceedsVacant}
                     aria-describedby="closed-helper"
-                    className={cn((closedExceedsVacant || isNegative) && "border-destructive focus-visible:ring-destructive")}
+                    className={cn(closedExceedsVacant && "border-destructive focus-visible:ring-destructive")}
                   />
                   <div id="closed-helper" aria-live="polite" className="min-h-[1.25rem]">
-                    {!gates.closed ? (
-                      <p className="text-xs text-muted-foreground">{lockedHint("Occupied")}</p>
-                    ) : noVacantBeds ? (
+                    {noVacantBeds ? (
                       <p className="text-sm text-muted-foreground">No vacant beds — cannot close beds.</p>
-                    ) : isNegative ? (
-                      <p className="text-sm font-medium text-destructive">Closed must be 0 or greater.</p>
                     ) : closedExceedsVacant ? (
                       <p className="text-sm font-medium text-destructive">
                         Closed ({closedNum}) cannot exceed Vacant beds ({vacantForClosed}). Please enter a value between 0 and {vacantForClosed}.
@@ -702,8 +617,7 @@ const DataEntryPage = () => {
             }
 
             if (field.field_key === "closure_reason") {
-              if (closedNum <= 0) return null;
-              const showError = !form.closure_reason.trim();
+              if (form.closed <= 0) return null;
               return (
                 <div key={field.id} className="space-y-2 md:col-span-2">
                   <Label>{field.label} *</Label>
@@ -711,24 +625,13 @@ const DataEntryPage = () => {
                     value={form.closure_reason}
                     onChange={(e) => setForm((p) => ({ ...p, closure_reason: e.target.value }))}
                     placeholder="Required when Closed is greater than 0"
-                    aria-invalid={showError}
-                    className={cn(showError && "border-destructive focus-visible:ring-destructive")}
                   />
-                  {showError ? (
-                    <p className="text-sm font-medium text-destructive">
-                      Please provide a reason — required when Closed beds is greater than 0.
-                    </p>
-                  ) : null}
                 </div>
               );
             }
 
-            const editableByRole = canEditDynamicField(field);
-            // Date fields are at top of the chain; everything else gated by `rest`.
-            const gateOpen = field.field_type === "date" ? gates.date : gates.rest;
-            const editable = editableByRole && gateOpen;
+            const editable = canEditDynamicField(field);
             const currentValue = form.custom_fields[field.field_key] ?? field.default_value ?? "";
-            const lockedMsg = !gateOpen ? lockedHint("Date/Time, Department, Occupied & Closed") : null;
 
             if (field.field_type === "formula") {
               const { formula, value } = resolveFormulaForField(field);
@@ -768,41 +671,31 @@ const DataEntryPage = () => {
             }
 
             if (field.field_type === "textarea") {
-              const strVal = String(currentValue);
-              const requiredEmpty = field.is_required && editable && strVal.trim().length === 0;
               return (
                 <div key={field.id} className="space-y-2 md:col-span-2">
-                  <Label className={cn(!editable && "text-muted-foreground")}>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
                   <Textarea
                     disabled={!editable}
-                    value={strVal}
-                    placeholder={editable ? "" : ""}
+                    value={String(currentValue)}
                     onChange={(e) =>
                       setForm((prev) => ({
                         ...prev,
                         custom_fields: { ...prev.custom_fields, [field.field_key]: e.target.value },
                       }))
                     }
-                    aria-invalid={requiredEmpty}
-                    className={cn(requiredEmpty && "border-destructive focus-visible:ring-destructive")}
                   />
-                  {lockedMsg ? (
-                    <p className="text-xs text-muted-foreground">{lockedMsg}</p>
-                  ) : null}
                 </div>
               );
             }
 
             if (field.field_type === "select") {
               const options = Array.isArray(field.options) ? field.options : [];
-              const strVal = String(currentValue);
-              const requiredEmpty = field.is_required && editable && strVal.length === 0;
               return (
                 <div key={field.id} className="space-y-2 md:col-span-2">
-                  <Label className={cn(!editable && "text-muted-foreground")}>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
                   <Select
                     disabled={!editable}
-                    value={strVal}
+                    value={String(currentValue)}
                     onValueChange={(value) =>
                       setForm((prev) => ({
                         ...prev,
@@ -810,8 +703,8 @@ const DataEntryPage = () => {
                       }))
                     }
                   >
-                    <SelectTrigger className={cn(requiredEmpty && "border-destructive")}>
-                      <SelectValue placeholder={!editable ? "" : `Select ${field.label.toLowerCase()}`} />
+                    <SelectTrigger>
+                      <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent>
                       {options.map((option) => (
@@ -821,67 +714,27 @@ const DataEntryPage = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  {lockedMsg ? (
-                    <p className="text-xs text-muted-foreground">{lockedMsg}</p>
-                  ) : null}
                 </div>
               );
             }
 
             if (field.field_type === "boolean") {
-              const isChecked = Boolean(currentValue === true || currentValue === "true");
-              const isSingleRoom = singleRoomFieldKey === field.field_key;
-              const noteKey = `${field.field_key}_note`;
-              const noteValue = String(form.custom_fields[noteKey] ?? "");
-              const noteRequired = isSingleRoom && isChecked && editable && noteValue.trim().length === 0;
               return (
                 <div key={field.id} className="space-y-2 md:col-span-2">
-                  <Label className={cn(!editable && "text-muted-foreground")}>{field.label}{field.is_required ? " *" : ""}</Label>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-                    <label className="flex items-center gap-2 text-sm whitespace-nowrap pt-2">
-                      <Checkbox
-                        disabled={!editable}
-                        checked={isChecked}
-                        onCheckedChange={(checked) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            custom_fields: { ...prev.custom_fields, [field.field_key]: Boolean(checked) },
-                          }))
-                        }
-                      />
-                      <span className="text-muted-foreground">Enabled</span>
-                    </label>
-                    {isSingleRoom && isChecked ? (
-                      <div className="flex-1 space-y-1">
-                        <Input
-                          type="text"
-                          maxLength={120}
-                          disabled={!editable}
-                          value={noteValue}
-                          placeholder="Single room details (e.g., room number, patient ID)"
-                          aria-invalid={noteRequired}
-                          aria-label={`${field.label} details`}
-                          className={cn(noteRequired && "border-destructive focus-visible:ring-destructive")}
-                          onChange={(e) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              custom_fields: { ...prev.custom_fields, [noteKey]: e.target.value },
-                            }))
-                          }
-                        />
-                        {noteRequired ? (
-                          <p className="text-sm font-medium text-destructive">
-                            Please add details for the single room.
-                          </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">Required when {field.label} is enabled.</p>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                  {lockedMsg ? (
-                    <p className="text-xs text-muted-foreground">{lockedMsg}</p>
-                  ) : null}
+                  <Label>{field.label}{field.is_required ? " *" : ""}</Label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      disabled={!editable}
+                      checked={Boolean(currentValue === true || currentValue === "true")}
+                      onCheckedChange={(checked) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          custom_fields: { ...prev.custom_fields, [field.field_key]: Boolean(checked) },
+                        }))
+                      }
+                    />
+                    <span className="text-muted-foreground">Enabled</span>
+                  </label>
                 </div>
               );
             }
@@ -891,7 +744,6 @@ const DataEntryPage = () => {
               const [rawDatePart, rawTimePart = ""] = raw.includes("T") ? raw.split("T") : [raw, ""];
               const datePart = /^\d{4}-\d{2}-\d{2}$/.test(rawDatePart) ? rawDatePart : "";
               const timePart = /^\d{2}:\d{2}$/.test(rawTimePart) ? rawTimePart : "";
-              const requiredMissing = field.is_required && (!datePart || !timePart);
 
               return (
                 <div key={field.id} className="space-y-2 md:col-span-2">
@@ -907,7 +759,6 @@ const DataEntryPage = () => {
                           className={cn(
                             "justify-start text-left font-normal",
                             !datePart && "text-muted-foreground",
-                            requiredMissing && !datePart && "border-destructive",
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -951,92 +802,30 @@ const DataEntryPage = () => {
                       }}
                     />
                   </div>
-                  {requiredMissing ? (
-                    <p className="text-sm font-medium text-destructive">
-                      Both date and time are required.
-                    </p>
-                  ) : null}
                 </div>
               );
             }
 
-            if (field.field_type === "number") {
-              const numStr = currentValue === "" || currentValue === null || currentValue === undefined
-                ? ""
-                : String(currentValue);
-              const numVal = numStr === "" ? NaN : Number(numStr);
-              const isInvalid = numStr !== "" && (Number.isNaN(numVal) || numVal < 0);
-              const requiredEmpty = field.is_required && editable && numStr === "";
-              return (
-                <div key={field.id} className="space-y-2 md:col-span-2">
-                  <Label className={cn(!editable && "text-muted-foreground")}>{field.label}{field.is_required ? " *" : ""}</Label>
-                  <Input
-                    ref={setFieldRef(field.field_key) as never}
-                    type="number"
-                    inputMode="numeric"
-                    step={1}
-                    min={0}
-                    disabled={!editable}
-                    placeholder={editable ? "Enter a whole number" : ""}
-                    value={numStr}
-                    onFocus={(e) => e.currentTarget.select()}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") {
-                        setForm((prev) => ({
-                          ...prev,
-                          custom_fields: { ...prev.custom_fields, [field.field_key]: "" },
-                        }));
-                        return;
-                      }
-                      const next = Number(raw);
-                      if (Number.isNaN(next)) return;
-                      setForm((prev) => ({
-                        ...prev,
-                        custom_fields: { ...prev.custom_fields, [field.field_key]: Math.trunc(next) },
-                      }));
-                    }}
-                    aria-invalid={isInvalid || requiredEmpty}
-                    className={cn((isInvalid || requiredEmpty) && "border-destructive focus-visible:ring-destructive")}
-                  />
-                  {isInvalid ? (
-                    <p className="text-sm font-medium text-destructive">Must be a whole number 0 or greater.</p>
-                  ) : requiredEmpty ? (
-                    <p className="text-sm font-medium text-destructive">{field.label} is required.</p>
-                  ) : lockedMsg ? (
-                    <p className="text-xs text-muted-foreground">{lockedMsg}</p>
-                  ) : null}
-                </div>
-              );
-            }
+            const inputType = field.field_type === "number" ? "number" : "text";
 
-            // text fallback
-            const strVal = String(currentValue);
-            const requiredEmpty = field.is_required && editable && strVal.trim().length === 0;
             return (
               <div key={field.id} className="space-y-2 md:col-span-2">
-                <Label className={cn(!editable && "text-muted-foreground")}>{field.label}{field.is_required ? " *" : ""}</Label>
+                <Label>{field.label}{field.is_required ? " *" : ""}</Label>
                 <Input
                   ref={setFieldRef(field.field_key) as never}
-                  type="text"
-                  maxLength={500}
+                  type={inputType}
                   disabled={!editable}
-                  placeholder={editable ? "" : ""}
-                  value={strVal}
+                  value={inputType === "number" ? Number(currentValue || 0) : String(currentValue)}
                   onChange={(e) =>
                     setForm((prev) => ({
                       ...prev,
-                      custom_fields: { ...prev.custom_fields, [field.field_key]: e.target.value },
+                      custom_fields: {
+                        ...prev.custom_fields,
+                        [field.field_key]: inputType === "number" ? Number(e.target.value) : e.target.value,
+                      },
                     }))
                   }
-                  aria-invalid={requiredEmpty}
-                  className={cn(requiredEmpty && "border-destructive focus-visible:ring-destructive")}
                 />
-                {requiredEmpty ? (
-                  <p className="text-sm font-medium text-destructive">{field.label} is required.</p>
-                ) : lockedMsg ? (
-                  <p className="text-xs text-muted-foreground">{lockedMsg}</p>
-                ) : null}
               </div>
             );
           })}
