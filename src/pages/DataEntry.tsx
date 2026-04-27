@@ -579,7 +579,6 @@ const DataEntryPage = () => {
                     ref={setFieldRef("closed") as never}
                     type="number"
                     min={0}
-                    max={noVacantBeds ? 0 : vacantForClosed}
                     disabled={noVacantBeds}
                     placeholder="0"
                     value={noVacantBeds ? 0 : form.closed === 0 ? "" : form.closed}
@@ -592,28 +591,25 @@ const DataEntryPage = () => {
                       }
                       const next = Number(raw);
                       if (Number.isNaN(next)) return;
-                      if (next > vacantForClosed) {
-                        toast({
-                          variant: "destructive",
-                          title: "Invalid value",
-                          description: `Closed cannot exceed Vacant beds (${vacantForClosed}).`,
-                        });
-                        setForm((p) => ({ ...p, closed: vacantForClosed }));
-                        return;
-                      }
                       setForm((p) => ({ ...p, closed: next }));
                     }}
                     aria-invalid={closedExceedsVacant}
+                    aria-describedby="closed-helper"
                     className={cn(closedExceedsVacant && "border-destructive focus-visible:ring-destructive")}
                   />
-                  {closedExceedsVacant ? (
-                    <p className="text-sm font-medium text-destructive">
-                      Closed cannot exceed Vacant beds ({vacantForClosed}).
-                    </p>
-                  ) : null}
-                  {noVacantBeds ? (
-                    <p className="text-sm text-muted-foreground">No vacant beds — cannot close beds.</p>
-                  ) : null}
+                  <div id="closed-helper" aria-live="polite" className="min-h-[1.25rem]">
+                    {noVacantBeds ? (
+                      <p className="text-sm text-muted-foreground">No vacant beds — cannot close beds.</p>
+                    ) : closedExceedsVacant ? (
+                      <p className="text-sm font-medium text-destructive">
+                        Closed ({closedNum}) cannot exceed Vacant beds ({vacantForClosed}). Please enter a value between 0 and {vacantForClosed}.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Up to {vacantForClosed} bed{vacantForClosed === 1 ? "" : "s"} available to close.
+                      </p>
+                    )}
+                  </div>
                 </div>
               );
             }
