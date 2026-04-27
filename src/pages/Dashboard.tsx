@@ -21,6 +21,7 @@ import {
   aggregateSubmissionSums,
   fetchDashboardSubmissions,
   fetchDepartments,
+  fetchDepartmentTotalBeds,
   fetchKpiFormulas,
   fetchOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
@@ -75,6 +76,11 @@ const DashboardPage = () => {
   const { data: kpiFormulas = [] } = useQuery({
     queryKey: ["kpi_formulas"],
     queryFn: fetchKpiFormulas,
+  });
+
+  const { data: departmentTotalBeds = {} } = useQuery({
+    queryKey: ["app_settings", "department_total_beds"],
+    queryFn: fetchDepartmentTotalBeds,
   });
 
   const extractUserInputDateTime = (row: (typeof rows)[number]) => {
@@ -199,7 +205,24 @@ const DashboardPage = () => {
 
     return total;
   }, 0);
-  const aggregateScope = useMemo(() => buildAggregateScope(filteredRows), [filteredRows]);
+
+  // Assigned total beds come from admin-managed Categories settings, not from
+  // submissions. When filtered to a single department, only that department's
+  // assigned count contributes; "All departments" sums every active assignment.
+  const assignedTotalBeds = useMemo(() => {
+    if (selectedDepartmentId !== "all") {
+      return Number(departmentTotalBeds[selectedDepartmentId] ?? 0) || 0;
+    }
+    return departments.reduce(
+      (sum, dept) => sum + (Number(departmentTotalBeds[dept.id] ?? 0) || 0),
+      0,
+    );
+  }, [departmentTotalBeds, departments, selectedDepartmentId]);
+
+  const aggregateScope = useMemo(
+    () => ({ ...buildAggregateScope(filteredRows), total_beds: assignedTotalBeds }),
+    [filteredRows, assignedTotalBeds],
+  );
   const occupancyRate = useMemo(
     () => evaluateOccupancyRate(kpiFormulas, aggregateScope),
     [kpiFormulas, aggregateScope],
@@ -208,13 +231,13 @@ const DashboardPage = () => {
   // These fall back to the raw aggregated sums when no matching formula exists.
   const kpiCardValues = useMemo(
     () => ({
-      total_beds: evaluateNamedFormula(kpiFormulas, "Total Beds", aggregateScope, sums.total_beds),
+      total_beds: assignedTotalBeds,
       occupied: evaluateNamedFormula(kpiFormulas, "Occupied", aggregateScope, sums.occupied),
       closed: evaluateNamedFormula(kpiFormulas, "Closed", aggregateScope, sums.closed),
       vacant: evaluateNamedFormula(kpiFormulas, "Vacant", aggregateScope, sums.vacant),
       waiting_patients: evaluateNamedFormula(kpiFormulas, "Waiting Patients", aggregateScope, waitingPatients),
     }),
-    [kpiFormulas, aggregateScope, sums.total_beds, sums.occupied, sums.closed, sums.vacant, waitingPatients],
+    [kpiFormulas, aggregateScope, assignedTotalBeds, sums.occupied, sums.closed, sums.vacant, waitingPatients],
   );
   const benchmarkLevels = occupancyBenchmark?.levels ?? [
     {
@@ -294,16 +317,14 @@ const DashboardPage = () => {
     return Array.from(latestByDept.entries())
       .map(([deptId, entry]) => {
         const department = departments.find((d) => d.id === deptId);
-        const scope = buildRowScope(entry.row);
-        const totalRaw = Number(entry.row.total_beds) || 0;
+        // Per-department total beds come from the admin-managed assignment in
+        // Categories, not from the submission row. Submission row is still
+        // used for occupied/closed/vacant + occupancy rate calculation.
+        const assignedTotal = Number(departmentTotalBeds[deptId] ?? 0) || 0;
+        const scope = { ...buildRowScope(entry.row), total_beds: assignedTotal };
         const occupiedRaw = Number(entry.row.occupied) || 0;
         const closedRaw = Number(entry.row.closed) || 0;
-        const vacantFallback = Math.max(totalRaw - occupiedRaw - closedRaw, 0);
-        // Resolve each metric via the global KPI Formula Registry so admin-defined
-        // formulas (e.g. Vacant, Occupied) drive the card values consistently with
-        // the Bed Entry form. Falls back to the raw saved column when no formula
-        // is registered for that metric.
-        const total = evaluateNamedFormula(kpiFormulas, "Total Beds", scope, totalRaw);
+        const vacantFallback = Math.max(assignedTotal - occupiedRaw - closedRaw, 0);
         const occupied = evaluateNamedFormula(kpiFormulas, "Occupied", scope, occupiedRaw);
         const closed = evaluateNamedFormula(kpiFormulas, "Closed", scope, closedRaw);
         const vacant = evaluateNamedFormula(kpiFormulas, "Vacant", scope, vacantFallback);
@@ -312,7 +333,7 @@ const DashboardPage = () => {
         return {
           id: deptId,
           name: department?.name ?? "Unknown department",
-          total: Math.round(total),
+          total: assignedTotal,
           occupied: Math.round(occupied),
           vacant: Math.round(vacant),
           closed: Math.round(closed),
@@ -321,7 +342,7 @@ const DashboardPage = () => {
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredRows, departments, kpiFormulas, benchmarkLevels]);
+  }, [filteredRows, departments, departmentTotalBeds, kpiFormulas, benchmarkLevels]);
 
   const isFiltersDefault =
     calendarDateToIsoDate(rangeStart) === calendarDateToIsoDate(today) &&
