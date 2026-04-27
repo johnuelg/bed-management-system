@@ -441,43 +441,25 @@ const DashboardPage = () => {
             </PopoverContent>
           </Popover>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">From Time</label>
-              <Select value={timeFrom} onValueChange={setTimeFrom}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any time" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="00:00">Any time</SelectItem>
-                  {availableTimes.map((time) => (
-                    <SelectItem key={`from-${time}`} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">To Time</label>
-              <Select value={timeTo} onValueChange={setTimeTo}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any time" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="23:59">Any time</SelectItem>
-                  {availableTimes.map((time) => (
-                    <SelectItem key={`to-${time}`} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Time</label>
+            <Select value={selectedTime} onValueChange={setSelectedTime}>
+              <SelectTrigger>
+                <SelectValue placeholder="All times" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All times</SelectItem>
+                {availableTimes.map((time) => (
+                  <SelectItem key={time} value={time}>
+                    {time}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {availableTimes.length === 0 && (
+              <p className="text-xs text-muted-foreground">No bed entry times available for the selected date range.</p>
+            )}
           </div>
-          {availableTimes.length === 0 && (
-            <p className="text-xs text-muted-foreground">No bed entry times available for the selected date range.</p>
-          )}
 
           <div className="grid grid-cols-1 gap-2">
             <div className="space-y-1">
