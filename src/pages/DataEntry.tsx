@@ -534,10 +534,12 @@ const DataEntryPage = () => {
         <CardContent className="grid gap-4 md:grid-cols-2">
           {orderedActiveFields.map((field) => {
             if (field.field_key === "department_id") {
+              const disabled = !gates.department;
               return (
                 <div key={field.id} className="space-y-2">
-                  <Label>{field.label}</Label>
+                  <Label className={cn(disabled && "text-muted-foreground")}>{field.label} *</Label>
                   <Select
+                    disabled={disabled}
                     value={form.department_id}
                     onValueChange={(value) =>
                       setForm((p) => ({
@@ -548,7 +550,7 @@ const DataEntryPage = () => {
                     }
                   >
                     <SelectTrigger ref={setFieldRef("department_id") as never}>
-                      <SelectValue placeholder="Select department" />
+                      <SelectValue placeholder={disabled ? "Complete Date/Time first" : "Select department"} />
                     </SelectTrigger>
                     <SelectContent>
                       {departments.filter((d) => d.is_active).map((item) => (
@@ -558,6 +560,13 @@ const DataEntryPage = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {disabled ? (
+                    <p className="text-xs text-muted-foreground">{lockedHint("Date/Time")}</p>
+                  ) : form.department_id && totalBedsNum === 0 ? (
+                    <p className="text-sm font-medium text-destructive">
+                      Selected department has no Total Beds configured. Set capacity in Categories.
+                    </p>
+                  ) : null}
                 </div>
               );
             }
@@ -575,7 +584,8 @@ const DataEntryPage = () => {
                     type="number"
                     min={0}
                     readOnly
-                    value={form.total_beds}
+                    value={totalBedsNum > 0 ? form.total_beds : ""}
+                    placeholder="—"
                     className="bg-muted"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -586,61 +596,95 @@ const DataEntryPage = () => {
             }
 
             if (field.field_key === "occupied") {
+              const disabled = !gates.occupied;
+              const isEmpty = form.occupied === "";
+              const isNegative = !isEmpty && occupiedNum < 0;
               return (
                 <div key={field.id} className="space-y-2">
-                  <Label>{field.label}</Label>
+                  <Label className={cn(disabled && "text-muted-foreground")}>{field.label} *</Label>
                   <Input
                     ref={setFieldRef("occupied") as never}
                     type="number"
+                    inputMode="numeric"
+                    step={1}
                     min={0}
-                    placeholder="0"
-                    value={form.occupied === 0 ? "" : form.occupied}
+                    max={totalBedsNum}
+                    disabled={disabled}
+                    placeholder={disabled ? "" : "Enter occupied beds"}
+                    value={form.occupied}
                     onFocus={(e) => e.currentTarget.select()}
                     onChange={(e) => {
                       const raw = e.target.value;
-                      setForm((p) => ({ ...p, occupied: raw === "" ? 0 : Number(raw) }));
+                      if (raw === "") {
+                        setForm((p) => ({ ...p, occupied: "" }));
+                        return;
+                      }
+                      // Strip decimals/non-integer, allow only whole numbers
+                      const next = Number(raw);
+                      if (Number.isNaN(next)) return;
+                      setForm((p) => ({ ...p, occupied: Math.trunc(next) }));
                     }}
-                    aria-invalid={occupiedExceedsTotal}
-                    className={cn(occupiedExceedsTotal && "border-destructive focus-visible:ring-destructive")}
+                    aria-invalid={occupiedExceedsTotal || isNegative}
+                    aria-describedby="occupied-helper"
+                    className={cn((occupiedExceedsTotal || isNegative) && "border-destructive focus-visible:ring-destructive")}
                   />
-                  {occupiedExceedsTotal ? (
-                    <p className="text-sm font-medium text-destructive">
-                      Occupied cannot exceed Total Beds ({totalBedsNum}).
-                    </p>
-                  ) : null}
+                  <div id="occupied-helper" aria-live="polite" className="min-h-[1.25rem]">
+                    {disabled ? (
+                      <p className="text-xs text-muted-foreground">{lockedHint("Department")}</p>
+                    ) : isNegative ? (
+                      <p className="text-sm font-medium text-destructive">Occupied must be 0 or greater.</p>
+                    ) : occupiedExceedsTotal ? (
+                      <p className="text-sm font-medium text-destructive">
+                        Occupied ({occupiedNum}) cannot exceed Total Beds ({totalBedsNum}).
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Whole number between 0 and {totalBedsNum}.
+                      </p>
+                    )}
+                  </div>
                 </div>
               );
             }
 
             if (field.field_key === "closed") {
+              const disabled = !gates.closed || noVacantBeds;
+              const isNegative = form.closed !== "" && closedNum < 0;
               return (
                 <div key={field.id} className="space-y-2">
-                  <Label>{field.label}</Label>
+                  <Label className={cn(disabled && !noVacantBeds && "text-muted-foreground")}>{field.label} *</Label>
                   <Input
                     ref={setFieldRef("closed") as never}
                     type="number"
+                    inputMode="numeric"
+                    step={1}
                     min={0}
-                    disabled={noVacantBeds}
-                    placeholder="0"
-                    value={noVacantBeds ? 0 : form.closed === 0 ? "" : form.closed}
+                    max={vacantForClosed}
+                    disabled={disabled}
+                    placeholder={!gates.closed ? "" : noVacantBeds ? "" : "Enter closed beds"}
+                    value={noVacantBeds ? "" : form.closed}
                     onFocus={(e) => e.currentTarget.select()}
                     onChange={(e) => {
                       const raw = e.target.value;
                       if (raw === "") {
-                        setForm((p) => ({ ...p, closed: 0 }));
+                        setForm((p) => ({ ...p, closed: "" }));
                         return;
                       }
                       const next = Number(raw);
                       if (Number.isNaN(next)) return;
-                      setForm((p) => ({ ...p, closed: next }));
+                      setForm((p) => ({ ...p, closed: Math.trunc(next) }));
                     }}
-                    aria-invalid={closedExceedsVacant}
+                    aria-invalid={closedExceedsVacant || isNegative}
                     aria-describedby="closed-helper"
-                    className={cn(closedExceedsVacant && "border-destructive focus-visible:ring-destructive")}
+                    className={cn((closedExceedsVacant || isNegative) && "border-destructive focus-visible:ring-destructive")}
                   />
                   <div id="closed-helper" aria-live="polite" className="min-h-[1.25rem]">
-                    {noVacantBeds ? (
+                    {!gates.closed ? (
+                      <p className="text-xs text-muted-foreground">{lockedHint("Occupied")}</p>
+                    ) : noVacantBeds ? (
                       <p className="text-sm text-muted-foreground">No vacant beds — cannot close beds.</p>
+                    ) : isNegative ? (
+                      <p className="text-sm font-medium text-destructive">Closed must be 0 or greater.</p>
                     ) : closedExceedsVacant ? (
                       <p className="text-sm font-medium text-destructive">
                         Closed ({closedNum}) cannot exceed Vacant beds ({vacantForClosed}). Please enter a value between 0 and {vacantForClosed}.
