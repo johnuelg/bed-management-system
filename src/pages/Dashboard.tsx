@@ -103,6 +103,25 @@ const DashboardPage = () => {
     return (Number.isNaN(hours) ? 0 : hours) * 60 + (Number.isNaN(minutes) ? 0 : minutes);
   };
 
+  const dateFilteredRows = useMemo(() => {
+    const dateFrom = rangeStartIso <= rangeEndIso ? rangeStartIso : rangeEndIso;
+    const dateTo = rangeStartIso <= rangeEndIso ? rangeEndIso : rangeStartIso;
+    return rows.filter((row) => {
+      const userDateTime = extractUserInputDateTime(row);
+      if (!userDateTime) return false;
+      return userDateTime.date >= dateFrom && userDateTime.date <= dateTo;
+    });
+  }, [rows, rangeStartIso, rangeEndIso]);
+
+  const availableTimes = useMemo(() => {
+    const set = new Set<string>();
+    dateFilteredRows.forEach((row) => {
+      const dt = extractUserInputDateTime(row);
+      if (dt?.time) set.add(dt.time);
+    });
+    return Array.from(set).sort();
+  }, [dateFilteredRows]);
+
   const dateTimeFilteredRows = useMemo(() => {
     const fromMinutes = toMinutes(timeFrom);
     const toMinutesValue = toMinutes(timeTo);
