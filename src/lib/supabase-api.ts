@@ -338,7 +338,28 @@ export const fetchUserEmails = async (roles: AppRole[]): Promise<Record<string, 
     body: { action: "list_users" },
   });
   if (error) throw error;
-  return (data?.emails ?? {}) as Record<string, string>;
+
+  // Support multiple response shapes from the edge function:
+  //   { emails: { [user_id]: email } }
+  //   { users: [{ id, email, ... }] }
+  //   [{ id, email, ... }]
+  if (data && typeof data === "object" && data.emails && typeof data.emails === "object") {
+    return data.emails as Record<string, string>;
+  }
+
+  const list: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.users)
+      ? data.users
+      : [];
+
+  const emails: Record<string, string> = {};
+  for (const u of list) {
+    const id = u?.id ?? u?.user_id;
+    const email = u?.email ?? u?.user?.email;
+    if (id && email) emails[id] = email;
+  }
+  return emails;
 };
 
 export const updateUserByAdmin = async (
