@@ -27,6 +27,7 @@ const db = supabase as any;
 const NAV_VISIBILITY_KEY = "nav_visibility";
 const ROLE_CATALOG_KEY = "role_catalog";
 const OCCUPANCY_BENCHMARK_KEY = "occupancy_benchmark";
+const DEPARTMENT_TOTAL_BEDS_KEY = "department_total_beds";
 const DEFAULT_ROLE_CATALOG: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   dashboard: true,
@@ -433,6 +434,46 @@ export const saveOccupancyBenchmarkSettings = async (
     { onConflict: "setting_key" },
   );
 
+  if (error) throw error;
+};
+
+export type DepartmentTotalBedsMap = Record<string, number>;
+
+const normalizeDepartmentTotalBeds = (value: unknown): DepartmentTotalBedsMap => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const result: DepartmentTotalBedsMap = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n >= 0) result[k] = Math.floor(n);
+  }
+  return result;
+};
+
+export const fetchDepartmentTotalBeds = async (): Promise<DepartmentTotalBedsMap> => {
+  const { data, error } = await db
+    .from("app_settings")
+    .select("setting_value")
+    .eq("setting_key", DEPARTMENT_TOTAL_BEDS_KEY)
+    .maybeSingle();
+  if (error) throw error;
+  return normalizeDepartmentTotalBeds(data?.setting_value);
+};
+
+export const saveDepartmentTotalBeds = async (
+  roles: AppRole[],
+  map: DepartmentTotalBedsMap,
+  userId: string,
+) => {
+  requireRole(roles, ["admin"], "manage department total beds");
+  const normalized = normalizeDepartmentTotalBeds(map);
+  const { error } = await db.from("app_settings").upsert(
+    {
+      setting_key: DEPARTMENT_TOTAL_BEDS_KEY,
+      setting_value: normalized,
+      updated_by: userId,
+    },
+    { onConflict: "setting_key" },
+  );
   if (error) throw error;
 };
 

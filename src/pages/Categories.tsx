@@ -20,33 +20,53 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   deleteDepartment,
   fetchDepartments,
+  fetchDepartmentTotalBeds,
   saveDepartment,
+  saveDepartmentTotalBeds,
   toggleDepartmentActive,
   updateDepartment,
 } from "@/lib/supabase-api";
 
 const CategoriesPage = () => {
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const qc = useQueryClient();
-  const [dept, setDept] = useState({ name: "", code: "" });
+  const [dept, setDept] = useState({ name: "", code: "", total_beds: 0 });
   const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
   const [departmentToDelete, setDepartmentToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
+  const { data: departmentTotalBeds = {} } = useQuery({
+    queryKey: ["department-total-beds"],
+    queryFn: fetchDepartmentTotalBeds,
+  });
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["departments"] });
+    await qc.invalidateQueries({ queryKey: ["department-total-beds"] });
+  };
+
+  const persistTotalBeds = async (departmentId: string, totalBeds: number) => {
+    if (!user) return;
+    const next = { ...departmentTotalBeds, [departmentId]: Math.max(0, Math.floor(totalBeds || 0)) };
+    await saveDepartmentTotalBeds(roles, next, user.id);
   };
 
   const deptMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (editingDepartmentId) {
-        return updateDepartment(roles, editingDepartmentId, { ...dept });
+        await updateDepartment(roles, editingDepartmentId, { name: dept.name, code: dept.code });
+        await persistTotalBeds(editingDepartmentId, dept.total_beds);
+        return;
       }
-      return saveDepartment(roles, { ...dept });
+      await saveDepartment(roles, { name: dept.name, code: dept.code });
+      // Look up newly created department by code to capture id
+      const { data: created } = await import("@/integrations/supabase/client").then(({ supabase }) =>
+        supabase.from("departments").select("id").eq("code", dept.code).maybeSingle(),
+      );
+      if (created?.id) await persistTotalBeds(created.id, dept.total_beds);
     },
     onSuccess: async () => {
-      setDept({ name: "", code: "" });
+      setDept({ name: "", code: "", total_beds: 0 });
       setEditingDepartmentId(null);
       toast({ title: editingDepartmentId ? "Department updated" : "Department saved" });
       await refresh();
@@ -55,10 +75,17 @@ const CategoriesPage = () => {
   });
 
   const deleteDepartmentMutation = useMutation({
-    mutationFn: (id: string) => deleteDepartment(roles, id),
+    mutationFn: async (id: string) => {
+      await deleteDepartment(roles, id);
+      if (user && id in departmentTotalBeds) {
+        const next = { ...departmentTotalBeds };
+        delete next[id];
+        await saveDepartmentTotalBeds(roles, next, user.id);
+      }
+    },
     onSuccess: async () => {
       if (editingDepartmentId) {
-        setDept({ name: "", code: "" });
+        setDept({ name: "", code: "", total_beds: 0 });
         setEditingDepartmentId(null);
       }
       toast({ title: "Department deleted" });
@@ -89,9 +116,21 @@ const CategoriesPage = () => {
                 <Label>Code</Label>
                 <Input value={dept.code} onChange={(e) => setDept((p) => ({ ...p, code: e.target.value.toUpperCase() }))} />
               </div>
+              <div className="space-y-2">
+                <Label>Total Beds</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={dept.total_beds}
+                  onChange={(e) => setDept((p) => ({ ...p, total_beds: Number(e.target.value) }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Auto-fills the Total Beds field in Bed Entry when this department is selected.
+                </p>
+              </div>
             </div>
             {editingDepartmentId ? (
-              <p className="text-sm text-muted-foreground">Editing Department: Name and Code are loaded below.</p>
+              <p className="text-sm text-muted-foreground">Editing Department: Name, Code, and Total Beds are loaded below.</p>
             ) : null}
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => deptMutation.mutate()}>
@@ -102,7 +141,7 @@ const CategoriesPage = () => {
                   variant="outline"
                   onClick={() => {
                     setEditingDepartmentId(null);
-                    setDept({ name: "", code: "" });
+                    setDept({ name: "", code: "", total_beds: 0 });
                   }}
                 >
                   Cancel Edit
@@ -114,7 +153,9 @@ const CategoriesPage = () => {
                 <div key={item.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.code}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.code} • Total Beds: {departmentTotalBeds[item.id] ?? 0}
+                    </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
                     <Button
@@ -122,7 +163,7 @@ const CategoriesPage = () => {
                       variant="outline"
                       onClick={() => {
                         setEditingDepartmentId(item.id);
-                        setDept({ name: item.name, code: item.code });
+                        setDept({ name: item.name, code: item.code, total_beds: departmentTotalBeds[item.id] ?? 0 });
                       }}
                     >
                       Edit
