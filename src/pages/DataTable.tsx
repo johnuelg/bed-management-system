@@ -89,6 +89,23 @@ const extractWaiting = (row: BedSubmission) => {
   return 0;
 };
 
+const readCustomNumber = (row: BedSubmission, key: string) => {
+  const v = (row.custom_fields as Record<string, unknown>)?.[key];
+  if (typeof v === "number") return v;
+  if (typeof v === "string") return Number(v) || 0;
+  return 0;
+};
+
+const readCustomBool = (row: BedSubmission, key: string) => {
+  const v = (row.custom_fields as Record<string, unknown>)?.[key];
+  return v === true || v === "true";
+};
+
+const readCustomString = (row: BedSubmission, key: string) => {
+  const v = (row.custom_fields as Record<string, unknown>)?.[key];
+  return v === null || v === undefined ? "" : String(v);
+};
+
 const toMinutes = (time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
   return (Number.isNaN(hours) ? 0 : hours) * 60 + (Number.isNaN(minutes) ? 0 : minutes);
