@@ -648,12 +648,12 @@ const DashboardPage = () => {
       </div>
 
       <Card className="hospital-glass">
-        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <CardTitle>
+        <CardHeader className="flex flex-col gap-3 space-y-0 p-4 sm:p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <CardTitle className="text-base sm:text-lg">
               {departmentView === "cards" ? "Department Status" : "Department Occupancy"}
             </CardTitle>
-            <span className="inline-flex items-center rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700">
+            <span className="inline-flex items-center rounded-full bg-teal-100 px-2.5 py-0.5 text-[11px] font-semibold text-teal-700 sm:px-3 sm:py-1 sm:text-xs">
               {departmentStatusCards.length} Active {departmentStatusCards.length === 1 ? "Department" : "Departments"}
             </span>
           </div>
