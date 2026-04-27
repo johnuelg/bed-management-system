@@ -97,11 +97,6 @@ const DashboardPage = () => {
     return null;
   };
 
-  const toMinutes = (time: string) => {
-    const [hours, minutes] = time.split(":").map(Number);
-    return (Number.isNaN(hours) ? 0 : hours) * 60 + (Number.isNaN(minutes) ? 0 : minutes);
-  };
-
   const dateFilteredRows = useMemo(() => {
     const dateFrom = rangeStartIso <= rangeEndIso ? rangeStartIso : rangeEndIso;
     const dateTo = rangeStartIso <= rangeEndIso ? rangeEndIso : rangeStartIso;
