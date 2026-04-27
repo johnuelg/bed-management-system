@@ -49,8 +49,7 @@ const DashboardPage = () => {
   const qc = useQueryClient();
   const today = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate()), []);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: today, to: today });
-  const [timeFrom, setTimeFrom] = useState("00:00");
-  const [timeTo, setTimeTo] = useState("23:59");
+  const [selectedTime, setSelectedTime] = useState<string>("all");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
   const rangeStart = dateRange?.from ?? today;
   const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
@@ -98,11 +97,6 @@ const DashboardPage = () => {
     return null;
   };
 
-  const toMinutes = (time: string) => {
-    const [hours, minutes] = time.split(":").map(Number);
-    return (Number.isNaN(hours) ? 0 : hours) * 60 + (Number.isNaN(minutes) ? 0 : minutes);
-  };
-
   const dateFilteredRows = useMemo(() => {
     const dateFrom = rangeStartIso <= rangeEndIso ? rangeStartIso : rangeEndIso;
     const dateTo = rangeStartIso <= rangeEndIso ? rangeEndIso : rangeStartIso;
@@ -123,30 +117,19 @@ const DashboardPage = () => {
   }, [dateFilteredRows]);
 
   const dateTimeFilteredRows = useMemo(() => {
-    const fromMinutes = toMinutes(timeFrom);
-    const toMinutesValue = toMinutes(timeTo);
-    const wrapsMidnight = fromMinutes > toMinutesValue;
-
+    if (selectedTime === "all") return dateFilteredRows;
     return dateFilteredRows.filter((row) => {
       const userDateTime = extractUserInputDateTime(row);
-      if (!userDateTime) return false;
-      const valueMinutes = toMinutes(userDateTime.time);
-      if (wrapsMidnight) {
-        return valueMinutes >= fromMinutes || valueMinutes <= toMinutesValue;
-      }
-      return valueMinutes >= fromMinutes && valueMinutes <= toMinutesValue;
+      return userDateTime?.time === selectedTime;
     });
-  }, [dateFilteredRows, timeFrom, timeTo]);
+  }, [dateFilteredRows, selectedTime]);
 
-  // Reset time filters if the chosen time no longer exists in the data
+  // Reset time filter if the chosen time no longer exists in the data
   useEffect(() => {
-    if (timeFrom !== "00:00" && !availableTimes.includes(timeFrom)) {
-      setTimeFrom("00:00");
+    if (selectedTime !== "all" && !availableTimes.includes(selectedTime)) {
+      setSelectedTime("all");
     }
-    if (timeTo !== "23:59" && !availableTimes.includes(timeTo)) {
-      setTimeTo("23:59");
-    }
-  }, [availableTimes, timeFrom, timeTo]);
+  }, [availableTimes, selectedTime]);
 
   const departmentOptions = useMemo(() => {
     const availableDepartmentIds = new Set(
@@ -369,15 +352,13 @@ const DashboardPage = () => {
   const isFiltersDefault =
     calendarDateToIsoDate(rangeStart) === calendarDateToIsoDate(today) &&
     calendarDateToIsoDate(rangeEnd) === calendarDateToIsoDate(today) &&
-    timeFrom === "00:00" &&
-    timeTo === "23:59" &&
+    selectedTime === "all" &&
     selectedDepartmentId === "all";
 
   const handleResetFilters = () => {
     const freshToday = isoDateToCalendarDate(getSaudiIsoDate());
     setDateRange({ from: freshToday, to: freshToday });
-    setTimeFrom("00:00");
-    setTimeTo("23:59");
+    setSelectedTime("all");
     setSelectedDepartmentId("all");
     void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
   };
@@ -455,43 +436,25 @@ const DashboardPage = () => {
             </PopoverContent>
           </Popover>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">From Time</label>
-              <Select value={timeFrom} onValueChange={setTimeFrom}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any time" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="00:00">Any time</SelectItem>
-                  {availableTimes.map((time) => (
-                    <SelectItem key={`from-${time}`} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">To Time</label>
-              <Select value={timeTo} onValueChange={setTimeTo}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any time" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="23:59">Any time</SelectItem>
-                  {availableTimes.map((time) => (
-                    <SelectItem key={`to-${time}`} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Time</label>
+            <Select value={selectedTime} onValueChange={setSelectedTime}>
+              <SelectTrigger>
+                <SelectValue placeholder="All times" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All times</SelectItem>
+                {availableTimes.map((time) => (
+                  <SelectItem key={time} value={time}>
+                    {time}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {availableTimes.length === 0 && (
+              <p className="text-xs text-muted-foreground">No bed entry times available for the selected date range.</p>
+            )}
           </div>
-          {availableTimes.length === 0 && (
-            <p className="text-xs text-muted-foreground">No bed entry times available for the selected date range.</p>
-          )}
 
           <div className="grid grid-cols-1 gap-2">
             <div className="space-y-1">
