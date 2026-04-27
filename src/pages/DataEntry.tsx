@@ -72,11 +72,6 @@ import {
 } from "@/lib/formula-registry";
 import type { KpiFormula } from "@/types/hospital";
 
-const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((file, ctx) => {
-  if (file.size > MAX_UPLOAD_SIZE) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "File must be <= 2MB" });
-  }
-});
 
 const DataEntryPage = () => {
   const { roles, user, profile } = useAuth();
