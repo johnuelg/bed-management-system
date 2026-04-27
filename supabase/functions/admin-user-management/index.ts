@@ -24,6 +24,17 @@ const ActionSchema = z.discriminatedUnion("action", [
     user_id: z.string().uuid(),
     is_active: z.boolean(),
   }),
+  z.object({
+    action: z.literal("list_user_emails"),
+  }),
+  z.object({
+    action: z.literal("update_user"),
+    user_id: z.string().uuid(),
+    email: z.string().trim().email().max(255).optional(),
+    password: z.string().min(8).max(128).optional().or(z.literal("")),
+    display_name: z.string().trim().min(1).max(100).optional(),
+    role: z.string().trim().min(1).max(64).optional(),
+  }),
 ]);
 
 type Action = z.infer<typeof ActionSchema>;
