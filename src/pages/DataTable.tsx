@@ -33,7 +33,7 @@ import {
   formatSaudiIsoDateForDisplay,
   isoDateToCalendarDate,
 } from "@/lib/date-time";
-import { buildRowScope, evaluateOccupancyRate } from "@/lib/formula-registry";
+import { buildRowScope, evaluateNamedFormula, evaluateOccupancyRate } from "@/lib/formula-registry";
 import {
   deleteAllBedSubmissions,
   deleteBedSubmission,
@@ -94,6 +94,16 @@ const readCustomNumber = (row: BedSubmission, key: string) => {
   if (typeof v === "number") return v;
   if (typeof v === "string") return Number(v) || 0;
   return 0;
+};
+
+const readCalculatedNumber = (row: BedSubmission, key: string) => {
+  const v = (row.calculated_fields as Record<string, unknown>)?.[key];
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const parsed = Number(v);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
 };
 
 const readCustomBool = (row: BedSubmission, key: string) => {
@@ -216,17 +226,25 @@ const DataTablePage = () => {
       // This protects historical entries where Occupied/Closed/Total were captured
       // via dynamic form fields (custom_fields) instead of the dedicated columns.
       const totalBedsRaw = Number(row.total_beds) || 0;
+      const occupiedCalculated = readCalculatedNumber(row, "occupied_auto");
       const occupiedRaw = Number(row.occupied) || 0;
       const closedRaw = Number(row.closed) || 0;
       const totalBeds = totalBedsRaw > 0
         ? totalBedsRaw
         : readCustomNumber(row, "total_beds");
-      const occupied = occupiedRaw > 0
+      const occupiedFallback = occupiedRaw > 0
         ? occupiedRaw
         : readCustomNumber(row, "occupied");
       const closed = closedRaw > 0
         ? closedRaw
         : readCustomNumber(row, "closed");
+      const baseScope = buildRowScope({
+        ...row,
+        total_beds: totalBeds,
+        occupied: occupiedFallback,
+        closed,
+      });
+      const occupied = occupiedCalculated ?? evaluateNamedFormula(kpiFormulas, "Occupied", baseScope, occupiedFallback);
       const vacant = Math.max(totalBeds - occupied - closed, 0);
       const waiting = extractWaiting(row);
       const scope = buildRowScope({
