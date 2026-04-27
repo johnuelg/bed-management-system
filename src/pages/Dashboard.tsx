@@ -19,7 +19,6 @@ import {
 } from "@/lib/date-time";
 import {
   aggregateSubmissionSums,
-  fetchBedTypes,
   fetchDashboardSubmissions,
   fetchDepartments,
   fetchKpiFormulas,
@@ -52,7 +51,6 @@ const DashboardPage = () => {
   const [timeFrom, setTimeFrom] = useState("00:00");
   const [timeTo, setTimeTo] = useState("23:59");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
-  const [selectedBedTypeId, setSelectedBedTypeId] = useState<string>("all");
   const rangeStart = dateRange?.from ?? today;
   const rangeEnd = dateRange?.to ?? dateRange?.from ?? today;
 
@@ -67,11 +65,6 @@ const DashboardPage = () => {
   const { data: departments = [] } = useQuery({
     queryKey: ["departments"],
     queryFn: fetchDepartments,
-  });
-
-  const { data: bedTypes = [] } = useQuery({
-    queryKey: ["bed_types"],
-    queryFn: fetchBedTypes,
   });
 
   const { data: occupancyBenchmark } = useQuery({
@@ -129,24 +122,11 @@ const DashboardPage = () => {
 
   const departmentOptions = useMemo(() => {
     const availableDepartmentIds = new Set(
-      dateTimeFilteredRows
-        .filter((row) => selectedBedTypeId === "all" || row.bed_type_id === selectedBedTypeId)
-        .map((row) => row.department_id),
+      dateTimeFilteredRows.map((row) => row.department_id),
     );
 
     return departments.filter((department) => availableDepartmentIds.has(department.id));
-  }, [dateTimeFilteredRows, departments, selectedBedTypeId]);
-
-  const bedTypeOptions = useMemo(() => {
-    const availableBedTypeIds = new Set(
-      dateTimeFilteredRows
-        .filter((row) => selectedDepartmentId === "all" || row.department_id === selectedDepartmentId)
-        .map((row) => row.bed_type_id)
-        .filter((id): id is string => Boolean(id)),
-    );
-
-    return bedTypes.filter((bedType) => availableBedTypeIds.has(bedType.id));
-  }, [dateTimeFilteredRows, bedTypes, selectedDepartmentId]);
+  }, [dateTimeFilteredRows, departments]);
 
   useEffect(() => {
     if (selectedDepartmentId !== "all" && !departmentOptions.some((department) => department.id === selectedDepartmentId)) {
@@ -154,20 +134,13 @@ const DashboardPage = () => {
     }
   }, [departmentOptions, selectedDepartmentId]);
 
-  useEffect(() => {
-    if (selectedBedTypeId !== "all" && !bedTypeOptions.some((bedType) => bedType.id === selectedBedTypeId)) {
-      setSelectedBedTypeId("all");
-    }
-  }, [bedTypeOptions, selectedBedTypeId]);
-
   const filteredRows = useMemo(
     () =>
       dateTimeFilteredRows.filter((row) => {
         if (selectedDepartmentId !== "all" && row.department_id !== selectedDepartmentId) return false;
-        if (selectedBedTypeId !== "all" && row.bed_type_id !== selectedBedTypeId) return false;
         return true;
       }),
-    [dateTimeFilteredRows, selectedDepartmentId, selectedBedTypeId],
+    [dateTimeFilteredRows, selectedDepartmentId],
   );
 
   const availableDateSet = useMemo(() => {
@@ -355,8 +328,7 @@ const DashboardPage = () => {
     calendarDateToIsoDate(rangeEnd) === calendarDateToIsoDate(today) &&
     timeFrom === "00:00" &&
     timeTo === "23:59" &&
-    selectedDepartmentId === "all" &&
-    selectedBedTypeId === "all";
+    selectedDepartmentId === "all";
 
   const handleResetFilters = () => {
     const freshToday = isoDateToCalendarDate(getSaudiIsoDate());
@@ -364,7 +336,6 @@ const DashboardPage = () => {
     setTimeFrom("00:00");
     setTimeTo("23:59");
     setSelectedDepartmentId("all");
-    setSelectedBedTypeId("all");
     void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
   };
 
@@ -452,7 +423,7 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2">
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Department</label>
               <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId}>
@@ -464,22 +435,6 @@ const DashboardPage = () => {
                   {departmentOptions.map((department) => (
                     <SelectItem key={department.id} value={department.id}>
                       {department.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Bed Type</label>
-              <Select value={selectedBedTypeId} onValueChange={setSelectedBedTypeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All bed types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All bed types</SelectItem>
-                  {bedTypeOptions.map((bedType) => (
-                    <SelectItem key={bedType.id} value={bedType.id}>
-                      {bedType.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
