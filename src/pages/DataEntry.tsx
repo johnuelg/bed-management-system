@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { AlertTriangle, CalendarIcon, Download, FileSpreadsheet, LayoutGrid, Pencil, Table2 } from "lucide-react";
-import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,10 +53,8 @@ import {
   fetchUserEntryPermissions,
   getCurrentUserId,
   saveBedSubmission,
-  uploadDocument,
   writeAuditLog,
 } from "@/lib/supabase-api";
-import { MAX_UPLOAD_SIZE } from "@/lib/file-upload";
 import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
@@ -72,11 +69,6 @@ import {
 } from "@/lib/formula-registry";
 import type { KpiFormula } from "@/types/hospital";
 
-const fileSchema = z.custom<File>((val) => val instanceof File).superRefine((file, ctx) => {
-  if (file.size > MAX_UPLOAD_SIZE) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "File must be <= 2MB" });
-  }
-});
 
 const DataEntryPage = () => {
   const { roles, user, profile } = useAuth();
@@ -297,7 +289,7 @@ const DataEntryPage = () => {
 
     return {
       date: formatSaudiDateTime(sourceDate, { year: "numeric", month: "short", day: "numeric" }),
-      time: formatSaudiDateTime(sourceDate, { hour: "2-digit", minute: "2-digit", hour12: true }),
+      time: formatSaudiDateTime(sourceDate, { hour: "2-digit", minute: "2-digit", hour12: false }),
     };
   };
 
@@ -453,23 +445,6 @@ const DataEntryPage = () => {
     onError: (error) => toast({ title: "Delete failed", description: (error as Error).message, variant: "destructive" }),
   });
 
-  const onUpload = async (file?: File) => {
-    if (!file) return;
-    const parsed = fileSchema.safeParse(file);
-    if (!parsed.success) {
-      toast({ title: "Upload rejected", description: parsed.error.issues[0].message, variant: "destructive" });
-      return;
-    }
-
-    try {
-      const currentUserId = await getCurrentUserId();
-      if (!currentUserId) throw new Error("No authenticated user");
-      await uploadDocument(currentUserId, file);
-      toast({ title: "Document uploaded" });
-    } catch (error) {
-      toast({ title: "Upload failed", description: (error as Error).message, variant: "destructive" });
-    }
-  };
 
   const focusFieldByKey = (key: string) => {
     const el = fieldRefs.current[key];
@@ -799,6 +774,9 @@ const DataEntryPage = () => {
                       ref={setFieldRef(`${field.field_key}__time`) as never}
                       type="time"
                       step={60}
+                      lang="en-GB"
+                      pattern="[0-9]{2}:[0-9]{2}"
+                      placeholder="HH:MM"
                       disabled={!editable}
                       value={timePart}
                       onChange={(e) => {
@@ -888,16 +866,6 @@ const DataEntryPage = () => {
             <Input value={`${computed.occupancyRate.toFixed(1)}%`} readOnly disabled className="bg-muted" />
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label>Upload Document (2MB max)</Label>
-            <Input
-              type="file"
-              accept=".csv,.xlsx,.pdf,.doc,.png,.jpg,.jpeg"
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                void onUpload(e.target.files?.[0]);
-              }}
-            />
-          </div>
 
           <div className="flex flex-col gap-2 sm:flex-row md:col-span-2">
             {(form.id ? canEdit : canAdd) ? (
