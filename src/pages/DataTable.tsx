@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarIcon, Download, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
+import { CalendarIcon, Download, FileText, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import type { DateRange } from "react-day-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -383,6 +385,78 @@ const DataTablePage = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportPdf = () => {
+    const headers = [
+      "Date",
+      "Time",
+      "Department",
+      "Total",
+      "Occupied",
+      "Closed",
+      "Vacant",
+      "Waiting",
+      "Reason",
+      "Occupancy %",
+      "Status",
+    ];
+    const body = sortedRows.map((entry) => {
+      const benchmark = getOccupancyBenchmark(entry.occupancy);
+      return [
+        entry.date,
+        entry.time,
+        entry.department,
+        String(entry.row.total_beds),
+        String(entry.row.occupied),
+        String(entry.row.closed),
+        String(entry.vacant),
+        String(entry.waiting),
+        entry.row.closure_reason || "",
+        `${entry.occupancy.toFixed(1)}%`,
+        benchmark?.label ?? "",
+      ];
+    });
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(14);
+    doc.text("Bed Management Data", 40, 36);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Range: ${formattedRangeLabel}`, 40, 52);
+    doc.text(
+      `Generated: ${new Date().toLocaleString("en-GB", { timeZone: "Asia/Riyadh" })} (Asia/Riyadh)`,
+      pageWidth - 40,
+      52,
+      { align: "right" },
+    );
+
+    autoTable(doc, {
+      head: [headers],
+      body,
+      startY: 68,
+      styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak" },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      margin: { left: 40, right: 40 },
+      didDrawPage: () => {
+        const pageCount = doc.getNumberOfPages();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        doc.setFontSize(8);
+        doc.setTextColor(120);
+        doc.text(
+          `Page ${doc.getCurrentPageInfo().pageNumber} of ${pageCount}`,
+          pageWidth - 40,
+          pageHeight - 20,
+          { align: "right" },
+        );
+      },
+    });
+
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    doc.save(`bed-management-data-${stamp}.pdf`);
+  };
+
   const formattedRangeLabel = dateRange?.from
     ? `${formatSaudiIsoDateForDisplay(calendarDateToIsoDate(dateRange.from), { year: "numeric", month: "short", day: "numeric" })}${dateRange.to ? ` - ${formatSaudiIsoDateForDisplay(calendarDateToIsoDate(dateRange.to), { year: "numeric", month: "short", day: "numeric" })}` : ""}`
     : "All dates";
@@ -485,6 +559,17 @@ const DataTablePage = () => {
             >
               <Download className="mr-2 h-4 w-4" />
               Export CSV
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleExportPdf}
+              disabled={sortedRows.length === 0}
+              className="w-full justify-center sm:flex-1"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Download PDF
             </Button>
             {canDelete && (
               <Button
