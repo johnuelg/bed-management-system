@@ -96,8 +96,9 @@ const UsersPage = () => {
       profiles.map((profile) => ({
         ...profile,
         role: roleMap[profile.user_id]?.[0] ?? "staff",
+        email: emailMap[profile.user_id] ?? "",
       })),
-    [profiles, roleMap],
+    [profiles, roleMap, emailMap],
   );
 
   const roleOptions = useMemo(
