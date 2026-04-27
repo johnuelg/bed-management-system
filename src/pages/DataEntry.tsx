@@ -47,6 +47,7 @@ import {
   diffBedSubmission,
   fetchBedSubmissionById,
   fetchDepartments,
+  fetchDepartmentTotalBeds,
   fetchFormFields,
   fetchKpiFormulas,
   fetchTodaySubmissions,
@@ -114,6 +115,10 @@ const DataEntryPage = () => {
   const resetForm = () => setForm(initialForm);
 
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
+  const { data: departmentTotalBeds = {} } = useQuery({
+    queryKey: ["department-total-beds"],
+    queryFn: fetchDepartmentTotalBeds,
+  });
   const { data: formFields = [] } = useQuery({ queryKey: ["form_fields"], queryFn: fetchFormFields });
   const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
   const { data: kpiFormulas = [] } = useQuery({ queryKey: ["kpi_formulas"], queryFn: fetchKpiFormulas });
