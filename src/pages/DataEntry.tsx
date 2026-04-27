@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { TimeCombobox } from "@/components/time-combobox";
+
 import {
   Table,
   TableBody,
@@ -794,16 +794,40 @@ const DataEntryPage = () => {
                       </PopoverContent>
                     </Popover>
 
-                    <TimeCombobox
-                      inputRef={setFieldRef(`${field.field_key}__time`) as never}
+                    <Input
+                      ref={setFieldRef(`${field.field_key}__time`) as never}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={5}
+                      placeholder="_:__"
+                      aria-label="Time (24-hour format, 00:00 to 23:59)"
                       disabled={!editable}
                       value={timePart}
-                      onChange={(nextTime) => {
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
+                        let formatted = digits;
+                        if (digits.length >= 3) {
+                          formatted = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+                        }
                         setForm((prev) => ({
                           ...prev,
                           custom_fields: {
                             ...prev.custom_fields,
-                            [field.field_key]: datePart ? `${datePart}T${nextTime}` : `T${nextTime}`,
+                            [field.field_key]: datePart ? `${datePart}T${formatted}` : `T${formatted}`,
+                          },
+                        }));
+                      }}
+                      onBlur={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "");
+                        if (!digits) return;
+                        const hh = Math.min(23, parseInt(digits.slice(0, 2) || "0", 10));
+                        const mm = Math.min(59, parseInt(digits.slice(2, 4) || "0", 10));
+                        const norm = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+                        setForm((prev) => ({
+                          ...prev,
+                          custom_fields: {
+                            ...prev.custom_fields,
+                            [field.field_key]: datePart ? `${datePart}T${norm}` : `T${norm}`,
                           },
                         }));
                       }}
