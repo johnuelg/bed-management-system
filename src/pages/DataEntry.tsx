@@ -66,6 +66,7 @@ import {
   buildRowScope,
   buildScopeWithFormulas,
   evaluateOccupancyRate,
+  evaluateNamedFormula,
   findFormulaByName,
   formulaVariableKey,
 } from "@/lib/formula-registry";
@@ -168,7 +169,7 @@ const DataEntryPage = () => {
     const total_beds = Number(form.total_beds) || 0;
     const occupied = Number(form.occupied) || 0;
     const closed = Number(form.closed) || 0;
-    const vacant = Math.max(0, total_beds - occupied - closed);
+    const fallbackVacant = Math.max(0, total_beds - occupied - closed);
     const scope = buildRowScope({
       total_beds,
       occupied,
@@ -177,7 +178,21 @@ const DataEntryPage = () => {
     });
     const { scope: resolvedScope, unresolved } = buildScopeWithFormulas(scope, kpiFormulas);
     const occupancyRate = evaluateOccupancyRate(kpiFormulas, resolvedScope);
-    return { vacant, occupancyRate, scope: resolvedScope, unresolved };
+    // Prefer admin-defined "Vacant" / "Occupied" formulas from KPI Builder;
+    // fall back to the canonical math when no registry formula exists.
+    const vacant = evaluateNamedFormula(kpiFormulas, "Vacant", resolvedScope, fallbackVacant);
+    const occupiedAuto = evaluateNamedFormula(kpiFormulas, "Occupied", resolvedScope, occupied);
+    const vacantFromFormula = Boolean(findFormulaByName(kpiFormulas, "Vacant"));
+    const occupiedFromFormula = Boolean(findFormulaByName(kpiFormulas, "Occupied"));
+    return {
+      vacant,
+      occupancyRate,
+      occupiedAuto,
+      vacantFromFormula,
+      occupiedFromFormula,
+      scope: resolvedScope,
+      unresolved,
+    };
   }, [form.total_beds, form.occupied, form.closed, form.custom_fields, kpiFormulas]);
 
   // Resolve a formula-type form field to its matching KPI formula and current value.
