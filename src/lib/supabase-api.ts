@@ -27,6 +27,7 @@ const db = supabase as any;
 const NAV_VISIBILITY_KEY = "nav_visibility";
 const ROLE_CATALOG_KEY = "role_catalog";
 const OCCUPANCY_BENCHMARK_KEY = "occupancy_benchmark";
+const DEPARTMENT_TOTAL_BEDS_KEY = "department_total_beds";
 const DEFAULT_ROLE_CATALOG: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   dashboard: true,
