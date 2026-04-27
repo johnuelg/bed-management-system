@@ -221,12 +221,12 @@ const DataEntryPage = () => {
   const occupiedNum = Number(form.occupied) || 0;
   const closedNum = Number(form.closed) || 0;
   const occupiedExceedsTotal = occupiedNum > totalBedsNum;
-  // Per business rule: Vacant for Closed validation = Total Beds − Occupied
-  const vacantForClosed = Math.max(0, totalBedsNum - occupiedNum);
-  const closedExceedsVacant = closedNum > vacantForClosed && !occupiedExceedsTotal;
-  const noVacantBeds = vacantForClosed === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
+  // Per business rule: Closed cannot exceed Occupied beds
+  const closedLimit = Math.max(0, occupiedNum);
+  const closedExceedsVacant = closedNum > closedLimit && !occupiedExceedsTotal;
+  const noVacantBeds = closedLimit === 0 && totalBedsNum > 0 && !occupiedExceedsTotal;
 
-  // Auto-lock Closed to 0 when there are no vacant beds.
+  // Auto-lock Closed to 0 when there are no occupied beds available to close.
   useEffect(() => {
     if (noVacantBeds && form.closed !== 0) {
       setForm((prev) => ({ ...prev, closed: 0 }));
