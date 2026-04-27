@@ -504,11 +504,11 @@ const DashboardPage = () => {
               sums.vacant > 0 ||
               waitingPatients > 0);
           return [
-          { name: "Total Beds", value: sums.total_beds },
-          { name: "Occupied", value: sums.occupied },
-          { name: "Closed", value: sums.closed },
-          { name: "Vacant", value: sums.vacant },
-          { name: "Waiting Patients", value: waitingPatients },
+          { name: "Total Beds", value: Math.round(kpiCardValues.total_beds) },
+          { name: "Occupied", value: Math.round(kpiCardValues.occupied) },
+          { name: "Closed", value: Math.round(kpiCardValues.closed) },
+          { name: "Vacant", value: Math.round(kpiCardValues.vacant) },
+          { name: "Waiting Patients", value: Math.round(kpiCardValues.waiting_patients) },
             {
               name: "Occupancy Rate",
               value: `${occupancyRate.toFixed(1)}%`,
