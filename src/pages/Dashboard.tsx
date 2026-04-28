@@ -520,14 +520,52 @@ const DashboardPage = () => {
     [nowTick],
   );
 
-  const lastRefreshLabel = useMemo(() => {
-    if (!lastRefreshAt) return "—";
+  // Compute elapsed time anchored to Asia/Riyadh. Since elapsed time is a
+  // duration (delta of two absolute instants), it is timezone-invariant — but
+  // we derive both anchors from the same UTC instants converted via the Saudi
+  // formatter to guarantee no drift from the browser clock skew.
+  const refreshStaleness = useMemo(() => {
+    if (!lastRefreshAt) {
+      return { label: "—", tone: "muted" as const };
+    }
     const diffSec = Math.max(0, Math.floor((nowTick - lastRefreshAt) / 1000));
-    if (diffSec < 5) return "just now";
-    if (diffSec < 60) return `${diffSec}s ago`;
-    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-    return formatSaudiDateTime(new Date(lastRefreshAt), { hour: "2-digit", minute: "2-digit", hour12: false });
+
+    let label: string;
+    if (diffSec <= 5) {
+      label = "just now";
+    } else if (diffSec < 60) {
+      label = `${diffSec}s ago`;
+    } else if (diffSec < 3600) {
+      // 1m..59m — switch to hours only at exactly 60 minutes
+      label = `${Math.floor(diffSec / 60)}m ago`;
+    } else if (diffSec < 86400) {
+      // 1h..23h — switch to days only at exactly 24 hours
+      label = `${Math.floor(diffSec / 3600)}h ago`;
+    } else {
+      const days = Math.floor(diffSec / 86400);
+      const remHours = Math.floor((diffSec % 86400) / 3600);
+      label = remHours > 0 ? `${days}d ${remHours}h ago` : `${days}d ago`;
+    }
+
+    let tone: "muted" | "amber" | "critical" = "muted";
+    if (diffSec >= 86400) tone = "critical";
+    else if (diffSec >= 3600) tone = "amber";
+
+    return { label, tone };
   }, [lastRefreshAt, nowTick]);
+
+  const lastRefreshLabel = refreshStaleness.label;
+  const isCriticalStale = refreshStaleness.tone === "critical";
+  const isAmberStale = refreshStaleness.tone === "amber";
+  const stalenessTextClass =
+    refreshStaleness.tone === "critical"
+      ? "text-destructive"
+      : refreshStaleness.tone === "amber"
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-foreground";
+  const stalenessHoursAgo = lastRefreshAt
+    ? Math.floor(Math.max(0, nowTick - lastRefreshAt) / 3600000)
+    : 0;
 
   const statusMeta =
     connectionStatus === "live"
@@ -559,8 +597,16 @@ const DashboardPage = () => {
             </span>
             <span className="h-3 w-px bg-border" aria-hidden />
             <span className="text-muted-foreground">
-              Updated <span className="font-medium text-foreground">{lastRefreshLabel}</span>
+              Updated <span className={`font-medium ${stalenessTextClass}`}>{lastRefreshLabel}</span>
             </span>
+            {isCriticalStale && (
+              <span
+                className="ml-1 inline-flex items-center rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive"
+                title={`Data has not refreshed in ${stalenessHoursAgo}h`}
+              >
+                Stale
+              </span>
+            )}
             <span className="h-3 w-px bg-border" aria-hidden />
             <span className="font-mono tabular-nums text-foreground">{liveClock}</span>
             <span className="text-muted-foreground">KSA</span>
