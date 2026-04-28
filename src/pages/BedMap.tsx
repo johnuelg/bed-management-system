@@ -377,7 +377,7 @@ const BedMapPage = () => {
                           </span>
                           {bed.bedTypeName && (
                             <span
-                              className="mt-1 max-w-full truncate rounded bg-background/70 px-1 text-[9px] font-semibold uppercase tracking-wide text-foreground"
+                              className="mt-1 max-w-full truncate text-[9px] font-bold uppercase tracking-wide"
                               title={bed.bedTypeName}
                             >
                               {bed.bedTypeName}
