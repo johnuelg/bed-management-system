@@ -197,7 +197,25 @@ const DashboardPage = () => {
     day: "numeric",
   });
 
-  const sums = aggregateSubmissionSums(filteredRows);
+  // Within a single (department, submitted_on) bucket, only the latest
+  // submission is the source of truth. Older rows for the same date +
+  // department are fully discarded — values for fields like medical_ped,
+  // iso_nor_pres_ped, iso_ve_pres_ped (and all others) must REPLACE, not
+  // accumulate. Rows arrive pre-sorted DESC by updated_at, so the first
+  // row we encounter per (department_id, submitted_on) wins.
+  const latestPerDeptDateRows = useMemo(() => {
+    const seen = new Set<string>();
+    const result: typeof filteredRows = [];
+    for (const row of filteredRows) {
+      const key = `${row.department_id}__${row.submitted_on}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(row);
+    }
+    return result;
+  }, [filteredRows]);
+
+  const sums = aggregateSubmissionSums(latestPerDeptDateRows);
   const readNumberField = (source: Record<string, unknown> | null | undefined, key: string): number => {
     if (!source) return 0;
     const v = (source as Record<string, unknown>)[key];
@@ -210,15 +228,15 @@ const DashboardPage = () => {
   };
   const bedTypeTotals = useMemo(() => {
     const totals = { medical_ped: 0, iso_nor_pres_ped: 0, iso_ve_pres_ped: 0 };
-    filteredRows.forEach((row) => {
+    latestPerDeptDateRows.forEach((row) => {
       const cf = (row.custom_fields as Record<string, unknown>) ?? {};
       totals.medical_ped += readNumberField(cf, "medical_ped");
       totals.iso_nor_pres_ped += readNumberField(cf, "iso_nor_pres_ped");
       totals.iso_ve_pres_ped += readNumberField(cf, "iso_ve_pres_ped");
     });
     return totals;
-  }, [filteredRows]);
-  const waitingPatients = filteredRows.reduce((total, row) => {
+  }, [latestPerDeptDateRows]);
+  const waitingPatients = latestPerDeptDateRows.reduce((total, row) => {
     const customFields = (row.custom_fields as Record<string, unknown>) ?? {};
 
     const directValue = customFields.waiting_patients ?? customFields.waitingPatients;
@@ -249,8 +267,8 @@ const DashboardPage = () => {
   }, [departmentTotalBeds, departments, selectedDepartmentId]);
 
   const aggregateScope = useMemo(
-    () => ({ ...buildAggregateScope(filteredRows), total_beds: assignedTotalBeds }),
-    [filteredRows, assignedTotalBeds],
+    () => ({ ...buildAggregateScope(latestPerDeptDateRows), total_beds: assignedTotalBeds }),
+    [latestPerDeptDateRows, assignedTotalBeds],
   );
   const occupancyRate = useMemo(
     () => evaluateOccupancyRate(kpiFormulas, aggregateScope),
