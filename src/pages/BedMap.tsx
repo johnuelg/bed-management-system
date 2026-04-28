@@ -138,8 +138,14 @@ const getEffectiveClosed = (row: BedSubmission) => {
   return rawClosed > 0 ? rawClosed : readNumberField(row.custom_fields, "closed") ?? 0;
 };
 
+// For each department on a given date, the LATEST submission is the source of
+// truth and fully REPLACES any prior submission's values (occupied, closed,
+// and the bed-type breakdown in custom_fields). We do not sum or merge across
+// older rows for the same department + date.
+//
+// Rows arrive pre-sorted DESC by updated_at, so the first row we see per
+// department is the most recent.
 const aggregateByDepartment = (rows: BedSubmission[]) => {
-  const seen = new Set<string>();
   const map = new Map<
     string,
     {
@@ -150,27 +156,18 @@ const aggregateByDepartment = (rows: BedSubmission[]) => {
     }
   >();
   for (const row of rows) {
-    const dedupeKey = `${row.department_id}::${row.bed_type_id ?? "_"}`;
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-    const cur = map.get(row.department_id) ?? { occupied: 0, closed: 0, perType: [] };
-    cur.occupied += getEffectiveOccupied(row);
-    cur.closed += getEffectiveClosed(row);
-    // Track the latest updated_at across all bed-type rows for this department.
-    // Rows are pre-sorted DESC by updated_at, so the first one wins.
-    if (row.updated_at && (!cur.lastUpdatedAt || row.updated_at > cur.lastUpdatedAt)) {
-      cur.lastUpdatedAt = row.updated_at;
-    }
-    // Pull bed-type breakdown from custom_fields (medical_ped, iso_nor_pres_ped, iso_ve_pres_ped)
+    if (map.has(row.department_id)) continue; // keep only the latest row per department
+    const perType: Array<{ label: string; occupied: number }> = [];
     for (const { key, label } of BED_TYPE_FIELD_LABELS) {
       const n = readNumberField(row.custom_fields, key) ?? 0;
-      if (n > 0) {
-        const existing = cur.perType.find((p) => p.label === label);
-        if (existing) existing.occupied += n;
-        else cur.perType.push({ label, occupied: n });
-      }
+      if (n > 0) perType.push({ label, occupied: n });
     }
-    map.set(row.department_id, cur);
+    map.set(row.department_id, {
+      occupied: getEffectiveOccupied(row),
+      closed: getEffectiveClosed(row),
+      perType,
+      lastUpdatedAt: row.updated_at,
+    });
   }
   return map;
 };
