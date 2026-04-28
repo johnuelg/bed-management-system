@@ -89,14 +89,19 @@ const getEffectiveClosed = (row: BedSubmission) => {
 
 const aggregateByDepartment = (rows: BedSubmission[]) => {
   const seen = new Set<string>();
-  const map = new Map<string, { occupied: number; closed: number }>();
+  const map = new Map<
+    string,
+    { occupied: number; closed: number; perType: Array<{ bedTypeId: string | null; occupied: number }> }
+  >();
   for (const row of rows) {
     const dedupeKey = `${row.department_id}::${row.bed_type_id ?? "_"}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
-    const cur = map.get(row.department_id) ?? { occupied: 0, closed: 0 };
-    cur.occupied += getEffectiveOccupied(row);
+    const cur = map.get(row.department_id) ?? { occupied: 0, closed: 0, perType: [] };
+    const occ = getEffectiveOccupied(row);
+    cur.occupied += occ;
     cur.closed += getEffectiveClosed(row);
+    if (occ > 0) cur.perType.push({ bedTypeId: row.bed_type_id, occupied: occ });
     map.set(row.department_id, cur);
   }
   return map;
