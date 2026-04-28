@@ -55,6 +55,7 @@ export type BedSubmission = {
   submitted_by: string;
   updated_by: string | null;
   created_at: string;
+  updated_at?: string;
 };
 
 export type KpiFormula = {
