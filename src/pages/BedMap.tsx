@@ -78,16 +78,16 @@ const statusStyles: Record<
   closed: {
     label: "Closed",
     icon: Ban,
-    card: "border-muted-foreground/30 bg-muted/40 hover:border-muted-foreground/60",
-    iconColor: "text-muted-foreground",
-    badge: "bg-muted text-muted-foreground border-muted-foreground/30",
+    card: "border-slate-300 bg-slate-100 opacity-70 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800/50",
+    iconColor: "text-slate-500 dark:text-slate-400",
+    badge: "bg-slate-200 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
   },
   vacant: {
     label: "Vacant",
     icon: CheckCircle2,
-    card: "border-primary/30 bg-primary/5 hover:border-primary",
-    iconColor: "text-primary",
-    badge: "bg-primary/10 text-primary border-primary/30",
+    card: "border-green-300 bg-green-50 hover:border-green-500 dark:border-green-800 dark:bg-green-950/30",
+    iconColor: "text-green-600 dark:text-green-400",
+    badge: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/50 dark:text-green-400 dark:border-green-800",
   },
 };
 
