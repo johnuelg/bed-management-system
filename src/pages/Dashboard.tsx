@@ -690,6 +690,44 @@ const DashboardPage = () => {
                             <span>{metric.subtitle}</span>
                           </div>
                         ) : null}
+                        {occupancyDelta ? (() => {
+                          const { diff, percentChange, previous } = occupancyDelta;
+                          const isUp = diff > 0.05;
+                          const isDown = diff < -0.05;
+                          const trendColor = isUp
+                            ? "hsl(var(--destructive))"
+                            : isDown
+                            ? "#16a34a"
+                            : "hsl(var(--muted-foreground))";
+                          const TrendIcon = isUp ? ArrowUp : isDown ? ArrowDown : Minus;
+                          const pctLabel =
+                            percentChange === null
+                              ? `${diff >= 0 ? "+" : ""}${diff.toFixed(1)} pts`
+                              : `${percentChange >= 0 ? "+" : ""}${percentChange.toFixed(1)}%`;
+                          const prevLabel = previous.time
+                            ? `${previous.date} ${previous.time}`
+                            : previous.date;
+                          return (
+                            <div
+                              className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium"
+                              title={`Compared to previous selection (${prevLabel}, ${previous.rate.toFixed(1)}%)`}
+                            >
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5"
+                                style={{
+                                  color: trendColor,
+                                  backgroundColor: `color-mix(in srgb, ${trendColor} 12%, transparent)`,
+                                }}
+                              >
+                                <TrendIcon className="h-3 w-3" aria-hidden />
+                                <span>{pctLabel}</span>
+                              </span>
+                              <span className="text-muted-foreground">
+                                vs {prevLabel} ({previous.rate.toFixed(1)}%)
+                              </span>
+                            </div>
+                          );
+                        })() : null}
                       </div>
                     </div>
                   );
