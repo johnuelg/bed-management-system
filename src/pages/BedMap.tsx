@@ -96,15 +96,15 @@ const BedMapPage = () => {
 
   const grouped: DepartmentBeds[] = useMemo(() => {
     if (!departments) return [];
-    const latestMap = latestSubmissionByDepartment(todaySubmissions ?? []);
+    const aggMap = aggregateByDepartment(todaySubmissions ?? []);
 
     return departments
       .filter((d) => d.is_active)
       .map((dept) => {
         const total = Math.max(0, Number(totalBedsMap?.[dept.id] ?? 0) | 0);
-        const latest = latestMap.get(dept.id);
-        const rawOccupied = Math.max(0, Number(latest?.occupied ?? 0) | 0);
-        const rawClosed = Math.max(0, Number(latest?.closed ?? 0) | 0);
+        const agg = aggMap.get(dept.id);
+        const rawOccupied = Math.max(0, Number(agg?.occupied ?? 0) | 0);
+        const rawClosed = Math.max(0, Number(agg?.closed ?? 0) | 0);
         // Cap to avoid overflow if submission exceeds configured total
         const occupied = Math.min(rawOccupied, total);
         const closed = Math.min(rawClosed, Math.max(0, total - occupied));
