@@ -321,7 +321,7 @@ const BedMapPage = () => {
               <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <CardTitle className="truncate text-lg sm:text-xl">{dept.name}</CardTitle>
-                  <p className="text-xs text-muted-foreground">Code: {dept.code || "—"}</p>
+                  <p className="text-xs text-muted-foreground">{dept.code || "—"}</p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   <Badge variant="outline" className="shrink-0">
