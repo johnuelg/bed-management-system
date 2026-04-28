@@ -242,6 +242,9 @@ const BedMapPage = () => {
                   <Badge variant="outline" className={statusStyles.vacant.badge}>
                     {dept.vacant} Vacant
                   </Badge>
+                  <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
+                    Occupancy Rate {formatOccupancy(dept.occupied, dept.totalBeds, dept.closed)}
+                  </Badge>
                 </div>
               </CardHeader>
               <CardContent>
