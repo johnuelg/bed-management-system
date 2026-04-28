@@ -61,6 +61,7 @@ import {
 import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
+import { markDataRefreshed } from "@/lib/last-refresh";
 import { utils, writeFileXLSX } from "xlsx";
 import {
   buildRowScope,
@@ -498,6 +499,7 @@ const DataEntryPage = () => {
       toast({ title: "Submission saved" });
       resetForm();
       await qc.invalidateQueries({ queryKey: ["bed_submissions_today"] });
+      markDataRefreshed();
     },
     onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
   });
@@ -526,6 +528,7 @@ const DataEntryPage = () => {
     onSuccess: async () => {
       toast({ title: "Submission deleted" });
       await qc.invalidateQueries({ queryKey: ["bed_submissions_today"] });
+      markDataRefreshed();
       if (form.id) {
         resetForm();
       }
