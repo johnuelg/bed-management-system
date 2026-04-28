@@ -169,10 +169,22 @@ const BedMapPage = () => {
     { total: 0, occupied: 0, closed: 0, vacant: 0 },
   );
 
+  const getOccupancyRate = (occupied: number, total: number, closed: number) => {
+    const denom = Math.max(0, total - closed);
+    return denom > 0 ? (occupied / denom) * 100 : 0;
+  };
+
   const formatOccupancy = (occupied: number, total: number, closed: number) => {
     const denom = Math.max(0, total - closed);
     const rate = denom > 0 ? (occupied / denom) * 100 : 0;
     return `${occupied}/${denom} beds · ${rate.toFixed(1)}%`;
+  };
+
+  // Thresholds: <60% low (green), 60–84% medium (amber), ≥85% high (red)
+  const occupancyBadgeClass = (rate: number) => {
+    if (rate >= 85) return "border-destructive/40 bg-destructive/10 text-destructive";
+    if (rate >= 60) return "border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400";
+    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
   };
 
   return (
