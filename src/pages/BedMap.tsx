@@ -9,8 +9,9 @@ import {
   fetchDepartments,
   fetchDepartmentTotalBeds,
   fetchTodaySubmissions,
+  fetchOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
-import type { BedSubmission } from "@/types/hospital";
+import type { BedSubmission, OccupancyBenchmarkSettings } from "@/types/hospital";
 
 type BedStatus = "occupied" | "closed" | "vacant";
 
