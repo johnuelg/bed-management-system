@@ -169,6 +169,12 @@ const BedMapPage = () => {
     { total: 0, occupied: 0, closed: 0, vacant: 0 },
   );
 
+  const formatOccupancy = (occupied: number, total: number, closed: number) => {
+    const denom = Math.max(0, total - closed);
+    const rate = denom > 0 ? (occupied / denom) * 100 : 0;
+    return `${occupied}/${denom} beds · ${rate.toFixed(1)}%`;
+  };
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -191,6 +197,9 @@ const BedMapPage = () => {
             </Badge>
             <Badge variant="outline" className={statusStyles.vacant.badge}>
               {totals.vacant} Vacant
+            </Badge>
+            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
+              Occupancy Rate {formatOccupancy(totals.occupied, totals.total, totals.closed)}
             </Badge>
           </div>
         )}
@@ -232,6 +241,9 @@ const BedMapPage = () => {
                   </Badge>
                   <Badge variant="outline" className={statusStyles.vacant.badge}>
                     {dept.vacant} Vacant
+                  </Badge>
+                  <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
+                    Occupancy Rate {formatOccupancy(dept.occupied, dept.totalBeds, dept.closed)}
                   </Badge>
                 </div>
               </CardHeader>
