@@ -501,6 +501,48 @@ const BedMapPage = () => {
                   })()}
                 </div>
               </CardHeader>
+              {(() => {
+                const typeCounts = BED_TYPE_FIELD_LABELS.map(({ label }) => {
+                  const found = (daySubmissions ?? [])
+                    .filter((r) => r.department_id === dept.id)
+                    .reduce((sum, r) => {
+                      const key = BED_TYPE_FIELD_LABELS.find((b) => b.label === label)?.key;
+                      if (!key) return sum;
+                      return sum + (readNumberField(r.custom_fields, key) ?? 0);
+                    }, 0);
+                  return { label, count: found };
+                });
+                return (
+                  <div className="border-t bg-muted/30 px-6 py-2.5">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+                      <span className="font-semibold uppercase tracking-wide text-muted-foreground">
+                        Bed Type Breakdown
+                      </span>
+                      {typeCounts.map(({ label, count }) => (
+                        <div key={label} className="flex items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "inline-flex h-1.5 w-1.5 rounded-full",
+                              count > 0 ? "bg-primary" : "bg-muted-foreground/30",
+                            )}
+                          />
+                          <span className="font-medium text-muted-foreground">{label}</span>
+                          <span
+                            className={cn(
+                              "rounded-md px-1.5 py-0.5 font-semibold tabular-nums",
+                              count > 0
+                                ? "bg-primary/10 text-primary"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <CardContent>
                 {dept.totalBeds === 0 ? (
                   <p className="text-sm text-muted-foreground">
