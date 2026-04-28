@@ -321,6 +321,41 @@ const DashboardPage = () => {
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
 
+  // Track the previously selected date+time so we can show a day-over-day
+  // (selection-over-selection) delta on the Occupancy Rate KPI card.
+  type PrevSelection = { date: string; time: string; rate: number };
+  const [previousSelection, setPreviousSelection] = useState<PrevSelection | null>(null);
+  const lastAppliedRef = useRef<PrevSelection | null>(null);
+
+  useEffect(() => {
+    if (filteredRows.length === 0) return;
+    const current: PrevSelection = {
+      date: rangeStartIso,
+      time: selectedTime || "",
+      rate: occupancyRate,
+    };
+    const last = lastAppliedRef.current;
+    if (!last) {
+      lastAppliedRef.current = current;
+      return;
+    }
+    if (last.date !== current.date || last.time !== current.time) {
+      setPreviousSelection(last);
+      lastAppliedRef.current = current;
+    } else {
+      // same selection, just refresh stored rate
+      lastAppliedRef.current = current;
+    }
+  }, [rangeStartIso, selectedTime, occupancyRate, filteredRows.length]);
+
+  const occupancyDelta = useMemo(() => {
+    if (!previousSelection) return null;
+    const diff = occupancyRate - previousSelection.rate;
+    const base = Math.abs(previousSelection.rate);
+    const percentChange = base > 0.0001 ? (diff / base) * 100 : null;
+    return { diff, percentChange, previous: previousSelection };
+  }, [occupancyRate, previousSelection]);
+
   const [departmentView, setDepartmentView] = useState<"cards" | "table">("cards");
 
   const departmentStatusCards = useMemo(() => {
