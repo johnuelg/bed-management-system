@@ -19,12 +19,14 @@ const defaultRoleVisibility: RoleMenuVisibility = {
   users: false,
   data_table: false,
   audit_log: false,
+  bed_map: false,
 };
 
 const settingRows: Array<{ key: keyof RoleMenuVisibility; label: string; description: string }> = [
   { key: "dashboard", label: "Dashboard", description: "Show or hide Dashboard in the sidebar menu." },
   { key: "data_entry", label: "Bed Entry", description: "Show or hide Bed Entry in the sidebar menu." },
   { key: "data_table", label: "Data Table", description: "Show or hide Data Table in the sidebar menu." },
+  { key: "bed_map", label: "Bed Map", description: "Show or hide Bed Map in the sidebar menu." },
   { key: "kpi_builder", label: "KPI Builder", description: "Show or hide KPI Builder in the sidebar menu." },
   { key: "categories", label: "Categories", description: "Show or hide Categories in the sidebar menu." },
   { key: "form_builder", label: "Form Builder", description: "Show or hide Form Builder in the sidebar menu." },
