@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BedDouble, Ban, UserRound, CheckCircle2 } from "lucide-react";
+import { BedDouble, Ban, CheckCircle2 } from "lucide-react";
+import type { SVGProps } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +13,29 @@ import {
   fetchOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
 import type { BedSubmission, OccupancyBenchmarkSettings } from "@/types/hospital";
+
+// Custom icon: bed with a patient lying on it (used for occupied beds)
+const BedPatientIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    {/* Patient head */}
+    <circle cx="7.5" cy="7" r="2" />
+    {/* Patient body */}
+    <path d="M9.5 11h6" />
+    {/* Bed frame */}
+    <path d="M2 4v16" />
+    <path d="M2 13h18a2 2 0 0 1 2 2v5" />
+    <path d="M2 17h20" />
+  </svg>
+);
 
 // Bed-type breakdown stored in custom_fields keys → display label
 const BED_TYPE_FIELD_LABELS: Array<{ key: string; label: string }> = [
@@ -46,7 +70,7 @@ const statusStyles: Record<
 > = {
   occupied: {
     label: "Occupied",
-    icon: UserRound,
+    icon: BedPatientIcon,
     card: "border-destructive/40 bg-destructive/5 hover:border-destructive",
     iconColor: "text-destructive",
     badge: "bg-destructive/10 text-destructive border-destructive/30",
