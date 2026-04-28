@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BedDouble, Ban, CheckCircle2 } from "lucide-react";
+import { BedDouble, Ban, CheckCircle2, CalendarIcon } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,11 +9,20 @@ import { cn } from "@/lib/utils";
 import {
   fetchDepartments,
   fetchDepartmentTotalBeds,
-  fetchTodaySubmissions,
+  fetchSubmissionsByDateRange,
   fetchOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
 import type { BedSubmission, OccupancyBenchmarkSettings } from "@/types/hospital";
-import { formatSaudiDateTime } from "@/lib/date-time";
+import {
+  formatSaudiDateTime,
+  getSaudiIsoDate,
+  isoDateToCalendarDate,
+  calendarDateToIsoDate,
+} from "@/lib/date-time";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -166,6 +175,10 @@ const aggregateByDepartment = (rows: BedSubmission[]) => {
 };
 
 const BedMapPage = () => {
+  const [selectedIsoDate, setSelectedIsoDate] = useState<string>(() => getSaudiIsoDate());
+  const todayIso = getSaudiIsoDate();
+  const isToday = selectedIsoDate === todayIso;
+
   const { data: departments, isLoading: loadingDepartments } = useQuery({
     queryKey: ["departments"],
     queryFn: fetchDepartments,
@@ -176,9 +189,9 @@ const BedMapPage = () => {
     queryFn: fetchDepartmentTotalBeds,
   });
 
-  const { data: todaySubmissions, isLoading: loadingSubmissions } = useQuery({
-    queryKey: ["bed_submissions", "today"],
-    queryFn: fetchTodaySubmissions,
+  const { data: daySubmissions, isLoading: loadingSubmissions } = useQuery({
+    queryKey: ["bed_submissions", "by-date", selectedIsoDate],
+    queryFn: () => fetchSubmissionsByDateRange(selectedIsoDate, selectedIsoDate),
   });
 
   const { data: benchmarkSettings } = useQuery({
@@ -190,7 +203,7 @@ const BedMapPage = () => {
 
   const grouped: DepartmentBeds[] = useMemo(() => {
     if (!departments) return [];
-    const aggMap = aggregateByDepartment(todaySubmissions ?? []);
+    const aggMap = aggregateByDepartment(daySubmissions ?? []);
 
     return departments
       .filter((d) => d.is_active)
@@ -250,7 +263,7 @@ const BedMapPage = () => {
           lastUpdatedAt: agg?.lastUpdatedAt,
         };
       });
-  }, [departments, totalBedsMap, todaySubmissions]);
+  }, [departments, totalBedsMap, daySubmissions]);
 
   const totals = grouped.reduce(
     (acc, g) => ({
@@ -328,7 +341,9 @@ const BedMapPage = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Bed Map</h1>
           <p className="text-sm text-muted-foreground">
-            Live bed status from the latest entry per department (today).
+            {isToday
+              ? "Live bed status from the latest entry per department (today)."
+              : `Bed status for ${format(isoDateToCalendarDate(selectedIsoDate), "PPP")}.`}
           </p>
           {!isLoading && lastRefreshedAt && (
             <p className="mt-1 text-xs text-muted-foreground">
@@ -348,6 +363,38 @@ const BedMapPage = () => {
         </div>
         {!isLoading && (
           <div className="flex flex-wrap gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-2 text-xs">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {isToday
+                    ? "Today"
+                    : format(isoDateToCalendarDate(selectedIsoDate), "PP")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={isoDateToCalendarDate(selectedIsoDate)}
+                  onSelect={(d) => d && setSelectedIsoDate(calendarDateToIsoDate(d))}
+                  disabled={(date) => calendarDateToIsoDate(date) > todayIso}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+                {!isToday && (
+                  <div className="border-t p-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => setSelectedIsoDate(todayIso)}
+                    >
+                      Jump to today
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
             <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
               <SelectTrigger className="h-8 w-[200px] text-xs">
                 <SelectValue placeholder="Sort by" />
