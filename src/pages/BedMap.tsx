@@ -186,12 +186,36 @@ const BedMapPage = () => {
     return `${occupied}/${denom} beds · ${rate.toFixed(1)}%`;
   };
 
-  // Thresholds: <60% low (green), 60–84% medium (amber), ≥85% high (red)
-  const occupancyBadgeClass = (rate: number) => {
-    if (rate >= 85) return "border-destructive/40 bg-destructive/10 text-destructive";
-    if (rate >= 60) return "border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400";
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+  // Resolve the matching KPI Benchmark level for an occupancy rate
+  const benchmarkLevels = benchmarkSettings?.levels ?? [];
+  const matchBenchmark = (rate: number) =>
+    benchmarkLevels.find((level) => {
+      const minPass =
+        level.minPercent === null || level.minPercent === undefined
+          ? true
+          : level.minInclusive
+            ? rate >= level.minPercent
+            : rate > level.minPercent;
+      const maxPass =
+        level.maxPercent === null || level.maxPercent === undefined
+          ? true
+          : level.maxInclusive
+            ? rate <= level.maxPercent
+            : rate < level.maxPercent;
+      return minPass && maxPass;
+    });
+
+  const benchmarkBadgeStyle = (rate: number): React.CSSProperties => {
+    const level = matchBenchmark(rate);
+    if (!level?.color) return {};
+    return {
+      backgroundColor: `${level.color}1a`,
+      borderColor: `${level.color}66`,
+      color: level.color,
+    };
   };
+
+  const benchmarkLabel = (rate: number) => matchBenchmark(rate)?.label;
 
   return (
     <div className="space-y-6">
