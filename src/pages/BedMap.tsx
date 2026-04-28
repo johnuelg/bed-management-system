@@ -310,6 +310,18 @@ const BedMapPage = () => {
 
   const benchmarkLabel = (rate: number) => matchBenchmark(rate)?.label;
 
+  const [sortMode, setSortMode] = useState<SortMode>("default");
+
+  const sortedDepartments = useMemo(() => {
+    if (sortMode !== "recent") return grouped;
+    return [...grouped].sort((a, b) => {
+      if (!a.lastUpdatedAt && !b.lastUpdatedAt) return 0;
+      if (!a.lastUpdatedAt) return 1;
+      if (!b.lastUpdatedAt) return -1;
+      return b.lastUpdatedAt.localeCompare(a.lastUpdatedAt);
+    });
+  }, [grouped, sortMode]);
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -336,6 +348,15 @@ const BedMapPage = () => {
         </div>
         {!isLoading && (
           <div className="flex flex-wrap gap-2">
+            <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+              <SelectTrigger className="h-8 w-[200px] text-xs">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Default order</SelectItem>
+                <SelectItem value="recent">Recently refreshed</SelectItem>
+              </SelectContent>
+            </Select>
             <Badge variant="secondary" className="text-sm">
               {grouped.length} departments · {totals.total} beds
             </Badge>
