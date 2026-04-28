@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarIcon, RotateCcw, LayoutGrid, Table as TableIcon } from "lucide-react";
+import { CalendarIcon, RotateCcw, LayoutGrid, Table as TableIcon, ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -320,6 +320,41 @@ const DashboardPage = () => {
     }) ?? benchmarkLevels[benchmarkLevels.length - 1];
 
   const occupancyBenchmarkMatch = getOccupancyBenchmark(occupancyRate);
+
+  // Track the previously selected date+time so we can show a day-over-day
+  // (selection-over-selection) delta on the Occupancy Rate KPI card.
+  type PrevSelection = { date: string; time: string; rate: number };
+  const [previousSelection, setPreviousSelection] = useState<PrevSelection | null>(null);
+  const lastAppliedRef = useRef<PrevSelection | null>(null);
+
+  useEffect(() => {
+    if (filteredRows.length === 0) return;
+    const current: PrevSelection = {
+      date: rangeStartIso,
+      time: selectedTime || "",
+      rate: occupancyRate,
+    };
+    const last = lastAppliedRef.current;
+    if (!last) {
+      lastAppliedRef.current = current;
+      return;
+    }
+    if (last.date !== current.date || last.time !== current.time) {
+      setPreviousSelection(last);
+      lastAppliedRef.current = current;
+    } else {
+      // same selection, just refresh stored rate
+      lastAppliedRef.current = current;
+    }
+  }, [rangeStartIso, selectedTime, occupancyRate, filteredRows.length]);
+
+  const occupancyDelta = useMemo(() => {
+    if (!previousSelection) return null;
+    const diff = occupancyRate - previousSelection.rate;
+    const base = Math.abs(previousSelection.rate);
+    const percentChange = base > 0.0001 ? (diff / base) * 100 : null;
+    return { diff, percentChange, previous: previousSelection };
+  }, [occupancyRate, previousSelection]);
 
   const [departmentView, setDepartmentView] = useState<"cards" | "table">("cards");
 
@@ -655,6 +690,44 @@ const DashboardPage = () => {
                             <span>{metric.subtitle}</span>
                           </div>
                         ) : null}
+                        {occupancyDelta ? (() => {
+                          const { diff, percentChange, previous } = occupancyDelta;
+                          const isUp = diff > 0.05;
+                          const isDown = diff < -0.05;
+                          const trendColor = isUp
+                            ? "hsl(var(--destructive))"
+                            : isDown
+                            ? "#16a34a"
+                            : "hsl(var(--muted-foreground))";
+                          const TrendIcon = isUp ? ArrowUp : isDown ? ArrowDown : Minus;
+                          const pctLabel =
+                            percentChange === null
+                              ? `${diff >= 0 ? "+" : ""}${diff.toFixed(1)} pts`
+                              : `${percentChange >= 0 ? "+" : ""}${percentChange.toFixed(1)}%`;
+                          const prevLabel = previous.time
+                            ? `${previous.date} ${previous.time}`
+                            : previous.date;
+                          return (
+                            <div
+                              className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium"
+                              title={`Compared to previous selection (${prevLabel}, ${previous.rate.toFixed(1)}%)`}
+                            >
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5"
+                                style={{
+                                  color: trendColor,
+                                  backgroundColor: `color-mix(in srgb, ${trendColor} 12%, transparent)`,
+                                }}
+                              >
+                                <TrendIcon className="h-3 w-3" aria-hidden />
+                                <span>{pctLabel}</span>
+                              </span>
+                              <span className="text-muted-foreground">
+                                vs {prevLabel} ({previous.rate.toFixed(1)}%)
+                              </span>
+                            </div>
+                          );
+                        })() : null}
                       </div>
                     </div>
                   );
