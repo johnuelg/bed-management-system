@@ -195,6 +195,26 @@ const DashboardPage = () => {
   });
 
   const sums = aggregateSubmissionSums(filteredRows);
+  const readNumberField = (source: Record<string, unknown> | null | undefined, key: string): number => {
+    if (!source) return 0;
+    const v = (source as Record<string, unknown>)[key];
+    if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+    if (typeof v === "string") {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+    return 0;
+  };
+  const bedTypeTotals = useMemo(() => {
+    const totals = { medical_ped: 0, iso_nor_pres_ped: 0, iso_ve_pres_ped: 0 };
+    filteredRows.forEach((row) => {
+      const cf = (row.custom_fields as Record<string, unknown>) ?? {};
+      totals.medical_ped += readNumberField(cf, "medical_ped");
+      totals.iso_nor_pres_ped += readNumberField(cf, "iso_nor_pres_ped");
+      totals.iso_ve_pres_ped += readNumberField(cf, "iso_ve_pres_ped");
+    });
+    return totals;
+  }, [filteredRows]);
   const waitingPatients = filteredRows.reduce((total, row) => {
     const customFields = (row.custom_fields as Record<string, unknown>) ?? {};
 
@@ -505,7 +525,10 @@ const DashboardPage = () => {
               sums.occupied > 0 ||
               sums.closed > 0 ||
               sums.vacant > 0 ||
-              waitingPatients > 0);
+              waitingPatients > 0 ||
+              bedTypeTotals.medical_ped > 0 ||
+              bedTypeTotals.iso_nor_pres_ped > 0 ||
+              bedTypeTotals.iso_ve_pres_ped > 0);
           return [
           { name: "Total Beds", value: Math.round(kpiCardValues.total_beds) },
           { name: "Occupied", value: Math.round(kpiCardValues.occupied) },
@@ -518,6 +541,9 @@ const DashboardPage = () => {
               accentColor: occupancyBenchmarkMatch?.color,
               subtitle: occupancyBenchmarkMatch?.label,
             },
+          { name: "MEDICAL PED", value: Math.round(bedTypeTotals.medical_ped) },
+          { name: "ISO NOR PRES PED", value: Math.round(bedTypeTotals.iso_nor_pres_ped) },
+          { name: "ISO VE PRES PED", value: Math.round(bedTypeTotals.iso_ve_pres_ped) },
         ].map((metric, index) => (
           <motion.div
             key={metric.name}
