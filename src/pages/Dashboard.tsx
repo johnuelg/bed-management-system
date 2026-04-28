@@ -537,20 +537,23 @@ const DashboardPage = () => {
 
   // Anchor "Updated X ago" to the latest user-entered submission timestamp
   // (Riyadh local) instead of the dashboard fetch time. The user-input
-  // datetime is stored as `YYYY-MM-DDTHH:mm` representing Asia/Riyadh wall
-  // time, so we reconstruct the absolute instant by appending the Riyadh
-  // offset (+03:00, no DST).
+  // Anchor elapsed time to the actual bed-entry submission timestamp recorded
+  // by the database (`submitted_on`, falling back to `created_at`). These are
+  // absolute UTC instants, so the "Updated X ago" label reflects when the
+  // entry was actually saved — independent of any user-entered datetime field
+  // inside `custom_fields` and independent of the browser timezone.
   const latestSubmissionAt = useMemo<number | null>(() => {
-    let latestIso: string | null = null;
+    let latest = 0;
     for (const row of rows) {
-      const dt = extractUserInputDateTime(row);
-      if (!dt) continue;
-      const iso = `${dt.date}T${dt.time}`;
-      if (!latestIso || iso > latestIso) latestIso = iso;
+      const raw =
+        (row as { submitted_on?: string | null; created_at?: string | null }).submitted_on ??
+        (row as { created_at?: string | null }).created_at ??
+        null;
+      if (!raw) continue;
+      const ts = Date.parse(raw);
+      if (Number.isFinite(ts) && ts > latest) latest = ts;
     }
-    if (!latestIso) return null;
-    const ts = Date.parse(`${latestIso}:00+03:00`);
-    return Number.isFinite(ts) ? ts : null;
+    return latest > 0 ? latest : null;
   }, [rows]);
 
   const elapsedAnchor = latestSubmissionAt ?? lastRefreshAt;
