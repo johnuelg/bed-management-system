@@ -426,25 +426,12 @@ const DashboardPage = () => {
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "live" | "offline">("connecting");
 
-  const LAST_REFRESH_STORAGE_KEY = "dashboard:lastRefreshAt";
-  const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(() => {
-    if (typeof window === "undefined") return null;
-    const raw = window.localStorage.getItem(LAST_REFRESH_STORAGE_KEY);
-    const parsed = raw ? Number(raw) : NaN;
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-  });
+  const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(() => readLastRefreshAt());
 
   useEffect(() => {
     if (!dataUpdatedAt) return;
-    setLastRefreshAt((prev) => {
-      if (prev && prev >= dataUpdatedAt) return prev;
-      try {
-        window.localStorage.setItem(LAST_REFRESH_STORAGE_KEY, String(dataUpdatedAt));
-      } catch {
-        // ignore storage errors (private mode, quota, etc.)
-      }
-      return dataUpdatedAt;
-    });
+    markDataRefreshed(dataUpdatedAt);
+    setLastRefreshAt((prev) => (prev && prev >= dataUpdatedAt ? prev : dataUpdatedAt));
   }, [dataUpdatedAt]);
 
   // Track real-time refreshes of live data queries (Bed Map + Bed Entry Forms + Dashboard).
@@ -465,18 +452,45 @@ const DashboardPage = () => {
       const rootKey = event.query.queryKey?.[0];
       if (typeof rootKey !== "string" || !LIVE_QUERY_KEYS.has(rootKey)) return;
       const ts = event.query.state.dataUpdatedAt || Date.now();
-      setLastRefreshAt((prev) => {
-        if (prev && prev >= ts) return prev;
-        try {
-          window.localStorage.setItem(LAST_REFRESH_STORAGE_KEY, String(ts));
-        } catch {
-          // ignore
-        }
-        return ts;
-      });
+      markDataRefreshed(ts);
+      setLastRefreshAt((prev) => (prev && prev >= ts ? prev : ts));
     });
     return () => unsubscribe();
   }, [qc]);
+
+  // Sync from other pages/tabs: when Bed Entry forms submit (or other tabs
+  // update data), they call markDataRefreshed() which writes to localStorage
+  // and dispatches `app:data-refreshed`. We listen here so the "Updated X ago"
+  // indicator on the Dashboard resets immediately when the user returns.
+  useEffect(() => {
+    const applyFromStorage = () => {
+      const ts = readLastRefreshAt();
+      if (!ts) return;
+      setLastRefreshAt((prev) => (prev && prev >= ts ? prev : ts));
+    };
+    const onAppEvent = (e: Event) => {
+      const ts = (e as CustomEvent<{ timestamp: number }>).detail?.timestamp;
+      if (!ts) return applyFromStorage();
+      setLastRefreshAt((prev) => (prev && prev >= ts ? prev : ts));
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== LAST_REFRESH_STORAGE_KEY) return;
+      applyFromStorage();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") applyFromStorage();
+    };
+    window.addEventListener("app:data-refreshed", onAppEvent as EventListener);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", applyFromStorage);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("app:data-refreshed", onAppEvent as EventListener);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", applyFromStorage);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowTick(Date.now()), 1000);
