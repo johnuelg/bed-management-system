@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BedDouble, Ban, CheckCircle2 } from "lucide-react";
+import { BedDouble, Ban, CheckCircle2, CalendarIcon } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,11 +9,20 @@ import { cn } from "@/lib/utils";
 import {
   fetchDepartments,
   fetchDepartmentTotalBeds,
-  fetchTodaySubmissions,
+  fetchSubmissionsByDateRange,
   fetchOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
 import type { BedSubmission, OccupancyBenchmarkSettings } from "@/types/hospital";
-import { formatSaudiDateTime } from "@/lib/date-time";
+import {
+  formatSaudiDateTime,
+  getSaudiIsoDate,
+  isoDateToCalendarDate,
+  calendarDateToIsoDate,
+} from "@/lib/date-time";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 import {
   Select,
   SelectContent,
