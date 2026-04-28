@@ -364,7 +364,7 @@ const BedMapPage = () => {
                             "hospital-transition flex aspect-square flex-col items-center justify-center rounded-lg border p-2 text-center shadow-sm hover:shadow-md",
                             s.card,
                           )}
-                          title={`${bed.label} · ${s.label}`}
+                          title={`${bed.label} · ${s.label}${bed.bedTypeName ? ` · ${bed.bedTypeName}` : ""}`}
                         >
                           <Icon className={cn("h-5 w-5", s.iconColor)} />
                           <span className="mt-1 text-xs font-semibold leading-tight">
@@ -374,6 +374,14 @@ const BedMapPage = () => {
                           <span className={cn("text-[10px] font-medium uppercase tracking-wide", s.iconColor)}>
                             {s.label}
                           </span>
+                          {bed.bedTypeName && (
+                            <span
+                              className="mt-1 max-w-full truncate rounded bg-background/70 px-1 text-[9px] font-semibold uppercase tracking-wide text-foreground"
+                              title={bed.bedTypeName}
+                            >
+                              {bed.bedTypeName}
+                            </span>
+                          )}
                         </div>
                       );
                     })}
