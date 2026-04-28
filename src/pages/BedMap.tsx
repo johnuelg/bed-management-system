@@ -58,13 +58,20 @@ const statusStyles: Record<
   },
 };
 
-// Pick the most recent submission per department (by updated_at/created_at ordering already DESC in fetch)
-const latestSubmissionByDepartment = (rows: BedSubmission[]) => {
-  const map = new Map<string, BedSubmission>();
+// Sum today's submissions per department across all bed types.
+// For duplicate rows (same department + bed_type), keep only the most recent
+// (rows are pre-sorted DESC by updated_at in fetchTodaySubmissions).
+const aggregateByDepartment = (rows: BedSubmission[]) => {
+  const seen = new Set<string>();
+  const map = new Map<string, { occupied: number; closed: number }>();
   for (const row of rows) {
-    if (!map.has(row.department_id)) {
-      map.set(row.department_id, row);
-    }
+    const dedupeKey = `${row.department_id}::${row.bed_type_id ?? "_"}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    const cur = map.get(row.department_id) ?? { occupied: 0, closed: 0 };
+    cur.occupied += Number(row.occupied) || 0;
+    cur.closed += Number(row.closed) || 0;
+    map.set(row.department_id, cur);
   }
   return map;
 };
