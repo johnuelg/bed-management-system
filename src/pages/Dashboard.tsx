@@ -535,31 +535,61 @@ const DashboardPage = () => {
     [nowTick],
   );
 
+  // Anchor "Updated X ago" to the latest user-entered submission timestamp
+  // (Riyadh local) instead of the dashboard fetch time. The user-input
+  // datetime is stored as `YYYY-MM-DDTHH:mm` representing Asia/Riyadh wall
+  // time, so we reconstruct the absolute instant by appending the Riyadh
+  // offset (+03:00, no DST).
+  const latestSubmissionAt = useMemo<number | null>(() => {
+    let latestIso: string | null = null;
+    for (const row of rows) {
+      const dt = extractUserInputDateTime(row);
+      if (!dt) continue;
+      const iso = `${dt.date}T${dt.time}`;
+      if (!latestIso || iso > latestIso) latestIso = iso;
+    }
+    if (!latestIso) return null;
+    const ts = Date.parse(`${latestIso}:00+03:00`);
+    return Number.isFinite(ts) ? ts : null;
+  }, [rows]);
+
+  const elapsedAnchor = latestSubmissionAt ?? lastRefreshAt;
+
   // Compute elapsed time anchored to Asia/Riyadh. Since elapsed time is a
   // duration (delta of two absolute instants), it is timezone-invariant — but
   // we derive both anchors from the same UTC instants converted via the Saudi
   // formatter to guarantee no drift from the browser clock skew.
   const refreshStaleness = useMemo(() => {
-    if (!lastRefreshAt) {
+    if (!elapsedAnchor) {
       return { label: "—", tone: "muted" as const };
     }
-    const diffSec = Math.max(0, Math.floor((nowTick - lastRefreshAt) / 1000));
+    const diffSec = Math.max(0, Math.floor((nowTick - elapsedAnchor) / 1000));
+    const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
 
     let label: string;
     if (diffSec <= 5) {
       label = "just now";
     } else if (diffSec < 60) {
-      label = `${diffSec}s ago`;
+      label = `${plural(diffSec, "second")} ago`;
     } else if (diffSec < 3600) {
-      // 1m..59m — switch to hours only at exactly 60 minutes
-      label = `${Math.floor(diffSec / 60)}m ago`;
+      // 1..59 minutes — switch to hours only at exactly 60 minutes
+      const mins = Math.floor(diffSec / 60);
+      label = `${plural(mins, "minute")} ago`;
     } else if (diffSec < 86400) {
-      // 1h..23h — switch to days only at exactly 24 hours
-      label = `${Math.floor(diffSec / 3600)}h ago`;
+      // 1..23 hours — switch to days only at exactly 24 hours
+      const hours = Math.floor(diffSec / 3600);
+      const mins = Math.floor((diffSec % 3600) / 60);
+      label = mins > 0
+        ? `${plural(hours, "hour")} and ${plural(mins, "minute")} ago`
+        : `${plural(hours, "hour")} ago`;
     } else {
       const days = Math.floor(diffSec / 86400);
-      const remHours = Math.floor((diffSec % 86400) / 3600);
-      label = remHours > 0 ? `${days}d ${remHours}h ago` : `${days}d ago`;
+      const hours = Math.floor((diffSec % 86400) / 3600);
+      const mins = Math.floor((diffSec % 3600) / 60);
+      const parts = [plural(days, "day")];
+      if (hours > 0) parts.push(plural(hours, "hour"));
+      if (mins > 0 && days < 2) parts.push(plural(mins, "minute"));
+      label = `${parts.join(" and ")} ago`;
     }
 
     let tone: "muted" | "amber" | "critical" = "muted";
@@ -567,7 +597,7 @@ const DashboardPage = () => {
     else if (diffSec >= 3600) tone = "amber";
 
     return { label, tone };
-  }, [lastRefreshAt, nowTick]);
+  }, [elapsedAnchor, nowTick]);
 
   const lastRefreshLabel = refreshStaleness.label;
   const isCriticalStale = refreshStaleness.tone === "critical";
@@ -578,8 +608,8 @@ const DashboardPage = () => {
       : refreshStaleness.tone === "amber"
         ? "text-amber-600 dark:text-amber-400"
         : "text-foreground";
-  const stalenessHoursAgo = lastRefreshAt
-    ? Math.floor(Math.max(0, nowTick - lastRefreshAt) / 3600000)
+  const stalenessHoursAgo = elapsedAnchor
+    ? Math.floor(Math.max(0, nowTick - elapsedAnchor) / 3600000)
     : 0;
 
   const statusMeta =
