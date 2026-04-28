@@ -612,6 +612,24 @@ const DashboardPage = () => {
     ? Math.floor(Math.max(0, nowTick - elapsedAnchor) / 3600000)
     : 0;
 
+  const lastRefreshAbsoluteLabel = useMemo(() => {
+    if (!elapsedAnchor) return `Last refreshed: — (${SAUDI_TIMEZONE})`;
+    const d = new Date(elapsedAnchor);
+    const datePart = new Intl.DateTimeFormat("en-US", {
+      timeZone: SAUDI_TIMEZONE,
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    }).format(d);
+    const timePart = new Intl.DateTimeFormat("en-US", {
+      timeZone: SAUDI_TIMEZONE,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(d);
+    return `Last refreshed: ${datePart} – ${timePart} (${SAUDI_TIMEZONE})`;
+  }, [elapsedAnchor]);
+
   const statusMeta =
     connectionStatus === "live"
       ? { label: "Live", dot: "bg-emerald-500", ring: "bg-emerald-500/40", text: "text-emerald-600 dark:text-emerald-400" }
@@ -641,7 +659,7 @@ const DashboardPage = () => {
               {statusMeta.label}
             </span>
             <span className="h-3 w-px bg-border" aria-hidden />
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground cursor-help" title={lastRefreshAbsoluteLabel}>
               Updated <span className={`font-medium ${stalenessTextClass}`}>{lastRefreshLabel}</span>
             </span>
             {isCriticalStale && (
