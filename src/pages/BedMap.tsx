@@ -18,6 +18,7 @@ import {
   getSaudiIsoDate,
   isoDateToCalendarDate,
   calendarDateToIsoDate,
+  SAUDI_TIMEZONE,
 } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -339,7 +340,23 @@ const BedMapPage = () => {
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Bed Map</h1>
+          <h1
+            className="text-2xl font-bold tracking-tight sm:text-3xl cursor-help"
+            title={
+              lastRefreshedAt
+                ? `Last refreshed: ${formatSaudiDateTime(new Date(lastRefreshedAt), {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })} (${SAUDI_TIMEZONE})`
+                : `Last refreshed: — (${SAUDI_TIMEZONE})`
+            }
+          >
+            Bed Map
+          </h1>
           <p className="text-sm text-muted-foreground">
             {isToday
               ? "Live bed status from the latest entry per department (today)."
