@@ -10,6 +10,7 @@ import {
   fetchDepartmentTotalBeds,
   fetchTodaySubmissions,
   fetchOccupancyBenchmarkSettings,
+  fetchBedTypes,
 } from "@/lib/supabase-api";
 import type { BedSubmission, OccupancyBenchmarkSettings } from "@/types/hospital";
 
@@ -19,6 +20,7 @@ type BedCell = {
   index: number;
   label: string;
   status: BedStatus;
+  bedTypeName?: string;
 };
 
 type DepartmentBeds = {
