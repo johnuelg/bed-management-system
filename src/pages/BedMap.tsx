@@ -291,12 +291,16 @@ const BedMapPage = () => {
                   <Badge variant="outline" className={statusStyles.vacant.badge}>
                     {dept.vacant} Vacant
                   </Badge>
-                  <Badge
-                    variant="outline"
-                    className={occupancyBadgeClass(getOccupancyRate(dept.occupied, dept.totalBeds, dept.closed))}
-                  >
-                    Occupancy Rate {formatOccupancy(dept.occupied, dept.totalBeds, dept.closed)}
-                  </Badge>
+                  {(() => {
+                    const rate = getOccupancyRate(dept.occupied, dept.totalBeds, dept.closed);
+                    const label = benchmarkLabel(rate);
+                    return (
+                      <Badge variant="outline" style={benchmarkBadgeStyle(rate)}>
+                        Occupancy Rate {formatOccupancy(dept.occupied, dept.totalBeds, dept.closed)}
+                        {label ? ` · ${label}` : ""}
+                      </Badge>
+                    );
+                  })()}
                 </div>
               </CardHeader>
               <CardContent>
