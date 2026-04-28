@@ -85,6 +85,7 @@ export type RoleMenuVisibility = {
   users: boolean;
   data_table?: boolean;
   audit_log?: boolean;
+  bed_map?: boolean;
 };
 
 export type ClinicalRole = "doctor" | "nurse" | "staff";

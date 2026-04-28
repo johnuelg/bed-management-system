@@ -38,6 +38,7 @@ const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   users: true,
   data_table: true,
   audit_log: true,
+  bed_map: true,
 };
 const DEFAULT_NAV_VISIBILITY: NavVisibilitySettings = {
   admin: { ...DEFAULT_ROLE_MENU_VISIBILITY },
