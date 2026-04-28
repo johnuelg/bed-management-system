@@ -169,6 +169,12 @@ const BedMapPage = () => {
     { total: 0, occupied: 0, closed: 0, vacant: 0 },
   );
 
+  const formatOccupancy = (occupied: number, total: number, closed: number) => {
+    const denom = Math.max(0, total - closed);
+    const rate = denom > 0 ? (occupied / denom) * 100 : 0;
+    return `${occupied}/${denom} beds · ${rate.toFixed(1)}%`;
+  };
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
