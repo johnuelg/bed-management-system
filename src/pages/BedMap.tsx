@@ -175,6 +175,10 @@ const aggregateByDepartment = (rows: BedSubmission[]) => {
 };
 
 const BedMapPage = () => {
+  const [selectedIsoDate, setSelectedIsoDate] = useState<string>(() => getSaudiIsoDate());
+  const todayIso = getSaudiIsoDate();
+  const isToday = selectedIsoDate === todayIso;
+
   const { data: departments, isLoading: loadingDepartments } = useQuery({
     queryKey: ["departments"],
     queryFn: fetchDepartments,
@@ -185,9 +189,9 @@ const BedMapPage = () => {
     queryFn: fetchDepartmentTotalBeds,
   });
 
-  const { data: todaySubmissions, isLoading: loadingSubmissions } = useQuery({
-    queryKey: ["bed_submissions", "today"],
-    queryFn: fetchTodaySubmissions,
+  const { data: daySubmissions, isLoading: loadingSubmissions } = useQuery({
+    queryKey: ["bed_submissions", "by-date", selectedIsoDate],
+    queryFn: () => fetchSubmissionsByDateRange(selectedIsoDate, selectedIsoDate),
   });
 
   const { data: benchmarkSettings } = useQuery({
@@ -199,7 +203,7 @@ const BedMapPage = () => {
 
   const grouped: DepartmentBeds[] = useMemo(() => {
     if (!departments) return [];
-    const aggMap = aggregateByDepartment(todaySubmissions ?? []);
+    const aggMap = aggregateByDepartment(daySubmissions ?? []);
 
     return departments
       .filter((d) => d.is_active)
@@ -259,7 +263,7 @@ const BedMapPage = () => {
           lastUpdatedAt: agg?.lastUpdatedAt,
         };
       });
-  }, [departments, totalBedsMap, todaySubmissions]);
+  }, [departments, totalBedsMap, daySubmissions]);
 
   const totals = grouped.reduce(
     (acc, g) => ({
