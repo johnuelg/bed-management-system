@@ -9,8 +9,9 @@ import {
   fetchDepartments,
   fetchDepartmentTotalBeds,
   fetchTodaySubmissions,
+  fetchOccupancyBenchmarkSettings,
 } from "@/lib/supabase-api";
-import type { BedSubmission } from "@/types/hospital";
+import type { BedSubmission, OccupancyBenchmarkSettings } from "@/types/hospital";
 
 type BedStatus = "occupied" | "closed" | "vacant";
 
@@ -115,6 +116,11 @@ const BedMapPage = () => {
     queryFn: fetchTodaySubmissions,
   });
 
+  const { data: benchmarkSettings } = useQuery({
+    queryKey: ["app_settings", "occupancy_benchmark"],
+    queryFn: fetchOccupancyBenchmarkSettings,
+  });
+
   const isLoading = loadingDepartments || loadingTotals || loadingSubmissions;
 
   const grouped: DepartmentBeds[] = useMemo(() => {
@@ -180,12 +186,36 @@ const BedMapPage = () => {
     return `${occupied}/${denom} beds · ${rate.toFixed(1)}%`;
   };
 
-  // Thresholds: <60% low (green), 60–84% medium (amber), ≥85% high (red)
-  const occupancyBadgeClass = (rate: number) => {
-    if (rate >= 85) return "border-destructive/40 bg-destructive/10 text-destructive";
-    if (rate >= 60) return "border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400";
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+  // Resolve the matching KPI Benchmark level for an occupancy rate
+  const benchmarkLevels = benchmarkSettings?.levels ?? [];
+  const matchBenchmark = (rate: number) =>
+    benchmarkLevels.find((level) => {
+      const minPass =
+        level.minPercent === null || level.minPercent === undefined
+          ? true
+          : level.minInclusive
+            ? rate >= level.minPercent
+            : rate > level.minPercent;
+      const maxPass =
+        level.maxPercent === null || level.maxPercent === undefined
+          ? true
+          : level.maxInclusive
+            ? rate <= level.maxPercent
+            : rate < level.maxPercent;
+      return minPass && maxPass;
+    });
+
+  const benchmarkBadgeStyle = (rate: number): React.CSSProperties => {
+    const level = matchBenchmark(rate);
+    if (!level?.color) return {};
+    return {
+      backgroundColor: `${level.color}1a`,
+      borderColor: `${level.color}66`,
+      color: level.color,
+    };
   };
+
+  const benchmarkLabel = (rate: number) => matchBenchmark(rate)?.label;
 
   return (
     <div className="space-y-6">
@@ -210,12 +240,16 @@ const BedMapPage = () => {
             <Badge variant="outline" className={statusStyles.vacant.badge}>
               {totals.vacant} Vacant
             </Badge>
-            <Badge
-              variant="outline"
-              className={occupancyBadgeClass(getOccupancyRate(totals.occupied, totals.total, totals.closed))}
-            >
-              Occupancy Rate {formatOccupancy(totals.occupied, totals.total, totals.closed)}
-            </Badge>
+            {(() => {
+              const rate = getOccupancyRate(totals.occupied, totals.total, totals.closed);
+              const label = benchmarkLabel(rate);
+              return (
+                <Badge variant="outline" style={benchmarkBadgeStyle(rate)}>
+                  Occupancy Rate {formatOccupancy(totals.occupied, totals.total, totals.closed)}
+                  {label ? ` · ${label}` : ""}
+                </Badge>
+              );
+            })()}
           </div>
         )}
       </header>
@@ -257,12 +291,16 @@ const BedMapPage = () => {
                   <Badge variant="outline" className={statusStyles.vacant.badge}>
                     {dept.vacant} Vacant
                   </Badge>
-                  <Badge
-                    variant="outline"
-                    className={occupancyBadgeClass(getOccupancyRate(dept.occupied, dept.totalBeds, dept.closed))}
-                  >
-                    Occupancy Rate {formatOccupancy(dept.occupied, dept.totalBeds, dept.closed)}
-                  </Badge>
+                  {(() => {
+                    const rate = getOccupancyRate(dept.occupied, dept.totalBeds, dept.closed);
+                    const label = benchmarkLabel(rate);
+                    return (
+                      <Badge variant="outline" style={benchmarkBadgeStyle(rate)}>
+                        Occupancy Rate {formatOccupancy(dept.occupied, dept.totalBeds, dept.closed)}
+                        {label ? ` · ${label}` : ""}
+                      </Badge>
+                    );
+                  })()}
                 </div>
               </CardHeader>
               <CardContent>
