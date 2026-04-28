@@ -10,6 +10,7 @@ import {
   fetchDepartmentTotalBeds,
   fetchTodaySubmissions,
   fetchOccupancyBenchmarkSettings,
+  fetchBedTypes,
 } from "@/lib/supabase-api";
 import type { BedSubmission, OccupancyBenchmarkSettings } from "@/types/hospital";
 
@@ -19,6 +20,7 @@ type BedCell = {
   index: number;
   label: string;
   status: BedStatus;
+  bedTypeName?: string;
 };
 
 type DepartmentBeds = {
@@ -87,14 +89,19 @@ const getEffectiveClosed = (row: BedSubmission) => {
 
 const aggregateByDepartment = (rows: BedSubmission[]) => {
   const seen = new Set<string>();
-  const map = new Map<string, { occupied: number; closed: number }>();
+  const map = new Map<
+    string,
+    { occupied: number; closed: number; perType: Array<{ bedTypeId: string | null; occupied: number }> }
+  >();
   for (const row of rows) {
     const dedupeKey = `${row.department_id}::${row.bed_type_id ?? "_"}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
-    const cur = map.get(row.department_id) ?? { occupied: 0, closed: 0 };
-    cur.occupied += getEffectiveOccupied(row);
+    const cur = map.get(row.department_id) ?? { occupied: 0, closed: 0, perType: [] };
+    const occ = getEffectiveOccupied(row);
+    cur.occupied += occ;
     cur.closed += getEffectiveClosed(row);
+    if (occ > 0) cur.perType.push({ bedTypeId: row.bed_type_id, occupied: occ });
     map.set(row.department_id, cur);
   }
   return map;
@@ -121,7 +128,18 @@ const BedMapPage = () => {
     queryFn: fetchOccupancyBenchmarkSettings,
   });
 
+  const { data: bedTypes } = useQuery({
+    queryKey: ["bed_types"],
+    queryFn: fetchBedTypes,
+  });
+
   const isLoading = loadingDepartments || loadingTotals || loadingSubmissions;
+
+  const bedTypeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    (bedTypes ?? []).forEach((bt) => m.set(bt.id, bt.name));
+    return m;
+  }, [bedTypes]);
 
   const grouped: DepartmentBeds[] = useMemo(() => {
     if (!departments) return [];
@@ -139,6 +157,31 @@ const BedMapPage = () => {
         const closed = Math.min(rawClosed, Math.max(0, total - occupied));
         const vacant = Math.max(0, total - occupied - closed);
 
+        // Build a per-bed-type allocation map for occupied beds.
+        // Sort by bed type sort_order (via fetched bedTypes order) for stable display.
+        const perTypeOrder = new Map<string, number>();
+        (bedTypes ?? []).forEach((bt, idx) => perTypeOrder.set(bt.id, idx));
+        const perType = [...(agg?.perType ?? [])].sort((a, b) => {
+          const ai = a.bedTypeId ? perTypeOrder.get(a.bedTypeId) ?? 999 : 999;
+          const bi = b.bedTypeId ? perTypeOrder.get(b.bedTypeId) ?? 999 : 999;
+          return ai - bi;
+        });
+
+        // Walk through occupied bed indices and assign bed-type names sequentially
+        const occupiedTypeByIndex = new Map<number, string>();
+        let cursor = 1;
+        let remaining = occupied;
+        for (const seg of perType) {
+          if (remaining <= 0) break;
+          const take = Math.min(seg.occupied, remaining);
+          const name = seg.bedTypeId ? bedTypeNameById.get(seg.bedTypeId) ?? "Unknown" : "Unknown";
+          for (let k = 0; k < take; k++) {
+            occupiedTypeByIndex.set(cursor + k, name);
+          }
+          cursor += take;
+          remaining -= take;
+        }
+
         const beds: BedCell[] = Array.from({ length: total }, (_, i) => {
           const index = i + 1;
           let status: BedStatus;
@@ -149,6 +192,7 @@ const BedMapPage = () => {
             index,
             label: `${dept.code || dept.name} ${index}`,
             status,
+            bedTypeName: status === "occupied" ? occupiedTypeByIndex.get(index) : undefined,
           };
         });
 
@@ -163,7 +207,7 @@ const BedMapPage = () => {
           beds,
         };
       });
-  }, [departments, totalBedsMap, todaySubmissions]);
+  }, [departments, totalBedsMap, todaySubmissions, bedTypes, bedTypeNameById]);
 
   const totals = grouped.reduce(
     (acc, g) => ({
@@ -320,7 +364,7 @@ const BedMapPage = () => {
                             "hospital-transition flex aspect-square flex-col items-center justify-center rounded-lg border p-2 text-center shadow-sm hover:shadow-md",
                             s.card,
                           )}
-                          title={`${bed.label} · ${s.label}`}
+                          title={`${bed.label} · ${s.label}${bed.bedTypeName ? ` · ${bed.bedTypeName}` : ""}`}
                         >
                           <Icon className={cn("h-5 w-5", s.iconColor)} />
                           <span className="mt-1 text-xs font-semibold leading-tight">
@@ -330,6 +374,14 @@ const BedMapPage = () => {
                           <span className={cn("text-[10px] font-medium uppercase tracking-wide", s.iconColor)}>
                             {s.label}
                           </span>
+                          {bed.bedTypeName && (
+                            <span
+                              className="mt-1 max-w-full truncate rounded bg-background/70 px-1 text-[9px] font-semibold uppercase tracking-wide text-foreground"
+                              title={bed.bedTypeName}
+                            >
+                              {bed.bedTypeName}
+                            </span>
+                          )}
                         </div>
                       );
                     })}
