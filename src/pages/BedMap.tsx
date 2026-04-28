@@ -341,7 +341,9 @@ const BedMapPage = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Bed Map</h1>
           <p className="text-sm text-muted-foreground">
-            Live bed status from the latest entry per department (today).
+            {isToday
+              ? "Live bed status from the latest entry per department (today)."
+              : `Bed status for ${format(isoDateToCalendarDate(selectedIsoDate), "PPP")}.`}
           </p>
           {!isLoading && lastRefreshedAt && (
             <p className="mt-1 text-xs text-muted-foreground">
@@ -361,6 +363,38 @@ const BedMapPage = () => {
         </div>
         {!isLoading && (
           <div className="flex flex-wrap gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-2 text-xs">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {isToday
+                    ? "Today"
+                    : format(isoDateToCalendarDate(selectedIsoDate), "PP")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={isoDateToCalendarDate(selectedIsoDate)}
+                  onSelect={(d) => d && setSelectedIsoDate(calendarDateToIsoDate(d))}
+                  disabled={(date) => calendarDateToIsoDate(date) > todayIso}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+                {!isToday && (
+                  <div className="border-t p-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => setSelectedIsoDate(todayIso)}
+                    >
+                      Jump to today
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
             <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
               <SelectTrigger className="h-8 w-[200px] text-xs">
                 <SelectValue placeholder="Sort by" />
