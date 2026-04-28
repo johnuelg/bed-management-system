@@ -58,7 +58,7 @@ const DashboardPage = () => {
   const rangeStartIso = useMemo(() => calendarDateToIsoDate(rangeStart), [rangeStart]);
   const rangeEndIso = useMemo(() => calendarDateToIsoDate(rangeEnd), [rangeEnd]);
 
-  const { data: rows = [] } = useQuery({
+  const { data: rows = [], dataUpdatedAt } = useQuery({
     queryKey: ["bed_submissions_dashboard"],
     queryFn: fetchDashboardSubmissions,
   });
