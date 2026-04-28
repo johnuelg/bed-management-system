@@ -19,6 +19,7 @@ import {
   formatSaudiDateTime,
   SAUDI_TIMEZONE,
 } from "@/lib/date-time";
+import { LAST_REFRESH_STORAGE_KEY, markDataRefreshed, readLastRefreshAt } from "@/lib/last-refresh";
 import {
   aggregateSubmissionSums,
   fetchDashboardSubmissions,
