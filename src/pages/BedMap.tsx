@@ -362,25 +362,23 @@ const BedMapPage = () => {
                         <div
                           key={bed.index}
                           className={cn(
-                            "hospital-transition flex aspect-square flex-col items-center justify-center rounded-lg border p-2 text-center shadow-sm hover:shadow-md",
+                            "hospital-transition grid aspect-square grid-rows-5 items-center justify-items-center rounded-lg border p-2 text-center shadow-sm hover:shadow-md",
                             s.card,
                           )}
                           title={`${bed.label} · ${s.label}${bed.bedTypeName ? ` · ${bed.bedTypeName}` : ""}`}
                         >
                           <Icon className={cn("h-5 w-5", s.iconColor)} />
-                          <span className="mt-1 text-xs font-semibold leading-tight">
+                          <span className="text-xs font-semibold leading-none">
                             {dept.code || dept.name}
                           </span>
-                          <span className="text-sm font-bold text-foreground">#{bed.index}</span>
-                          {bed.bedTypeName && (
-                            <span
-                              className="mt-1 max-w-full truncate text-[9px] font-bold uppercase tracking-wide"
-                              title={bed.bedTypeName}
-                            >
-                              {bed.bedTypeName}
-                            </span>
-                          )}
-                          <span className={cn("mt-auto text-[10px] font-medium uppercase tracking-wide", s.iconColor)}>
+                          <span className="text-sm font-bold leading-none text-foreground">#{bed.index}</span>
+                          <span
+                            className="max-w-full truncate text-[9px] font-bold uppercase leading-none tracking-wide"
+                            title={bed.bedTypeName || undefined}
+                          >
+                            {bed.bedTypeName || "\u00A0"}
+                          </span>
+                          <span className={cn("text-[10px] font-medium uppercase leading-none tracking-wide", s.iconColor)}>
                             {s.label}
                           </span>
                         </div>
