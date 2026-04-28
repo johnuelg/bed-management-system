@@ -372,9 +372,6 @@ const BedMapPage = () => {
                             {dept.code || dept.name}
                           </span>
                           <span className="text-sm font-bold text-foreground">#{bed.index}</span>
-                          <span className={cn("text-[10px] font-medium uppercase tracking-wide", s.iconColor)}>
-                            {s.label}
-                          </span>
                           {bed.bedTypeName && (
                             <span
                               className="mt-1 max-w-full truncate text-[9px] font-bold uppercase tracking-wide"
@@ -383,6 +380,9 @@ const BedMapPage = () => {
                               {bed.bedTypeName}
                             </span>
                           )}
+                          <span className={cn("mt-auto text-[10px] font-medium uppercase tracking-wide", s.iconColor)}>
+                            {s.label}
+                          </span>
                         </div>
                       );
                     })}
