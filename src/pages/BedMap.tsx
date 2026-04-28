@@ -116,6 +116,11 @@ const BedMapPage = () => {
     queryFn: fetchTodaySubmissions,
   });
 
+  const { data: benchmarkSettings } = useQuery({
+    queryKey: ["app_settings", "occupancy_benchmark"],
+    queryFn: fetchOccupancyBenchmarkSettings,
+  });
+
   const isLoading = loadingDepartments || loadingTotals || loadingSubmissions;
 
   const grouped: DepartmentBeds[] = useMemo(() => {
