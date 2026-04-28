@@ -61,6 +61,29 @@ const statusStyles: Record<
 // Sum today's submissions per department across all bed types.
 // For duplicate rows (same department + bed_type), keep only the most recent
 // (rows are pre-sorted DESC by updated_at in fetchTodaySubmissions).
+const readNumberField = (source: Record<string, unknown> | null | undefined, key: string) => {
+  const value = source?.[key];
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+const getEffectiveOccupied = (row: BedSubmission) => {
+  const calculatedOccupied = readNumberField(row.calculated_fields, "occupied_auto");
+  if (calculatedOccupied !== undefined) return calculatedOccupied;
+
+  const rawOccupied = Number(row.occupied) || 0;
+  return rawOccupied > 0 ? rawOccupied : readNumberField(row.custom_fields, "occupied") ?? 0;
+};
+
+const getEffectiveClosed = (row: BedSubmission) => {
+  const rawClosed = Number(row.closed) || 0;
+  return rawClosed > 0 ? rawClosed : readNumberField(row.custom_fields, "closed") ?? 0;
+};
+
 const aggregateByDepartment = (rows: BedSubmission[]) => {
   const seen = new Set<string>();
   const map = new Map<string, { occupied: number; closed: number }>();
@@ -69,8 +92,8 @@ const aggregateByDepartment = (rows: BedSubmission[]) => {
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
     const cur = map.get(row.department_id) ?? { occupied: 0, closed: 0 };
-    cur.occupied += Number(row.occupied) || 0;
-    cur.closed += Number(row.closed) || 0;
+    cur.occupied += getEffectiveOccupied(row);
+    cur.closed += getEffectiveClosed(row);
     map.set(row.department_id, cur);
   }
   return map;
