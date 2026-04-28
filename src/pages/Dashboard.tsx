@@ -490,7 +490,29 @@ const DashboardPage = () => {
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">Live Hospital Dashboard</h1>
           <p className="text-sm text-muted-foreground">Realtime, free-tier-safe metrics with manual refresh support.</p>
-          <Badge variant="secondary" className="mt-2 w-fit">Timezone: Asia/Riyadh</Badge>
+          <div
+            className="mt-2 inline-flex w-fit items-center gap-3 rounded-full border bg-card/60 px-3 py-1.5 text-xs shadow-sm backdrop-blur"
+            role="status"
+            aria-live="polite"
+            title={`Connection: ${statusMeta.label} • Last refresh: ${lastRefreshLabel} • ${SAUDI_TIMEZONE}`}
+          >
+            <span className={`flex items-center gap-1.5 font-semibold ${statusMeta.text}`}>
+              <span className="relative flex h-2 w-2">
+                {connectionStatus === "live" && (
+                  <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${statusMeta.ring}`} />
+                )}
+                <span className={`relative inline-flex h-2 w-2 rounded-full ${statusMeta.dot}`} />
+              </span>
+              {statusMeta.label}
+            </span>
+            <span className="h-3 w-px bg-border" aria-hidden />
+            <span className="text-muted-foreground">
+              Updated <span className="font-medium text-foreground">{lastRefreshLabel}</span>
+            </span>
+            <span className="h-3 w-px bg-border" aria-hidden />
+            <span className="font-mono tabular-nums text-foreground">{liveClock}</span>
+            <span className="text-muted-foreground">KSA</span>
+          </div>
         </div>
 
         <div className="grid w-full gap-2 sm:w-auto sm:min-w-[360px]">
