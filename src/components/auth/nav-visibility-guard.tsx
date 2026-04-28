@@ -6,15 +6,15 @@ import { getPrimaryRole } from "@/lib/rbac";
 import type { RoleMenuVisibility } from "@/types/hospital";
 
 const defaultRoleVisibility: RoleMenuVisibility = {
-  dashboard: false,
-  data_entry: false,
-  kpi_builder: false,
-  categories: false,
-  form_builder: false,
-  users: false,
-  data_table: false,
-  audit_log: false,
-  bed_map: false,
+  dashboard: true,
+  data_entry: true,
+  kpi_builder: true,
+  categories: true,
+  form_builder: true,
+  users: true,
+  data_table: true,
+  audit_log: true,
+  bed_map: true,
 };
 
 type NavVisibilityGuardProps = {
@@ -33,9 +33,11 @@ export const NavVisibilityGuard = ({ settingKey }: NavVisibilityGuardProps) => {
   }
 
   const primaryRole = getPrimaryRole(roles);
-  const canAccess =
-    primaryRole &&
-    (navVisibility?.[primaryRole] ?? defaultRoleVisibility)[settingKey];
+  const merged: RoleMenuVisibility = {
+    ...defaultRoleVisibility,
+    ...((primaryRole && navVisibility?.[primaryRole]) || {}),
+  };
+  const canAccess = primaryRole && merged[settingKey];
 
   if (!canAccess) {
     return <Navigate to="/dashboard" replace />;

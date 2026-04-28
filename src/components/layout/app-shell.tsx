@@ -22,14 +22,15 @@ type NavItem = {
 };
 
 const defaultRoleVisibility: RoleMenuVisibility = {
-  dashboard: false,
-  data_entry: false,
-  kpi_builder: false,
-  categories: false,
-  form_builder: false,
-  users: false,
-  audit_log: false,
-  bed_map: false,
+  dashboard: true,
+  data_entry: true,
+  data_table: true,
+  kpi_builder: true,
+  categories: true,
+  form_builder: true,
+  users: true,
+  audit_log: true,
+  bed_map: true,
 };
 
 const topLevelNavItems: NavItem[] = [
@@ -56,7 +57,8 @@ export const AppShell = () => {
   const { data: navVisibility } = useQuery({ queryKey: ["app_settings", "nav_visibility"], queryFn: fetchNavVisibilitySettings });
 
   const primaryRole = getPrimaryRole(roles);
-  const roleVisibility = primaryRole ? (navVisibility?.[primaryRole] ?? defaultRoleVisibility) : defaultRoleVisibility;
+  const savedRoleVisibility = primaryRole ? navVisibility?.[primaryRole] : undefined;
+  const roleVisibility: RoleMenuVisibility = { ...defaultRoleVisibility, ...(savedRoleVisibility ?? {}) };
   const visibleTopLevelItems = topLevelNavItems
     .filter((item) => !item.roles || hasAnyRole(roles, item.roles))
     .filter((item) => roleVisibility[item.settingKey]);
