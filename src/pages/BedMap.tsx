@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BedDouble, Ban, CheckCircle2 } from "lucide-react";
-import type { SVGProps } from "react";
+import type { ComponentType, SVGProps } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -66,7 +66,7 @@ type DepartmentBeds = {
 
 const statusStyles: Record<
   BedStatus,
-  { label: string; icon: typeof BedDouble; card: string; iconColor: string; badge: string }
+  { label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; card: string; iconColor: string; badge: string }
 > = {
   occupied: {
     label: "Occupied",
