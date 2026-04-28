@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BedDouble, Ban, CheckCircle2 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
@@ -14,6 +14,15 @@ import {
 } from "@/lib/supabase-api";
 import type { BedSubmission, OccupancyBenchmarkSettings } from "@/types/hospital";
 import { formatSaudiDateTime } from "@/lib/date-time";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type SortMode = "default" | "recent";
 
 // Custom icon: bed with a patient lying on it (used for occupied beds)
 const BedPatientIcon = (props: SVGProps<SVGSVGElement>) => (
