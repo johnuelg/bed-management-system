@@ -253,6 +253,12 @@ const BedMapPage = () => {
     { total: 0, occupied: 0, closed: 0, vacant: 0 },
   );
 
+  // Most recent updated_at across all departments
+  const lastRefreshedAt = grouped.reduce<string | undefined>((latest, g) => {
+    if (!g.lastUpdatedAt) return latest;
+    return !latest || g.lastUpdatedAt > latest ? g.lastUpdatedAt : latest;
+  }, undefined);
+
   const getOccupancyRate = (occupied: number, total: number, closed: number) => {
     const denom = Math.max(0, total - closed);
     return denom > 0 ? (occupied / denom) * 100 : 0;
@@ -303,6 +309,21 @@ const BedMapPage = () => {
           <p className="text-sm text-muted-foreground">
             Live bed status from the latest entry per department (today).
           </p>
+          {!isLoading && lastRefreshedAt && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Last refreshed:{" "}
+              <span className="font-medium text-foreground">
+                {formatSaudiDateTime(new Date(lastRefreshedAt), {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </span>
+            </p>
+          )}
         </div>
         {!isLoading && (
           <div className="flex flex-wrap gap-2">
