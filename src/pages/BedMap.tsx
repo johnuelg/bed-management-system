@@ -63,6 +63,7 @@ type DepartmentBeds = {
   closed: number;
   vacant: number;
   beds: BedCell[];
+  lastUpdatedAt?: string;
 };
 
 const statusStyles: Record<
@@ -237,6 +238,7 @@ const BedMapPage = () => {
           closed,
           vacant,
           beds,
+          lastUpdatedAt: agg?.lastUpdatedAt,
         };
       });
   }, [departments, totalBedsMap, todaySubmissions]);
@@ -352,7 +354,24 @@ const BedMapPage = () => {
               <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <CardTitle className="truncate text-lg sm:text-xl">{dept.name}</CardTitle>
-                  <p className="text-xs text-muted-foreground">{dept.code || "—"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {dept.code || "—"}
+                    {dept.lastUpdatedAt && (
+                      <>
+                        <span className="mx-1.5 opacity-60">·</span>
+                        <span>
+                          Updated{" "}
+                          {formatSaudiDateTime(new Date(dept.lastUpdatedAt), {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}
+                        </span>
+                      </>
+                    )}
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   <Badge variant="outline" className="shrink-0">
