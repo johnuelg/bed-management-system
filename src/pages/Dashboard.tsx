@@ -447,6 +447,37 @@ const DashboardPage = () => {
     });
   }, [dataUpdatedAt]);
 
+  // Track real-time refreshes of live data queries (Bed Map + Bed Entry Forms + Dashboard).
+  // Whenever any of these queries successfully fetches new data, the indicator resets.
+  useEffect(() => {
+    const LIVE_QUERY_KEYS = new Set([
+      "bed_submissions_dashboard",
+      "bed_submissions_range",
+      "bed_submissions",
+      "bed_submissions_today",
+    ]);
+
+    const cache = qc.getQueryCache();
+    const unsubscribe = cache.subscribe((event) => {
+      if (event.type !== "updated") return;
+      const action = (event as { action?: { type?: string } }).action;
+      if (!action || action.type !== "success") return;
+      const rootKey = event.query.queryKey?.[0];
+      if (typeof rootKey !== "string" || !LIVE_QUERY_KEYS.has(rootKey)) return;
+      const ts = event.query.state.dataUpdatedAt || Date.now();
+      setLastRefreshAt((prev) => {
+        if (prev && prev >= ts) return prev;
+        try {
+          window.localStorage.setItem(LAST_REFRESH_STORAGE_KEY, String(ts));
+        } catch {
+          // ignore
+        }
+        return ts;
+      });
+    });
+    return () => unsubscribe();
+  }, [qc]);
+
   useEffect(() => {
     const id = window.setInterval(() => setNowTick(Date.now()), 1000);
     return () => window.clearInterval(id);
