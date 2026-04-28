@@ -400,14 +400,14 @@ const BedMapPage = () => {
         </Card>
       ) : (
         <div className="space-y-6">
-          {grouped.map((dept) => (
+          {sortedDepartments.map((dept) => (
             <Card key={dept.id} className="overflow-hidden">
               <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <CardTitle className="truncate text-lg sm:text-xl">{dept.name}</CardTitle>
                   <p className="text-xs text-muted-foreground">
                     {dept.code || "—"}
-                    {dept.lastUpdatedAt && (
+                    {dept.lastUpdatedAt ? (
                       <>
                         <span className="mx-1.5 opacity-60">·</span>
                         <span>
@@ -420,6 +420,11 @@ const BedMapPage = () => {
                             hour12: true,
                           })}
                         </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="mx-1.5 opacity-60">·</span>
+                        <span className="italic">No submissions yet</span>
                       </>
                     )}
                   </p>
