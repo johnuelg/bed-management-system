@@ -128,7 +128,18 @@ const BedMapPage = () => {
     queryFn: fetchOccupancyBenchmarkSettings,
   });
 
+  const { data: bedTypes } = useQuery({
+    queryKey: ["bed_types"],
+    queryFn: fetchBedTypes,
+  });
+
   const isLoading = loadingDepartments || loadingTotals || loadingSubmissions;
+
+  const bedTypeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    (bedTypes ?? []).forEach((bt) => m.set(bt.id, bt.name));
+    return m;
+  }, [bedTypes]);
 
   const grouped: DepartmentBeds[] = useMemo(() => {
     if (!departments) return [];
@@ -146,6 +157,31 @@ const BedMapPage = () => {
         const closed = Math.min(rawClosed, Math.max(0, total - occupied));
         const vacant = Math.max(0, total - occupied - closed);
 
+        // Build a per-bed-type allocation map for occupied beds.
+        // Sort by bed type sort_order (via fetched bedTypes order) for stable display.
+        const perTypeOrder = new Map<string, number>();
+        (bedTypes ?? []).forEach((bt, idx) => perTypeOrder.set(bt.id, idx));
+        const perType = [...(agg?.perType ?? [])].sort((a, b) => {
+          const ai = a.bedTypeId ? perTypeOrder.get(a.bedTypeId) ?? 999 : 999;
+          const bi = b.bedTypeId ? perTypeOrder.get(b.bedTypeId) ?? 999 : 999;
+          return ai - bi;
+        });
+
+        // Walk through occupied bed indices and assign bed-type names sequentially
+        const occupiedTypeByIndex = new Map<number, string>();
+        let cursor = 1;
+        let remaining = occupied;
+        for (const seg of perType) {
+          if (remaining <= 0) break;
+          const take = Math.min(seg.occupied, remaining);
+          const name = seg.bedTypeId ? bedTypeNameById.get(seg.bedTypeId) ?? "Unknown" : "Unknown";
+          for (let k = 0; k < take; k++) {
+            occupiedTypeByIndex.set(cursor + k, name);
+          }
+          cursor += take;
+          remaining -= take;
+        }
+
         const beds: BedCell[] = Array.from({ length: total }, (_, i) => {
           const index = i + 1;
           let status: BedStatus;
@@ -156,6 +192,7 @@ const BedMapPage = () => {
             index,
             label: `${dept.code || dept.name} ${index}`,
             status,
+            bedTypeName: status === "occupied" ? occupiedTypeByIndex.get(index) : undefined,
           };
         });
 
@@ -170,7 +207,7 @@ const BedMapPage = () => {
           beds,
         };
       });
-  }, [departments, totalBedsMap, todaySubmissions]);
+  }, [departments, totalBedsMap, todaySubmissions, bedTypes, bedTypeNameById]);
 
   const totals = grouped.reduce(
     (acc, g) => ({
