@@ -10,9 +10,15 @@ import {
   fetchDepartmentTotalBeds,
   fetchTodaySubmissions,
   fetchOccupancyBenchmarkSettings,
-  fetchBedTypes,
 } from "@/lib/supabase-api";
 import type { BedSubmission, OccupancyBenchmarkSettings } from "@/types/hospital";
+
+// Bed-type breakdown stored in custom_fields keys → display label
+const BED_TYPE_FIELD_LABELS: Array<{ key: string; label: string }> = [
+  { key: "medical_ped", label: "MEDICAL PED" },
+  { key: "iso_nor_pres_ped", label: "ISO NOR PRES PED" },
+  { key: "iso_ve_pres_ped", label: "ISO VE PRES PED" },
+];
 
 type BedStatus = "occupied" | "closed" | "vacant";
 
