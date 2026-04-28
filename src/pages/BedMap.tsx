@@ -81,6 +81,7 @@ type DepartmentBeds = {
   occupied: number;
   closed: number;
   vacant: number;
+  bedTypeCounts: Array<{ label: string; count: number }>;
   beds: BedCell[];
   lastUpdatedAt?: string;
 };
@@ -220,6 +221,10 @@ const BedMapPage = () => {
         const perType = [...(agg?.perType ?? [])].sort(
           (a, b) => (orderIndex.get(a.label) ?? 999) - (orderIndex.get(b.label) ?? 999),
         );
+        const bedTypeCounts = BED_TYPE_FIELD_LABELS.map(({ label }) => ({
+          label,
+          count: perType.find((entry) => entry.label === label)?.occupied ?? 0,
+        }));
 
         // Walk through occupied bed indices and assign bed-type labels sequentially
         const occupiedTypeByIndex = new Map<number, string>();
@@ -257,6 +262,7 @@ const BedMapPage = () => {
           occupied,
           closed,
           vacant,
+          bedTypeCounts,
           beds,
           lastUpdatedAt: agg?.lastUpdatedAt,
         };
