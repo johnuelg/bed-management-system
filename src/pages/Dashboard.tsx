@@ -501,6 +501,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const debouncedRefresh = () => {
       const timeout = setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
         void qc.invalidateQueries({ queryKey: ["bed_submissions_range"] });
       }, 700);
 
@@ -535,28 +536,24 @@ const DashboardPage = () => {
     [nowTick],
   );
 
-  // Anchor "Updated X ago" to the latest user-entered submission timestamp
-  // (Riyadh local) instead of the dashboard fetch time. The user-input
-  // Anchor elapsed time to the actual bed-entry submission timestamp recorded
-  // by the database (`submitted_on`, falling back to `created_at`). These are
-  // absolute UTC instants, so the "Updated X ago" label reflects when the
-  // entry was actually saved — independent of any user-entered datetime field
-  // inside `custom_fields` and independent of the browser timezone.
-  const latestSubmissionAt = useMemo<number | null>(() => {
-    let latest = 0;
+  // Match Bed Map's "Last refreshed" source: the latest bed-entry database
+  // timestamp (`updated_at`, falling back to `created_at`) and compare it to
+  // the live Saudi clock for the Dashboard's elapsed duration.
+  const latestBedEntryTimestamp = useMemo<number | null>(() => {
+    let latest: string | null = null;
     for (const row of rows) {
       const raw =
-        (row as { submitted_on?: string | null; created_at?: string | null }).submitted_on ??
+        (row as { updated_at?: string | null; created_at?: string | null }).updated_at ??
         (row as { created_at?: string | null }).created_at ??
         null;
-      if (!raw) continue;
-      const ts = Date.parse(raw);
-      if (Number.isFinite(ts) && ts > latest) latest = ts;
+      if (raw && (!latest || raw > latest)) latest = raw;
     }
-    return latest > 0 ? latest : null;
+    if (!latest) return null;
+    const ts = Date.parse(latest);
+    return Number.isFinite(ts) ? ts : null;
   }, [rows]);
 
-  const elapsedAnchor = latestSubmissionAt ?? lastRefreshAt;
+  const elapsedAnchor = latestBedEntryTimestamp ?? lastRefreshAt;
 
   // Compute elapsed time anchored to Asia/Riyadh. Since elapsed time is a
   // duration (delta of two absolute instants), it is timezone-invariant — but
