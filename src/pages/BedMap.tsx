@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BedDouble, Ban, CheckCircle2 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
@@ -14,6 +14,15 @@ import {
 } from "@/lib/supabase-api";
 import type { BedSubmission, OccupancyBenchmarkSettings } from "@/types/hospital";
 import { formatSaudiDateTime } from "@/lib/date-time";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type SortMode = "default" | "recent";
 
 // Custom icon: bed with a patient lying on it (used for occupied beds)
 const BedPatientIcon = (props: SVGProps<SVGSVGElement>) => (
@@ -301,6 +310,18 @@ const BedMapPage = () => {
 
   const benchmarkLabel = (rate: number) => matchBenchmark(rate)?.label;
 
+  const [sortMode, setSortMode] = useState<SortMode>("default");
+
+  const sortedDepartments = useMemo(() => {
+    if (sortMode !== "recent") return grouped;
+    return [...grouped].sort((a, b) => {
+      if (!a.lastUpdatedAt && !b.lastUpdatedAt) return 0;
+      if (!a.lastUpdatedAt) return 1;
+      if (!b.lastUpdatedAt) return -1;
+      return b.lastUpdatedAt.localeCompare(a.lastUpdatedAt);
+    });
+  }, [grouped, sortMode]);
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -327,6 +348,15 @@ const BedMapPage = () => {
         </div>
         {!isLoading && (
           <div className="flex flex-wrap gap-2">
+            <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+              <SelectTrigger className="h-8 w-[200px] text-xs">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Default order</SelectItem>
+                <SelectItem value="recent">Recently refreshed</SelectItem>
+              </SelectContent>
+            </Select>
             <Badge variant="secondary" className="text-sm">
               {grouped.length} departments · {totals.total} beds
             </Badge>
@@ -370,14 +400,14 @@ const BedMapPage = () => {
         </Card>
       ) : (
         <div className="space-y-6">
-          {grouped.map((dept) => (
+          {sortedDepartments.map((dept) => (
             <Card key={dept.id} className="overflow-hidden">
               <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <CardTitle className="truncate text-lg sm:text-xl">{dept.name}</CardTitle>
                   <p className="text-xs text-muted-foreground">
                     {dept.code || "—"}
-                    {dept.lastUpdatedAt && (
+                    {dept.lastUpdatedAt ? (
                       <>
                         <span className="mx-1.5 opacity-60">·</span>
                         <span>
@@ -390,6 +420,11 @@ const BedMapPage = () => {
                             hour12: true,
                           })}
                         </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="mx-1.5 opacity-60">·</span>
+                        <span className="italic">No submissions yet</span>
                       </>
                     )}
                   </p>
