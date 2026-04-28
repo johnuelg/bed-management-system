@@ -426,6 +426,27 @@ const DashboardPage = () => {
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "live" | "offline">("connecting");
 
+  const LAST_REFRESH_STORAGE_KEY = "dashboard:lastRefreshAt";
+  const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const raw = window.localStorage.getItem(LAST_REFRESH_STORAGE_KEY);
+    const parsed = raw ? Number(raw) : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  });
+
+  useEffect(() => {
+    if (!dataUpdatedAt) return;
+    setLastRefreshAt((prev) => {
+      if (prev && prev >= dataUpdatedAt) return prev;
+      try {
+        window.localStorage.setItem(LAST_REFRESH_STORAGE_KEY, String(dataUpdatedAt));
+      } catch {
+        // ignore storage errors (private mode, quota, etc.)
+      }
+      return dataUpdatedAt;
+    });
+  }, [dataUpdatedAt]);
+
   useEffect(() => {
     const id = window.setInterval(() => setNowTick(Date.now()), 1000);
     return () => window.clearInterval(id);
@@ -469,13 +490,13 @@ const DashboardPage = () => {
   );
 
   const lastRefreshLabel = useMemo(() => {
-    if (!dataUpdatedAt) return "—";
-    const diffSec = Math.max(0, Math.floor((nowTick - dataUpdatedAt) / 1000));
+    if (!lastRefreshAt) return "—";
+    const diffSec = Math.max(0, Math.floor((nowTick - lastRefreshAt) / 1000));
     if (diffSec < 5) return "just now";
     if (diffSec < 60) return `${diffSec}s ago`;
     if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-    return formatSaudiDateTime(new Date(dataUpdatedAt), { hour: "2-digit", minute: "2-digit", hour12: false });
-  }, [dataUpdatedAt, nowTick]);
+    return formatSaudiDateTime(new Date(lastRefreshAt), { hour: "2-digit", minute: "2-digit", hour12: false });
+  }, [lastRefreshAt, nowTick]);
 
   const statusMeta =
     connectionStatus === "live"
