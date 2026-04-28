@@ -423,6 +423,14 @@ const DashboardPage = () => {
     <StatusBadge level={level} />
   );
 
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "live" | "offline">("connecting");
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   useEffect(() => {
     const debouncedRefresh = () => {
       const timeout = setTimeout(() => {
@@ -437,12 +445,44 @@ const DashboardPage = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "bed_submissions" }, () => {
         debouncedRefresh();
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setConnectionStatus("live");
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") setConnectionStatus("offline");
+        else setConnectionStatus("connecting");
+      });
 
     return () => {
+      setConnectionStatus("offline");
       void supabase.removeChannel(channel);
     };
   }, [qc]);
+
+  const liveClock = useMemo(
+    () =>
+      formatSaudiDateTime(new Date(nowTick), {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }),
+    [nowTick],
+  );
+
+  const lastRefreshLabel = useMemo(() => {
+    if (!dataUpdatedAt) return "—";
+    const diffSec = Math.max(0, Math.floor((nowTick - dataUpdatedAt) / 1000));
+    if (diffSec < 5) return "just now";
+    if (diffSec < 60) return `${diffSec}s ago`;
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    return formatSaudiDateTime(new Date(dataUpdatedAt), { hour: "2-digit", minute: "2-digit", hour12: false });
+  }, [dataUpdatedAt, nowTick]);
+
+  const statusMeta =
+    connectionStatus === "live"
+      ? { label: "Live", dot: "bg-emerald-500", ring: "bg-emerald-500/40", text: "text-emerald-600 dark:text-emerald-400" }
+      : connectionStatus === "connecting"
+        ? { label: "Connecting", dot: "bg-amber-500", ring: "bg-amber-500/40", text: "text-amber-600 dark:text-amber-400" }
+        : { label: "Offline", dot: "bg-destructive", ring: "bg-destructive/40", text: "text-destructive" };
 
   return (
     <section className="space-y-5 sm:space-y-6">
