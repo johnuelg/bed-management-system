@@ -52,6 +52,7 @@ import {
   fetchDepartmentTotalBeds,
   fetchFormFields,
   fetchKpiFormulas,
+  fetchOccupancyBenchmarkSettings,
   fetchTodaySubmissions,
   fetchUserEntryPermissions,
   getCurrentUserId,
@@ -130,6 +131,18 @@ const DataEntryPage = () => {
   const { data: formFields = [] } = useQuery({ queryKey: ["form_fields"], queryFn: fetchFormFields });
   const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
   const { data: kpiFormulas = [] } = useQuery({ queryKey: ["kpi_formulas"], queryFn: fetchKpiFormulas });
+  const { data: occupancyBenchmark } = useQuery({
+    queryKey: ["app_settings", "occupancy_benchmark"],
+    queryFn: fetchOccupancyBenchmarkSettings,
+  });
+
+  const benchmarkLevels = occupancyBenchmark?.levels ?? [];
+  const getOccupancyBenchmark = (value: number) =>
+    benchmarkLevels.find((level) => {
+      const minPass = level.minPercent === null ? true : level.minInclusive ? value >= level.minPercent : value > level.minPercent;
+      const maxPass = level.maxPercent === null ? true : level.maxInclusive ? value <= level.maxPercent : value < level.maxPercent;
+      return minPass && maxPass;
+    }) ?? benchmarkLevels[benchmarkLevels.length - 1];
 
   const orderedActiveFields = useMemo(
     () => formFields.filter((field) => field.is_active).sort((a, b) => a.display_order - b.display_order),
@@ -1208,8 +1221,24 @@ const DataEntryPage = () => {
                       </p>
                       <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
                       <p className="text-sm text-muted-foreground">
-                        Total {row.total_beds} • Occupied {Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0} • Closed {row.closed} • Vacant {Math.max(0, row.total_beds - (Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) - row.closed)} • Occupancy {row.total_beds > 0 ? ((Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) / row.total_beds * 100).toFixed(1) : "0.0"}%
+                        Total {row.total_beds} • Occupied {Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0} • Closed {row.closed} • Vacant {Math.max(0, row.total_beds - (Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) - row.closed)}
                       </p>
+                      {(() => {
+                        const occ = Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0;
+                        const rate = row.total_beds > 0 ? (occ / row.total_beds) * 100 : 0;
+                        const bm = getOccupancyBenchmark(rate);
+                        return (
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-muted-foreground">Occupancy:</span>
+                            <Badge
+                              variant="outline"
+                              style={bm ? { backgroundColor: bm.color, color: "#fff", borderColor: bm.color } : undefined}
+                            >
+                              {rate.toFixed(1)}%{bm ? ` • ${bm.label}` : ""}
+                            </Badge>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -1275,7 +1304,21 @@ const DataEntryPage = () => {
                             <TableCell className="text-right">{Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0}</TableCell>
                             <TableCell className="text-right">{row.closed}</TableCell>
                             <TableCell className="text-right">{Math.max(0, row.total_beds - (Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) - row.closed)}</TableCell>
-                            <TableCell className="text-right">{row.total_beds > 0 ? ((Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) / row.total_beds * 100).toFixed(1) : "0.0"}%</TableCell>
+                            <TableCell className="text-right">
+                              {(() => {
+                                const occ = Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0;
+                                const rate = row.total_beds > 0 ? (occ / row.total_beds) * 100 : 0;
+                                const bm = getOccupancyBenchmark(rate);
+                                return (
+                                  <Badge
+                                    variant="outline"
+                                    style={bm ? { backgroundColor: bm.color, color: "#fff", borderColor: bm.color } : undefined}
+                                  >
+                                    {rate.toFixed(1)}%{bm ? ` • ${bm.label}` : ""}
+                                  </Badge>
+                                );
+                              })()}
+                            </TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-2">
                                 {canEdit ? (
