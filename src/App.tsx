@@ -20,6 +20,7 @@ import KpiBuilderPage from "./pages/KpiBuilder";
 import UsersPage from "./pages/Users";
 import SettingsPage from "./pages/Settings";
 import AuditLogPage from "./pages/AuditLog";
+import ReportsAnalyticsPage from "./pages/ReportsAnalytics";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,9 @@ const App = () => (
                 </Route>
                 <Route element={<NavVisibilityGuard settingKey="bed_map" />}>
                   <Route path="/bed-map" element={<BedMapPage />} />
+                </Route>
+                <Route element={<NavVisibilityGuard settingKey="reports_analytics" />}>
+                  <Route path="/reports-analytics" element={<ReportsAnalyticsPage />} />
                 </Route>
 
                 <Route element={<RoleGuard allow={["admin"]} />}>
