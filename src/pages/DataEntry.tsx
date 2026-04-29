@@ -292,15 +292,22 @@ const DataEntryPage = () => {
 
   const exportRows = useMemo(
     () =>
-      rows.map((row) => ({
-        date: row.submitted_on,
-        department: departmentNameById[row.department_id] ?? "Unknown Department",
-        total_beds: row.total_beds,
-        occupied: row.occupied,
-        closed: row.closed,
-        closure_reason: row.closure_reason ?? "",
-        submitted_by: row.submitted_by,
-      })),
+      rows.map((row) => {
+        const occupied = Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0;
+        const vacant = Math.max(0, row.total_beds - occupied - row.closed);
+        const occupancy_rate = row.total_beds > 0 ? `${((occupied / row.total_beds) * 100).toFixed(1)}%` : "0.0%";
+        return {
+          date: row.submitted_on,
+          department: departmentNameById[row.department_id] ?? "Unknown Department",
+          total_beds: row.total_beds,
+          occupied,
+          closed: row.closed,
+          vacant,
+          occupancy_rate,
+          closure_reason: row.closure_reason ?? "",
+          submitted_by: row.submitted_by,
+        };
+      }),
     [rows, departmentNameById],
   );
 
