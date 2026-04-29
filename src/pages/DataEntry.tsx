@@ -1208,7 +1208,7 @@ const DataEntryPage = () => {
                       </p>
                       <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
                       <p className="text-sm text-muted-foreground">
-                        Total {row.total_beds} • Occupied {Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0} • Closed {row.closed} • Vacant {Math.max(0, row.total_beds - (Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) - row.closed)}
+                        Total {row.total_beds} • Occupied {Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0} • Closed {row.closed} • Vacant {Math.max(0, row.total_beds - (Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) - row.closed)} • Occupancy {row.total_beds > 0 ? ((Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) / row.total_beds * 100).toFixed(1) : "0.0"}%
                       </p>
                     </div>
 
@@ -1258,6 +1258,7 @@ const DataEntryPage = () => {
                         <TableHead className="text-right">Occupied</TableHead>
                         <TableHead className="text-right">Closed</TableHead>
                         <TableHead className="text-right">Vacant</TableHead>
+                        <TableHead className="text-right">Occupancy Rate</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1274,6 +1275,7 @@ const DataEntryPage = () => {
                             <TableCell className="text-right">{Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0}</TableCell>
                             <TableCell className="text-right">{row.closed}</TableCell>
                             <TableCell className="text-right">{Math.max(0, row.total_beds - (Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) - row.closed)}</TableCell>
+                            <TableCell className="text-right">{row.total_beds > 0 ? ((Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) / row.total_beds * 100).toFixed(1) : "0.0"}%</TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-2">
                                 {canEdit ? (
