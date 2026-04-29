@@ -369,12 +369,14 @@ const DataEntryPage = () => {
       return;
     }
 
-    const headers = ["Date", "Time", "Department", "Total", "Occupied", "Closed", "Reason for Closure"];
+    const headers = ["Date", "Time", "Department", "Total", "Occupied", "Closed", "Vacant", "Occupancy Rate", "Reason for Closure"];
     const body = rows.map((row) => {
       const dt = getSubmissionDateTime(row);
       const occupiedAuto = Number(
         (row as unknown as { calculated_fields?: { occupied_auto?: number } }).calculated_fields?.occupied_auto ?? row.occupied,
       ) || 0;
+      const vacant = Math.max(0, row.total_beds - occupiedAuto - row.closed);
+      const rate = row.total_beds > 0 ? `${((occupiedAuto / row.total_beds) * 100).toFixed(1)}%` : "0.0%";
       return [
         dt.date,
         dt.time,
@@ -382,6 +384,8 @@ const DataEntryPage = () => {
         String(row.total_beds),
         String(occupiedAuto),
         String(row.closed),
+        String(vacant),
+        rate,
         row.closure_reason ?? "",
       ];
     });
