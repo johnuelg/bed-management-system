@@ -1221,8 +1221,24 @@ const DataEntryPage = () => {
                       </p>
                       <p className="font-semibold">Department: {departmentNameById[row.department_id] ?? "Unknown Department"}</p>
                       <p className="text-sm text-muted-foreground">
-                        Total {row.total_beds} • Occupied {Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0} • Closed {row.closed} • Vacant {Math.max(0, row.total_beds - (Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) - row.closed)} • Occupancy {row.total_beds > 0 ? ((Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) / row.total_beds * 100).toFixed(1) : "0.0"}%
+                        Total {row.total_beds} • Occupied {Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0} • Closed {row.closed} • Vacant {Math.max(0, row.total_beds - (Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) - row.closed)}
                       </p>
+                      {(() => {
+                        const occ = Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0;
+                        const rate = row.total_beds > 0 ? (occ / row.total_beds) * 100 : 0;
+                        const bm = getOccupancyBenchmark(rate);
+                        return (
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-muted-foreground">Occupancy:</span>
+                            <Badge
+                              variant="outline"
+                              style={bm ? { backgroundColor: bm.color, color: "#fff", borderColor: bm.color } : undefined}
+                            >
+                              {rate.toFixed(1)}%{bm ? ` • ${bm.label}` : ""}
+                            </Badge>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
