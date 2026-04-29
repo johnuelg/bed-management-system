@@ -52,6 +52,7 @@ import {
   fetchDepartmentTotalBeds,
   fetchFormFields,
   fetchKpiFormulas,
+  fetchOccupancyBenchmarkSettings,
   fetchTodaySubmissions,
   fetchUserEntryPermissions,
   getCurrentUserId,
