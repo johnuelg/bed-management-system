@@ -1,5 +1,12 @@
-import { BarChart3, FileDown, LineChart, PieChart } from "lucide-react";
+import { useState } from "react";
+import { BarChart3, CalendarIcon, FileDown, LineChart, PieChart, X } from "lucide-react";
+import type { DateRange } from "react-day-picker";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { calendarDateToIsoDate, formatSaudiIsoDateForDisplay } from "@/lib/date-time";
 
 const plannedSections: Array<{ icon: typeof BarChart3; title: string; description: string }> = [
   {
@@ -25,6 +32,19 @@ const plannedSections: Array<{ icon: typeof BarChart3; title: string; descriptio
 ];
 
 const ReportsAnalyticsPage = () => {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+
+  const formattedRangeLabel = dateRange?.from
+    ? `${formatSaudiIsoDateForDisplay(calendarDateToIsoDate(dateRange.from), { year: "numeric", month: "short", day: "numeric" })}${dateRange.to ? ` – ${formatSaudiIsoDateForDisplay(calendarDateToIsoDate(dateRange.to), { year: "numeric", month: "short", day: "numeric" })}` : ""}`
+    : "Pick date range";
+
+  const fromIso = dateRange?.from ? calendarDateToIsoDate(dateRange.from) : null;
+  const toIso = dateRange?.to
+    ? calendarDateToIsoDate(dateRange.to)
+    : dateRange?.from
+      ? calendarDateToIsoDate(dateRange.from)
+      : null;
+
   return (
     <div className="space-y-6">
       <header className="space-y-2">
@@ -33,6 +53,53 @@ const ReportsAnalyticsPage = () => {
           Visual reports and exportable analytics for bed occupancy and department performance.
         </p>
       </header>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Report period</CardTitle>
+          <CardDescription>
+            Select a date range to scope the KPI summary, charts, and exports below.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "min-w-[260px] justify-start text-left font-normal",
+                  !dateRange?.from && "text-muted-foreground",
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formattedRangeLabel}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          {dateRange?.from && (
+            <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)}>
+              <X className="mr-1 h-4 w-4" />
+              Clear
+            </Button>
+          )}
+          {fromIso && (
+            <span className="ml-auto text-xs text-muted-foreground">
+              Showing data from <span className="font-medium text-foreground">{fromIso}</span> to{" "}
+              <span className="font-medium text-foreground">{toIso}</span>
+            </span>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-dashed">
         <CardHeader>
