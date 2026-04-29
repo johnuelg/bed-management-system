@@ -1288,7 +1288,21 @@ const DataEntryPage = () => {
                             <TableCell className="text-right">{Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0}</TableCell>
                             <TableCell className="text-right">{row.closed}</TableCell>
                             <TableCell className="text-right">{Math.max(0, row.total_beds - (Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) - row.closed)}</TableCell>
-                            <TableCell className="text-right">{row.total_beds > 0 ? ((Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0) / row.total_beds * 100).toFixed(1) : "0.0"}%</TableCell>
+                            <TableCell className="text-right">
+                              {(() => {
+                                const occ = Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0;
+                                const rate = row.total_beds > 0 ? (occ / row.total_beds) * 100 : 0;
+                                const bm = getOccupancyBenchmark(rate);
+                                return (
+                                  <Badge
+                                    variant="outline"
+                                    style={bm ? { backgroundColor: bm.color, color: "#fff", borderColor: bm.color } : undefined}
+                                  >
+                                    {rate.toFixed(1)}%{bm ? ` • ${bm.label}` : ""}
+                                  </Badge>
+                                );
+                              })()}
+                            </TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-2">
                                 {canEdit ? (
