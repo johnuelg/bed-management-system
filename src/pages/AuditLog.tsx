@@ -198,7 +198,9 @@ const AuditLogPage = () => {
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("flex-1 justify-start text-left font-normal", !fromDate && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {fromDate ? formatSaudiDateTime(fromDate, { month: "short", day: "numeric" }) : "From"}
+                    {fromDate
+                      ? formatSaudiIsoDateForDisplay(calendarDateToIsoDate(fromDate), { month: "short", day: "numeric" })
+                      : "From"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -209,7 +211,9 @@ const AuditLogPage = () => {
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("flex-1 justify-start text-left font-normal", !toDate && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {toDate ? formatSaudiDateTime(toDate, { month: "short", day: "numeric" }) : "To"}
+                    {toDate
+                      ? formatSaudiIsoDateForDisplay(calendarDateToIsoDate(toDate), { month: "short", day: "numeric" })
+                      : "To"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
