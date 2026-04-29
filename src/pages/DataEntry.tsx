@@ -63,6 +63,7 @@ import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
 import { markDataRefreshed } from "@/lib/last-refresh";
+import { StatusBadge } from "@/components/status-badge";
 import { utils, writeFileXLSX } from "xlsx";
 import {
   buildRowScope,
