@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, BedDouble, ChevronDown, ClipboardList, FileCog, History, LayoutDashboard, LogOut, Menu, Settings2, Table as TableIcon, Users2 } from "lucide-react";
+import { BarChart3, BedDouble, ChevronDown, ClipboardList, FileBarChart, FileCog, History, LayoutDashboard, LogOut, Menu, Settings2, Table as TableIcon, Users2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -31,6 +31,7 @@ const defaultRoleVisibility: RoleMenuVisibility = {
   users: true,
   audit_log: true,
   bed_map: true,
+  reports_analytics: true,
 };
 
 const topLevelNavItems: NavItem[] = [
@@ -38,6 +39,7 @@ const topLevelNavItems: NavItem[] = [
   { to: "/data-entry", label: "Bed Entry", icon: ClipboardList, settingKey: "data_entry" },
   { to: "/data-table", label: "Data Table", icon: TableIcon, settingKey: "data_table" },
   { to: "/bed-map", label: "Bed Map", icon: BedDouble, settingKey: "bed_map" },
+  { to: "/reports-analytics", label: "Reports & Analytics", icon: FileBarChart, settingKey: "reports_analytics" },
   { to: "/audit-log", label: "Audit Log", icon: History, settingKey: "audit_log", roles: ["admin"] },
   { to: "/users", label: "Users", icon: Users2, settingKey: "users", roles: ["admin"] },
 ];
