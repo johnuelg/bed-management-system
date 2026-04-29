@@ -63,6 +63,7 @@ import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/hospital";
 import { markDataRefreshed } from "@/lib/last-refresh";
+import { StatusBadge } from "@/components/status-badge";
 import { utils, writeFileXLSX } from "xlsx";
 import {
   buildRowScope,
@@ -1230,12 +1231,14 @@ const DataEntryPage = () => {
                         return (
                           <div className="flex items-center gap-2 text-xs">
                             <span className="text-muted-foreground">Occupancy:</span>
-                            <Badge
-                              variant="outline"
-                              style={bm ? { backgroundColor: bm.color, color: "#fff", borderColor: bm.color } : undefined}
-                            >
-                              {rate.toFixed(1)}%{bm ? ` • ${bm.label}` : ""}
-                            </Badge>
+                            {bm ? (
+                              <StatusBadge
+                                level={{ ...bm, label: `${rate.toFixed(1)}% • ${bm.label}` }}
+                                size="sm"
+                              />
+                            ) : (
+                              <span>{rate.toFixed(1)}%</span>
+                            )}
                           </div>
                         );
                       })()}
@@ -1309,13 +1312,13 @@ const DataEntryPage = () => {
                                 const occ = Number((row as any).calculated_fields?.occupied_auto ?? row.occupied) || 0;
                                 const rate = row.total_beds > 0 ? (occ / row.total_beds) * 100 : 0;
                                 const bm = getOccupancyBenchmark(rate);
-                                return (
-                                  <Badge
-                                    variant="outline"
-                                    style={bm ? { backgroundColor: bm.color, color: "#fff", borderColor: bm.color } : undefined}
-                                  >
-                                    {rate.toFixed(1)}%{bm ? ` • ${bm.label}` : ""}
-                                  </Badge>
+                                return bm ? (
+                                  <StatusBadge
+                                    level={{ ...bm, label: `${rate.toFixed(1)}% • ${bm.label}` }}
+                                    size="sm"
+                                  />
+                                ) : (
+                                  <span>{rate.toFixed(1)}%</span>
                                 );
                               })()}
                             </TableCell>
