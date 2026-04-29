@@ -31,6 +31,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 
 import { StatusBadge } from "@/components/status-badge";
+import { useAuth } from "@/hooks/use-auth";
 import { getStatusIconComponent, getDefaultIconForLabel } from "@/lib/status-icons";
 import {
   buildAggregateScope,
@@ -50,6 +51,7 @@ const SAUDI_HOLIDAYS: Record<string, string> = {
 
 const DashboardPage = () => {
   const qc = useQueryClient();
+  const { profile, user } = useAuth();
   const today = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate()), []);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(today);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -659,8 +661,14 @@ const DashboardPage = () => {
     <section className="space-y-5 sm:space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Live Hospital Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Realtime, free-tier-safe metrics with manual refresh support.</p>
+          <h1 className="text-2xl font-bold sm:text-3xl">{(() => {
+            const hourStr = formatSaudiDateTime(new Date(nowTick), { hour: "2-digit", hour12: false });
+            const h = parseInt(hourStr, 10);
+            const greeting = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+            const name = profile?.display_name?.trim() || user?.email?.split("@")[0] || "there";
+            return `${greeting}, ${name}`;
+          })()}</h1>
+          <p className="text-sm text-muted-foreground">Real-time snapshot of bed availability and patient capacity across all departments</p>
           <div
             className="mt-2 inline-flex w-fit items-center gap-3 rounded-full border bg-card/60 px-3 py-1.5 text-xs shadow-sm backdrop-blur"
             role="status"
