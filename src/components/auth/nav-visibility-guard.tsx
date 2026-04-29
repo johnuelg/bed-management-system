@@ -15,6 +15,7 @@ const defaultRoleVisibility: RoleMenuVisibility = {
   data_table: true,
   audit_log: true,
   bed_map: true,
+  reports_analytics: true,
 };
 
 type NavVisibilityGuardProps = {
