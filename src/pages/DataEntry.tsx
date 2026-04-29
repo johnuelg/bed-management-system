@@ -131,6 +131,18 @@ const DataEntryPage = () => {
   const { data: formFields = [] } = useQuery({ queryKey: ["form_fields"], queryFn: fetchFormFields });
   const { data: rows = [] } = useQuery({ queryKey: ["bed_submissions_today"], queryFn: fetchTodaySubmissions });
   const { data: kpiFormulas = [] } = useQuery({ queryKey: ["kpi_formulas"], queryFn: fetchKpiFormulas });
+  const { data: occupancyBenchmark } = useQuery({
+    queryKey: ["app_settings", "occupancy_benchmark"],
+    queryFn: fetchOccupancyBenchmarkSettings,
+  });
+
+  const benchmarkLevels = occupancyBenchmark?.levels ?? [];
+  const getOccupancyBenchmark = (value: number) =>
+    benchmarkLevels.find((level) => {
+      const minPass = level.minPercent === null ? true : level.minInclusive ? value >= level.minPercent : value > level.minPercent;
+      const maxPass = level.maxPercent === null ? true : level.maxInclusive ? value <= level.maxPercent : value < level.maxPercent;
+      return minPass && maxPass;
+    }) ?? benchmarkLevels[benchmarkLevels.length - 1];
 
   const orderedActiveFields = useMemo(
     () => formFields.filter((field) => field.is_active).sort((a, b) => a.display_order - b.display_order),
