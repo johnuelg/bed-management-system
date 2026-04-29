@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import type { DateRange } from "react-day-picker";
 import { fetchAuditLogs, fetchDepartments } from "@/lib/supabase-api";
 import {
   formatSaudiDateTime,
@@ -95,12 +96,15 @@ const AuditLogPage = () => {
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<"all" | AuditAction>("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
-  const [fromDate, setFromDate] = useState<Date | undefined>();
-  const [toDate, setToDate] = useState<Date | undefined>();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const filteredLogs = useMemo(() => {
-    const fromIso = fromDate ? calendarDateToIsoDate(fromDate) : null;
-    const toIso = toDate ? calendarDateToIsoDate(toDate) : null;
+    const fromIso = dateRange?.from ? calendarDateToIsoDate(dateRange.from) : null;
+    const toIso = dateRange?.to
+      ? calendarDateToIsoDate(dateRange.to)
+      : dateRange?.from
+        ? calendarDateToIsoDate(dateRange.from)
+        : null;
     const q = search.trim().toLowerCase();
     return logs.filter((entry) => {
       if (actionFilter !== "all" && entry.action !== actionFilter) return false;
@@ -126,15 +130,15 @@ const AuditLogPage = () => {
       }
       return true;
     });
-  }, [logs, search, actionFilter, deptFilter, fromDate, toDate]);
+  }, [logs, search, actionFilter, deptFilter, dateRange]);
 
-  const hasActiveFilters = search || actionFilter !== "all" || deptFilter !== "all" || fromDate || toDate;
+  const hasActiveFilters =
+    Boolean(search) || actionFilter !== "all" || deptFilter !== "all" || Boolean(dateRange?.from);
   const clearFilters = () => {
     setSearch("");
     setActionFilter("all");
     setDeptFilter("all");
-    setFromDate(undefined);
-    setToDate(undefined);
+    setDateRange(undefined);
   };
 
   const departmentNames = useMemo(() => {
@@ -142,6 +146,10 @@ const AuditLogPage = () => {
     logs.forEach((l) => l.department_name && set.add(l.department_name));
     return Array.from(set).sort();
   }, [logs]);
+
+  const formattedRangeLabel = dateRange?.from
+    ? `${formatSaudiIsoDateForDisplay(calendarDateToIsoDate(dateRange.from), { year: "numeric", month: "short", day: "numeric" })}${dateRange.to ? ` – ${formatSaudiIsoDateForDisplay(calendarDateToIsoDate(dateRange.to), { year: "numeric", month: "short", day: "numeric" })}` : ""}`
+    : "Pick date range";
 
   return (
     <section className="space-y-5 sm:space-y-6">
@@ -193,34 +201,30 @@ const AuditLogPage = () => {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("flex-1 justify-start text-left font-normal", !fromDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {fromDate
-                      ? formatSaudiIsoDateForDisplay(calendarDateToIsoDate(fromDate), { month: "short", day: "numeric" })
-                      : "From"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={fromDate} onSelect={setFromDate} initialFocus className={cn("p-3 pointer-events-auto")} />
-                </PopoverContent>
-              </Popover>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("flex-1 justify-start text-left font-normal", !toDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {toDate
-                      ? formatSaudiIsoDateForDisplay(calendarDateToIsoDate(toDate), { month: "short", day: "numeric" })
-                      : "To"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={toDate} onSelect={setToDate} initialFocus className={cn("p-3 pointer-events-auto")} />
-                </PopoverContent>
-              </Popover>
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateRange?.from && "text-muted-foreground",
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formattedRangeLabel}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           {hasActiveFilters && (
             <div className="mb-3 flex justify-end">
