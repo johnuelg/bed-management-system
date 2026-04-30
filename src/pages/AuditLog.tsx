@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, History, Search, X, CalendarIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, History, Search, X, CalendarIcon, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -151,6 +151,55 @@ const AuditLogPage = () => {
     ? `${formatSaudiIsoDateForDisplay(calendarDateToIsoDate(dateRange.from), { year: "numeric", month: "short", day: "numeric" })}${dateRange.to ? ` – ${formatSaudiIsoDateForDisplay(calendarDateToIsoDate(dateRange.to), { year: "numeric", month: "short", day: "numeric" })}` : ""}`
     : "Pick date range";
 
+  const exportToCsv = () => {
+    const escape = (val: unknown) => {
+      const s = val === null || val === undefined ? "" : String(val);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const formatChangesForCsv = (entry: AuditLogEntry) => {
+      if (entry.action === "ADD" || entry.action === "DELETE") return "";
+      const keys = Object.keys(entry.changes ?? {});
+      return keys
+        .map((key) => {
+          const change = entry.changes[key] ?? {};
+          const isDeptId = key === "department_id";
+          const fromVal = isDeptId ? departmentMap.get(String(change.from)) ?? change.from : change.from;
+          const toVal = isDeptId ? departmentMap.get(String(change.to)) ?? change.to : change.to;
+          return `${friendlyKey(key)}: ${formatChange(key, fromVal)} -> ${formatChange(key, toVal)}`;
+        })
+        .join(" | ");
+    };
+    const header = ["Timestamp (Asia/Riyadh)", "User Name", "Action", "Department", "Date of Record", "Changes"];
+    const rows = filteredLogs.map((entry) => {
+      const timestampLabel = entry.created_at
+        ? `${formatSaudiDateTime(new Date(entry.created_at), { year: "numeric", month: "short", day: "numeric" })}, ${formatSaudiDateTime(new Date(entry.created_at), { hour: "2-digit", minute: "2-digit", hour12: true })}`
+        : "";
+      const recordDateLabel = entry.record_date
+        ? formatSaudiIsoDateForDisplay(entry.record_date, { year: "numeric", month: "short", day: "numeric" })
+        : "";
+      return [
+        timestampLabel,
+        entry.user_name ?? "Unknown",
+        entry.action,
+        entry.department_name ?? "",
+        recordDateLabel,
+        formatChangesForCsv(entry),
+      ]
+        .map(escape)
+        .join(",");
+    });
+    const csv = [header.join(","), ...rows].join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `audit-log-${getSaudiIsoDate()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <section className="space-y-5 sm:space-y-6">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -159,11 +208,27 @@ const AuditLogPage = () => {
           <p className="text-sm text-muted-foreground">
             Full history of every Add, Edit, and Delete action on bed entries.
           </p>
-          <Badge variant="secondary" className="mt-2 w-fit">Timezone: Asia/Riyadh</Badge>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">Timezone: Asia/Riyadh</Badge>
+            <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
+              Tamper-proof
+            </Badge>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <History className="h-4 w-4" />
-          {filteredLogs.length} of {logs.length} {logs.length === 1 ? "entry" : "entries"}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <History className="h-4 w-4" />
+            {filteredLogs.length} of {logs.length} {logs.length === 1 ? "entry" : "entries"}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportToCsv}
+            disabled={filteredLogs.length === 0}
+          >
+            <Download className="mr-1 h-4 w-4" />
+            Export CSV
+          </Button>
         </div>
       </header>
 
