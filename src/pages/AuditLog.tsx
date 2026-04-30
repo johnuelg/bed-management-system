@@ -61,7 +61,6 @@ const friendlyKey = (key: string) =>
     .replace(/\b\w/g, (m) => m.toUpperCase());
 
 const renderChanges = (entry: AuditLogEntry, departmentMap: Map<string, string>) => {
-  if (entry.action === "ADD" || entry.action === "DELETE") return "—";
   const keys = Object.keys(entry.changes ?? {});
   if (keys.length === 0) return "—";
   return (
@@ -157,7 +156,6 @@ const AuditLogPage = () => {
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const formatChangesForCsv = (entry: AuditLogEntry) => {
-      if (entry.action === "ADD" || entry.action === "DELETE") return "";
       const keys = Object.keys(entry.changes ?? {});
       return keys
         .map((key) => {
