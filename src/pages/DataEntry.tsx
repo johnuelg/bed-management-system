@@ -474,11 +474,7 @@ const DataEntryPage = () => {
 
         const submittedOn = getSaudiIsoDate(new Date());
 
-        const isEdit = Boolean(form.id);
         const recordId = form.id || (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : undefined);
-
-        // Capture before-state for audit (only on edit)
-        const beforeRow = isEdit ? await fetchBedSubmissionById(form.id) : null;
 
         const payload = {
           id: recordId,
@@ -496,26 +492,6 @@ const DataEntryPage = () => {
         } as const;
 
         await saveBedSubmission(roles, payload);
-
-        // Write audit log (best-effort; do not fail the save if it errors)
-        try {
-          const action = isEdit ? "EDIT" : "ADD";
-          const departmentName = departmentNameById[payload.department_id] ?? null;
-          const changes = isEdit
-            ? diffBedSubmission(beforeRow, payload)
-            : diffBedSubmission(null, payload);
-          await writeAuditLog({
-            action,
-            record_id: recordId ?? null,
-            user_id: currentUserId,
-            user_name: profile?.display_name ?? user?.email ?? null,
-            department_name: departmentName,
-            record_date: submittedOn,
-            changes: isEdit ? changes : {},
-          });
-        } catch (logError) {
-          console.warn("Audit log failed", logError);
-        }
     },
     onSuccess: async () => {
       toast({ title: "Submission saved" });
@@ -528,24 +504,7 @@ const DataEntryPage = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const beforeRow = await fetchBedSubmissionById(id);
       await deleteBedSubmission(roles, id);
-      try {
-        const currentUserId = await getCurrentUserId();
-        if (currentUserId) {
-          await writeAuditLog({
-            action: "DELETE",
-            record_id: id,
-            user_id: currentUserId,
-            user_name: profile?.display_name ?? user?.email ?? null,
-            department_name: beforeRow ? (departmentNameById[beforeRow.department_id] ?? null) : null,
-            record_date: beforeRow?.submitted_on ?? null,
-            changes: {},
-          });
-        }
-      } catch (logError) {
-        console.warn("Audit log failed", logError);
-      }
     },
     onSuccess: async () => {
       toast({ title: "Submission deleted" });
