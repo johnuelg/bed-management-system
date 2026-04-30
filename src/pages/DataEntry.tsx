@@ -46,8 +46,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { calendarDateToIsoDate, formatSaudiDateTime, getSaudiIsoDate, isoDateToCalendarDate } from "@/lib/date-time";
 import {
   deleteBedSubmission,
-  diffBedSubmission,
-  fetchBedSubmissionById,
   fetchDepartments,
   fetchDepartmentTotalBeds,
   fetchFormFields,
@@ -57,7 +55,6 @@ import {
   fetchUserEntryPermissions,
   getCurrentUserId,
   saveBedSubmission,
-  writeAuditLog,
 } from "@/lib/supabase-api";
 import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
@@ -77,7 +74,7 @@ import type { KpiFormula } from "@/types/hospital";
 
 
 const DataEntryPage = () => {
-  const { roles, user, profile } = useAuth();
+  const { roles, user } = useAuth();
   const qc = useQueryClient();
   const saudiTodayForCalendar = useMemo(() => isoDateToCalendarDate(getSaudiIsoDate(new Date())), []);
   const canEditAllBedEntryFields = hasAnyRole(roles, ["admin", "staff"]);
