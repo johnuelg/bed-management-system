@@ -105,9 +105,9 @@ BEGIN
     old_custom := COALESCE(OLD.custom_fields, '{}'::jsonb);
     new_custom := COALESCE(NEW.custom_fields, '{}'::jsonb);
     FOR custom_key IN
-      SELECT key FROM jsonb_object_keys(old_custom) AS key
+      SELECT jsonb_object_keys(old_custom)
       UNION
-      SELECT key FROM jsonb_object_keys(new_custom) AS key
+      SELECT jsonb_object_keys(new_custom)
     LOOP
       IF old_custom -> custom_key IS DISTINCT FROM new_custom -> custom_key THEN
         change_set := change_set || jsonb_build_object('custom.' || custom_key, jsonb_build_object('from', old_custom -> custom_key, 'to', new_custom -> custom_key));
