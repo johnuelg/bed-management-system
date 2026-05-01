@@ -83,7 +83,7 @@ export const AppShell = () => {
 
   return (
     <div className="flex min-h-screen w-full">
-      <aside className="hidden w-64 border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex md:flex-col lg:w-72">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 self-start overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex md:flex-col lg:w-72">
         <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-sidebar-primary/20 p-1">
             <img src={logo} alt="Taif Children's Hospital logo" className="h-10 w-10 object-contain" loading="lazy" />
