@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, BedDouble, ChevronDown, ClipboardList, FileBarChart, FileCog, History, LayoutDashboard, LogOut, Menu, Settings2, Table as TableIcon, Users2 } from "lucide-react";
+import { BarChart3, BedDouble, ChevronDown, ClipboardList, FileBarChart, FileCog, History, LayoutDashboard, LogOut, Settings2, Table as TableIcon, Users2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -9,7 +9,23 @@ import { useAuth } from "@/hooks/use-auth";
 import { getPrimaryRole, hasAnyRole } from "@/lib/rbac";
 import { fetchNavVisibilitySettings } from "@/lib/supabase-api";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import type { RoleMenuVisibility } from "@/types/hospital";
 
@@ -50,12 +66,21 @@ const settingsSubNavItems: NavItem[] = [
   { to: "/form-builder", label: "Form Builder", icon: FileCog, settingKey: "form_builder", roles: ["admin"] },
 ];
 
-export const AppShell = () => {
+const SIDEBAR_COOKIE_NAME = "sidebar:state";
+
+const readSidebarCookie = (): boolean => {
+  if (typeof document === "undefined") return true;
+  const match = document.cookie.split("; ").find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`));
+  if (!match) return true;
+  return match.split("=")[1] !== "false";
+};
+
+const AppShellInner = () => {
   const { roles, signOut, profile } = useAuth();
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [settingsOpenDesktop, setSettingsOpenDesktop] = useState(false);
-  const [settingsOpenMobile, setSettingsOpenMobile] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { state, isMobile, setOpenMobile } = useSidebar();
+  const collapsed = state === "collapsed" && !isMobile;
   const { data: navVisibility } = useQuery({ queryKey: ["app_settings", "nav_visibility"], queryFn: fetchNavVisibilitySettings });
 
   const primaryRole = getPrimaryRole(roles);
@@ -76,193 +101,113 @@ export const AppShell = () => {
 
   useEffect(() => {
     if (settingsActive) {
-      setSettingsOpenDesktop(true);
-      setSettingsOpenMobile(true);
+      setSettingsOpen(true);
     }
   }, [settingsActive]);
 
+  const closeMobile = () => {
+    if (isMobile) setOpenMobile(false);
+  };
+
   return (
     <div className="flex min-h-screen w-full">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 self-start overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex md:flex-col lg:w-72">
-        <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-sidebar-primary/20 p-1">
-            <img src={logo} alt="Taif Children's Hospital logo" className="h-10 w-10 object-contain" loading="lazy" />
+      <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+        <SidebarHeader className="border-b border-sidebar-border">
+          <div className="flex items-center gap-3 px-1 py-2">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary/20 p-1">
+              <img src={logo} alt="Taif Children's Hospital logo" className="h-8 w-8 object-contain" loading="lazy" />
+            </div>
+            {!collapsed ? (
+              <div className="min-w-0">
+                <p className="truncate text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/80">Taif Children's Hospital</p>
+                <h1 className="truncate text-sm font-bold">Bed Management</h1>
+              </div>
+            ) : null}
           </div>
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-sidebar-foreground/80">Taif Children's Hospital</p>
-            <h1 className="text-sm font-bold">Bed Management</h1>
-          </div>
-        </div>
+        </SidebarHeader>
 
-        <nav className="space-y-1 p-3">
-          {visibleTopLevelItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "hospital-transition flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                )
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </NavLink>
-          ))}
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleTopLevelItems.map((item) => {
+                  const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+                  return (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                        <NavLink to={item.to} onClick={closeMobile}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
 
-          {settingsVisible ? (
-            <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => setSettingsOpenDesktop((prev) => !prev)}
-                className={cn(
-                  "hospital-transition flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  settingsActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                )}
-                aria-expanded={settingsOpenDesktop}
-                aria-controls="settings-submenu-desktop"
-              >
-                <Settings2 className="h-4 w-4" />
-                <span className="flex-1 text-left">Settings</span>
-                <ChevronDown className={cn("h-4 w-4 transition-transform", settingsOpenDesktop && "rotate-180")} />
-              </button>
-
-              {settingsOpenDesktop ? (
-                <div id="settings-submenu-desktop" className="space-y-1 pl-6">
-                  {visibleSettingsItems.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      className={({ isActive }) =>
-                        cn(
-                          "hospital-transition block rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                          isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                        )
-                      }
+                {settingsVisible ? (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={() => setSettingsOpen((prev) => !prev)}
+                      isActive={settingsActive}
+                      tooltip="Settings"
+                      aria-expanded={settingsOpen}
                     >
-                      {item.label}
-                    </NavLink>
-                  ))}
-                </div>
-              ) : null}
+                      <Settings2 className="h-4 w-4" />
+                      <span className="flex-1 text-left">Settings</span>
+                      <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", settingsOpen && "rotate-180")} />
+                    </SidebarMenuButton>
+                    {settingsOpen && !collapsed ? (
+                      <SidebarMenuSub>
+                        {visibleSettingsItems.map((item) => {
+                          const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+                          return (
+                            <SidebarMenuSubItem key={item.to}>
+                              <SidebarMenuSubButton asChild isActive={active}>
+                                <NavLink to={item.to} onClick={closeMobile}>
+                                  {item.label}
+                                </NavLink>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          );
+                        })}
+                      </SidebarMenuSub>
+                    ) : null}
+                  </SidebarMenuItem>
+                ) : null}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <SidebarFooter className="border-t border-sidebar-border">
+          {!collapsed ? (
+            <div className="px-1 pb-1">
+              <p className="text-xs text-sidebar-foreground/70">Signed in as</p>
+              <p className="truncate text-sm font-semibold">{profile?.display_name ?? "Hospital User"}</p>
             </div>
           ) : null}
-        </nav>
-
-        <div className="mt-auto border-t border-sidebar-border p-4">
-          <p className="text-xs text-sidebar-foreground/70">Signed in as</p>
-          <p className="truncate text-sm font-semibold">{profile?.display_name ?? "Hospital User"}</p>
           <Button
             variant="secondary"
-            className="mt-3 w-full bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80"
-            onClick={() => void signOut()}
+            size={collapsed ? "icon" : "default"}
+            className="bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80"
+            onClick={() => {
+              closeMobile();
+              void signOut();
+            }}
+            aria-label="Logout"
           >
-            <LogOut className="mr-2 h-4 w-4" /> Logout
+            <LogOut className={cn("h-4 w-4", !collapsed && "mr-2")} />
+            {!collapsed ? "Logout" : null}
           </Button>
-        </div>
-      </aside>
+        </SidebarFooter>
+      </Sidebar>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 border-b bg-background/95 px-3 py-3 backdrop-blur sm:px-4 md:hidden">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <img src={logo} alt="Hospital logo" className="h-8 w-8 object-contain" loading="lazy" />
-              <p className="truncate text-sm font-bold">Taif Bed Management</p>
-            </div>
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" aria-label="Open navigation menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[85vw] max-w-sm border-sidebar-border bg-sidebar p-0 text-sidebar-foreground">
-                <div className="flex h-full flex-col">
-                  <div className="flex items-center gap-3 border-b border-sidebar-border px-4 py-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary/20 p-1">
-                      <img src={logo} alt="Taif Children's Hospital logo" className="h-8 w-8 object-contain" loading="lazy" />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-sidebar-foreground/80">Taif Children's Hospital</p>
-                      <p className="text-sm font-bold">Bed Management</p>
-                    </div>
-                  </div>
-
-                  <nav className="space-y-1 p-3">
-                    {visibleTopLevelItems.map((item) => (
-                      <NavLink
-                        key={`mobile-${item.to}`}
-                        to={item.to}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={({ isActive }) =>
-                          cn(
-                            "hospital-transition flex items-center gap-3 rounded-md px-3 py-2.5 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                            isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                          )
-                        }
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {item.label}
-                      </NavLink>
-                    ))}
-
-                    {settingsVisible ? (
-                      <div className="space-y-1">
-                        <button
-                          type="button"
-                          onClick={() => setSettingsOpenMobile((prev) => !prev)}
-                          className={cn(
-                            "hospital-transition flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                            settingsActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                          )}
-                          aria-expanded={settingsOpenMobile}
-                          aria-controls="settings-submenu-mobile"
-                        >
-                          <Settings2 className="h-4 w-4" />
-                          <span className="flex-1 text-left">Settings</span>
-                          <ChevronDown className={cn("h-4 w-4 transition-transform", settingsOpenMobile && "rotate-180")} />
-                        </button>
-
-                        {settingsOpenMobile ? (
-                          <div id="settings-submenu-mobile" className="space-y-1 pl-6">
-                            {visibleSettingsItems.map((item) => (
-                              <NavLink
-                                key={`mobile-settings-${item.to}`}
-                                to={item.to}
-                                onClick={() => setMobileMenuOpen(false)}
-                                className={({ isActive }) =>
-                                  cn(
-                                    "hospital-transition block rounded-md px-3 py-2.5 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                                  )
-                                }
-                              >
-                                {item.label}
-                              </NavLink>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </nav>
-
-                  <div className="mt-auto border-t border-sidebar-border p-4">
-                    <p className="text-xs text-sidebar-foreground/70">Signed in as</p>
-                    <p className="truncate text-sm font-semibold">{profile?.display_name ?? "Hospital User"}</p>
-                    <Button
-                      variant="secondary"
-                      className="mt-3 w-full bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80"
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        void signOut();
-                      }}
-                    >
-                      <LogOut className="mr-2 h-4 w-4" /> Logout
-                    </Button>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+        <header className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background/95 px-3 py-3 backdrop-blur sm:px-4">
+          <SidebarTrigger className="h-9 w-9" aria-label="Toggle sidebar" />
+          <div className="flex min-w-0 items-center gap-2 md:hidden">
+            <img src={logo} alt="Hospital logo" className="h-8 w-8 object-contain" loading="lazy" />
+            <p className="truncate text-sm font-bold">Taif Bed Management</p>
           </div>
         </header>
 
@@ -277,5 +222,13 @@ export const AppShell = () => {
         </motion.main>
       </div>
     </div>
+  );
+};
+
+export const AppShell = () => {
+  return (
+    <SidebarProvider defaultOpen={readSidebarCookie()}>
+      <AppShellInner />
+    </SidebarProvider>
   );
 };
