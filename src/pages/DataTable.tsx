@@ -28,6 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { hasAnyRole } from "@/lib/rbac";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
   calendarDateToIsoDate,
   formatSaudiIsoDateForDisplay,
@@ -680,85 +681,33 @@ const DataTablePage = () => {
           </span>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort("date")}>
-                    Date {renderSortIcon("date")}
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort("time")}>
-                    Time {renderSortIcon("time")}
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort("department")}>
-                    Department {renderSortIcon("department")}
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("total_beds")}>
-                    Total Beds {renderSortIcon("total_beds")}
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("occupied")}>
-                    Occupied {renderSortIcon("occupied")}
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("closed")}>
-                    Closed {renderSortIcon("closed")}
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("vacant")}>
-                    Vacant {renderSortIcon("vacant")}
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("waiting")}>
-                    Waiting {renderSortIcon("waiting")}
-                  </TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Medical Ped</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Iso Nor Pres Ped</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Iso Ve Pres Ped</TableHead>
-                  <TableHead className="text-center whitespace-nowrap">Single Room</TableHead>
-                  <TableHead className="whitespace-nowrap">Room No. &amp; Reason</TableHead>
-                  <TableHead>Reason for Closure</TableHead>
-                  <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("occupancy")}>
-                    Occupancy {renderSortIcon("occupancy")}
-                  </TableHead>
-                  <TableHead>Status</TableHead>
-                  {canDelete && <TableHead className="w-[60px] text-right">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedRows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={canDelete ? 17 : 16} className="py-6 text-center text-muted-foreground">
-                      No entries found for the current filters.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedRows.map((entry) => {
-                    const benchmark = getOccupancyBenchmark(entry.occupancy);
-                    return (
-                      <TableRow key={entry.row.id}>
-                        <TableCell>{entry.date || "-"}</TableCell>
-                        <TableCell>{entry.time || "-"}</TableCell>
-                        <TableCell>{entry.department}</TableCell>
-                        <TableCell className="text-right font-medium">{entry.totalBeds}</TableCell>
-                        <TableCell className="text-right">{entry.occupied}</TableCell>
-                        <TableCell className="text-right">{entry.closed}</TableCell>
-                        <TableCell className="text-right">{entry.vacant}</TableCell>
-                        <TableCell className="text-right">{entry.waiting}</TableCell>
-                        <TableCell className="text-right">{entry.medicalPed}</TableCell>
-                        <TableCell className="text-right">{entry.isoNorPresPed}</TableCell>
-                        <TableCell className="text-right">{entry.isoVePresPed}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            <Checkbox checked={entry.singleRoom} disabled aria-label="Single Room available" />
+          {/* Mobile (<sm): card list */}
+          <div className="space-y-3 sm:hidden">
+            {paginatedRows.length === 0 ? (
+              <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+                No entries found for the current filters.
+              </div>
+            ) : (
+              <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
+                {paginatedRows.map((entry) => {
+                  const benchmark = getOccupancyBenchmark(entry.occupancy);
+                  return (
+                    <div
+                      key={entry.row.id}
+                      className="rounded-lg border bg-card p-3 shadow-sm transition-colors hover:bg-muted/30"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold">{entry.department}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {entry.date || "-"} • {entry.time || "-"}
                           </div>
-                        </TableCell>
-                        <TableCell className="max-w-[220px] whitespace-normal break-words">
-                          {entry.roomNoReason || "-"}
-                        </TableCell>
-                        <TableCell>{entry.row.closure_reason || "-"}</TableCell>
-                        <TableCell className="text-right" style={{ color: benchmark?.color }}>
-                          {entry.occupancy.toFixed(1)}%
-                        </TableCell>
-                        <TableCell><StatusBadge level={benchmark} /></TableCell>
-                        {canDelete && (
-                          <TableCell className="text-right">
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="text-sm font-semibold" style={{ color: benchmark?.color }}>
+                            {entry.occupancy.toFixed(1)}%
+                          </span>
+                          {canDelete && (
                             <Button
                               type="button"
                               variant="ghost"
@@ -774,14 +723,148 @@ const DataTablePage = () => {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <StatusBadge level={benchmark} />
+                      </div>
+                      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                        <div className="flex justify-between"><dt className="text-muted-foreground">Total</dt><dd className="font-medium">{entry.totalBeds}</dd></div>
+                        <div className="flex justify-between"><dt className="text-muted-foreground">Occupied</dt><dd className="font-medium">{entry.occupied}</dd></div>
+                        <div className="flex justify-between"><dt className="text-muted-foreground">Closed</dt><dd className="font-medium">{entry.closed}</dd></div>
+                        <div className="flex justify-between"><dt className="text-muted-foreground">Vacant</dt><dd className="font-medium">{entry.vacant}</dd></div>
+                        <div className="flex justify-between"><dt className="text-muted-foreground">Waiting</dt><dd className="font-medium">{entry.waiting}</dd></div>
+                        <div className="flex justify-between"><dt className="text-muted-foreground">Single Room</dt><dd className="font-medium">{entry.singleRoom ? "Yes" : "No"}</dd></div>
+                      </dl>
+                      {(entry.roomNoReason || entry.row.closure_reason) && (
+                        <div className="mt-2 space-y-1 text-xs">
+                          {entry.roomNoReason && (
+                            <p><span className="text-muted-foreground">Room/Reason:</span> {entry.roomNoReason}</p>
+                          )}
+                          {entry.row.closure_reason && (
+                            <p><span className="text-muted-foreground">Closure:</span> {entry.row.closure_reason}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Tablet & Desktop (>=sm): adaptive table with independent scroll */}
+          <div className="hidden rounded-lg border bg-card sm:block">
+            <div className="max-h-[65vh] w-full overflow-auto">
+              <table className="w-full caption-bottom text-sm">
+                <thead className="sticky top-0 z-10 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 [&_th]:border-b">
+                  <tr className="[&>th]:h-11 [&>th]:px-3 [&>th]:text-left [&>th]:align-middle [&>th]:font-medium [&>th]:text-muted-foreground">
+                    <th className="cursor-pointer select-none whitespace-nowrap" onClick={() => handleSort("date")}>
+                      Date {renderSortIcon("date")}
+                    </th>
+                    <th className="hidden cursor-pointer select-none whitespace-nowrap md:table-cell" onClick={() => handleSort("time")}>
+                      Time {renderSortIcon("time")}
+                    </th>
+                    <th className="cursor-pointer select-none whitespace-nowrap" onClick={() => handleSort("department")}>
+                      Department {renderSortIcon("department")}
+                    </th>
+                    <th className="cursor-pointer select-none whitespace-nowrap text-right" onClick={() => handleSort("total_beds")}>
+                      Total {renderSortIcon("total_beds")}
+                    </th>
+                    <th className="cursor-pointer select-none whitespace-nowrap text-right" onClick={() => handleSort("occupied")}>
+                      Occupied {renderSortIcon("occupied")}
+                    </th>
+                    <th className="hidden cursor-pointer select-none whitespace-nowrap text-right md:table-cell" onClick={() => handleSort("closed")}>
+                      Closed {renderSortIcon("closed")}
+                    </th>
+                    <th className="hidden cursor-pointer select-none whitespace-nowrap text-right md:table-cell" onClick={() => handleSort("vacant")}>
+                      Vacant {renderSortIcon("vacant")}
+                    </th>
+                    <th className="hidden cursor-pointer select-none whitespace-nowrap text-right lg:table-cell" onClick={() => handleSort("waiting")}>
+                      Waiting {renderSortIcon("waiting")}
+                    </th>
+                    <th className="hidden whitespace-nowrap text-right xl:table-cell">Medical Ped</th>
+                    <th className="hidden whitespace-nowrap text-right xl:table-cell">Iso Nor Pres Ped</th>
+                    <th className="hidden whitespace-nowrap text-right xl:table-cell">Iso Ve Pres Ped</th>
+                    <th className="hidden whitespace-nowrap text-center xl:table-cell">Single Room</th>
+                    <th className="hidden whitespace-nowrap xl:table-cell">Room No. &amp; Reason</th>
+                    <th className="hidden xl:table-cell">Reason for Closure</th>
+                    <th className="cursor-pointer select-none whitespace-nowrap text-right" onClick={() => handleSort("occupancy")}>
+                      Occupancy {renderSortIcon("occupancy")}
+                    </th>
+                    <th className="hidden whitespace-nowrap lg:table-cell">Status</th>
+                    {canDelete && <th className="w-[60px] text-right">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody className="[&_td]:p-3 [&_td]:align-middle [&_tr]:border-b [&_tr:last-child]:border-0">
+                  {paginatedRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={canDelete ? 17 : 16} className="py-6 text-center text-muted-foreground">
+                        No entries found for the current filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedRows.map((entry, idx) => {
+                      const benchmark = getOccupancyBenchmark(entry.occupancy);
+                      return (
+                        <tr
+                          key={entry.row.id}
+                          className={cn(
+                            "transition-colors hover:bg-muted/40",
+                            idx % 2 === 1 && "bg-muted/20",
+                          )}
+                        >
+                          <td className="whitespace-nowrap">{entry.date || "-"}</td>
+                          <td className="hidden whitespace-nowrap md:table-cell">{entry.time || "-"}</td>
+                          <td className="max-w-[220px] truncate">{entry.department}</td>
+                          <td className="text-right font-medium">{entry.totalBeds}</td>
+                          <td className="text-right">{entry.occupied}</td>
+                          <td className="hidden text-right md:table-cell">{entry.closed}</td>
+                          <td className="hidden text-right md:table-cell">{entry.vacant}</td>
+                          <td className="hidden text-right lg:table-cell">{entry.waiting}</td>
+                          <td className="hidden text-right xl:table-cell">{entry.medicalPed}</td>
+                          <td className="hidden text-right xl:table-cell">{entry.isoNorPresPed}</td>
+                          <td className="hidden text-right xl:table-cell">{entry.isoVePresPed}</td>
+                          <td className="hidden text-center xl:table-cell">
+                            <div className="flex justify-center">
+                              <Checkbox checked={entry.singleRoom} disabled aria-label="Single Room available" />
+                            </div>
+                          </td>
+                          <td className="hidden max-w-[220px] whitespace-normal break-words xl:table-cell">
+                            {entry.roomNoReason || "-"}
+                          </td>
+                          <td className="hidden xl:table-cell">{entry.row.closure_reason || "-"}</td>
+                          <td className="whitespace-nowrap text-right font-medium" style={{ color: benchmark?.color }}>
+                            {entry.occupancy.toFixed(1)}%
+                          </td>
+                          <td className="hidden lg:table-cell"><StatusBadge level={benchmark} /></td>
+                          {canDelete && (
+                            <td className="text-right">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() =>
+                                  setDeleteTarget({
+                                    id: entry.row.id,
+                                    label: `${entry.department} • ${entry.date} ${entry.time}`,
+                                  })
+                                }
+                                aria-label="Delete entry"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="mt-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
