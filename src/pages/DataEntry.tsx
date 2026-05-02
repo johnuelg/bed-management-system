@@ -46,6 +46,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { calendarDateToIsoDate, formatSaudiDateTime, getSaudiIsoDate, isoDateToCalendarDate } from "@/lib/date-time";
 import {
   deleteBedSubmission,
+  diffBedSubmission,
   fetchDepartments,
   fetchDepartmentTotalBeds,
   fetchFormFields,
@@ -55,6 +56,7 @@ import {
   fetchUserEntryPermissions,
   getCurrentUserId,
   saveBedSubmission,
+  writeAuditLog,
 } from "@/lib/supabase-api";
 import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
@@ -491,12 +493,27 @@ const DataEntryPage = () => {
           updated_by: currentUserId,
         } as const;
 
-        await saveBedSubmission(roles, payload);
+        const previousRow = form.id ? rows.find((row) => row.id === form.id) ?? null : null;
+        const savedRow = await saveBedSubmission(roles, payload);
+        const changes = diffBedSubmission(previousRow, savedRow);
+
+        if (Object.keys(changes).length > 0) {
+          await writeAuditLog({
+            action: previousRow ? "EDIT" : "ADD",
+            record_id: savedRow.id,
+            user_id: currentUserId,
+            user_name: user?.user_metadata?.display_name ?? user?.email?.split("@")[0] ?? null,
+            department_name: departmentNameById[savedRow.department_id] ?? null,
+            record_date: savedRow.submitted_on,
+            changes,
+          });
+        }
     },
     onSuccess: async () => {
       toast({ title: "Submission saved" });
       resetForm();
       await qc.invalidateQueries({ queryKey: ["bed_submissions_today"] });
+      await qc.invalidateQueries({ queryKey: ["audit_logs"] });
       markDataRefreshed();
     },
     onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
@@ -504,11 +521,26 @@ const DataEntryPage = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const previousRow = rows.find((row) => row.id === id) ?? null;
       await deleteBedSubmission(roles, id);
+      const currentUserId = await getCurrentUserId();
+
+      if (previousRow && currentUserId) {
+        await writeAuditLog({
+          action: "DELETE",
+          record_id: previousRow.id,
+          user_id: currentUserId,
+          user_name: user?.user_metadata?.display_name ?? user?.email?.split("@")[0] ?? null,
+          department_name: departmentNameById[previousRow.department_id] ?? null,
+          record_date: previousRow.submitted_on,
+          changes: diffBedSubmission(previousRow, {}),
+        });
+      }
     },
     onSuccess: async () => {
       toast({ title: "Submission deleted" });
       await qc.invalidateQueries({ queryKey: ["bed_submissions_today"] });
+      await qc.invalidateQueries({ queryKey: ["audit_logs"] });
       markDataRefreshed();
       if (form.id) {
         resetForm();

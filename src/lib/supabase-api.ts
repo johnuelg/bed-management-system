@@ -695,8 +695,9 @@ export const saveBedSubmission = async (
     throw new Error("Unauthorized: cannot submit bed records.");
   }
 
-  const { error } = await db.from("bed_submissions").upsert(normalized);
+  const { data, error } = await db.from("bed_submissions").upsert(normalized).select("*").single();
   if (error) throw error;
+  return data as BedSubmission;
 };
 
 export const deleteBedSubmission = async (roles: AppRole[], id: string) => {
@@ -856,6 +857,21 @@ export const writeAuditLog = async (entry: {
   record_date?: string | null;
   changes?: Record<string, { from?: unknown; to?: unknown }>;
 }) => {
+  if (entry.record_id) {
+    const recentWindow = new Date(Date.now() - 15_000).toISOString();
+    const changesJson = JSON.stringify(entry.changes ?? {});
+    const { data: existing, error: lookupError } = await db
+      .from("audit_logs")
+      .select("id,changes")
+      .eq("action", entry.action)
+      .eq("record_id", entry.record_id)
+      .gte("created_at", recentWindow)
+      .limit(1);
+
+    if (lookupError) throw lookupError;
+    if ((existing ?? []).some((row: { changes?: unknown }) => JSON.stringify(row.changes ?? {}) === changesJson)) return;
+  }
+
   const { error } = await db.from("audit_logs").insert({
     action: entry.action,
     table_name: "bed_submissions",
