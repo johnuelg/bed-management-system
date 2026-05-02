@@ -859,16 +859,17 @@ export const writeAuditLog = async (entry: {
 }) => {
   if (entry.record_id) {
     const recentWindow = new Date(Date.now() - 15_000).toISOString();
+    const changesJson = JSON.stringify(entry.changes ?? {});
     const { data: existing, error: lookupError } = await db
       .from("audit_logs")
-      .select("id")
+      .select("id,changes")
       .eq("action", entry.action)
       .eq("record_id", entry.record_id)
       .gte("created_at", recentWindow)
       .limit(1);
 
     if (lookupError) throw lookupError;
-    if ((existing ?? []).length > 0) return;
+    if ((existing ?? []).some((row: { changes?: unknown }) => JSON.stringify(row.changes ?? {}) === changesJson)) return;
   }
 
   const { error } = await db.from("audit_logs").insert({
