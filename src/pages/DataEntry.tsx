@@ -493,7 +493,21 @@ const DataEntryPage = () => {
           updated_by: currentUserId,
         } as const;
 
-        await saveBedSubmission(roles, payload);
+        const previousRow = form.id ? rows.find((row) => row.id === form.id) ?? null : null;
+        const savedRow = await saveBedSubmission(roles, payload);
+        const changes = diffBedSubmission(previousRow, savedRow);
+
+        if (Object.keys(changes).length > 0) {
+          await writeAuditLog({
+            action: previousRow ? "EDIT" : "ADD",
+            record_id: savedRow.id,
+            user_id: currentUserId,
+            user_name: user?.user_metadata?.display_name ?? user?.email?.split("@")[0] ?? null,
+            department_name: departmentNameById[savedRow.department_id] ?? null,
+            record_date: savedRow.submitted_on,
+            changes,
+          });
+        }
     },
     onSuccess: async () => {
       toast({ title: "Submission saved" });
