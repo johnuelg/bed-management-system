@@ -513,6 +513,7 @@ const DataEntryPage = () => {
       toast({ title: "Submission saved" });
       resetForm();
       await qc.invalidateQueries({ queryKey: ["bed_submissions_today"] });
+      await qc.invalidateQueries({ queryKey: ["audit_logs"] });
       markDataRefreshed();
     },
     onError: (error) => toast({ title: "Save failed", description: (error as Error).message, variant: "destructive" }),
