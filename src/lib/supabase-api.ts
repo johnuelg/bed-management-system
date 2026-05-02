@@ -857,6 +857,20 @@ export const writeAuditLog = async (entry: {
   record_date?: string | null;
   changes?: Record<string, { from?: unknown; to?: unknown }>;
 }) => {
+  if (entry.record_id) {
+    const recentWindow = new Date(Date.now() - 15_000).toISOString();
+    const { data: existing, error: lookupError } = await db
+      .from("audit_logs")
+      .select("id")
+      .eq("action", entry.action)
+      .eq("record_id", entry.record_id)
+      .gte("created_at", recentWindow)
+      .limit(1);
+
+    if (lookupError) throw lookupError;
+    if ((existing ?? []).length > 0) return;
+  }
+
   const { error } = await db.from("audit_logs").insert({
     action: entry.action,
     table_name: "bed_submissions",
