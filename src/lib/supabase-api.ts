@@ -695,8 +695,9 @@ export const saveBedSubmission = async (
     throw new Error("Unauthorized: cannot submit bed records.");
   }
 
-  const { error } = await db.from("bed_submissions").upsert(normalized);
+  const { data, error } = await db.from("bed_submissions").upsert(normalized).select("*").single();
   if (error) throw error;
+  return data as BedSubmission;
 };
 
 export const deleteBedSubmission = async (roles: AppRole[], id: string) => {
