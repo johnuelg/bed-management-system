@@ -520,11 +520,26 @@ const DataEntryPage = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const previousRow = rows.find((row) => row.id === id) ?? null;
       await deleteBedSubmission(roles, id);
+      const currentUserId = await getCurrentUserId();
+
+      if (previousRow && currentUserId) {
+        await writeAuditLog({
+          action: "DELETE",
+          record_id: previousRow.id,
+          user_id: currentUserId,
+          user_name: user?.user_metadata?.display_name ?? user?.email?.split("@")[0] ?? null,
+          department_name: departmentNameById[previousRow.department_id] ?? null,
+          record_date: previousRow.submitted_on,
+          changes: diffBedSubmission(previousRow, {}),
+        });
+      }
     },
     onSuccess: async () => {
       toast({ title: "Submission deleted" });
       await qc.invalidateQueries({ queryKey: ["bed_submissions_today"] });
+      await qc.invalidateQueries({ queryKey: ["audit_logs"] });
       markDataRefreshed();
       if (form.id) {
         resetForm();
