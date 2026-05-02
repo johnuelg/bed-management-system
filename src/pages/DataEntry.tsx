@@ -46,6 +46,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { calendarDateToIsoDate, formatSaudiDateTime, getSaudiIsoDate, isoDateToCalendarDate } from "@/lib/date-time";
 import {
   deleteBedSubmission,
+  diffBedSubmission,
   fetchDepartments,
   fetchDepartmentTotalBeds,
   fetchFormFields,
@@ -55,6 +56,7 @@ import {
   fetchUserEntryPermissions,
   getCurrentUserId,
   saveBedSubmission,
+  writeAuditLog,
 } from "@/lib/supabase-api";
 import { hasAnyRole } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
