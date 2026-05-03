@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, History, Search, X, CalendarIcon, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -305,46 +304,101 @@ const AuditLogPage = () => {
               {logs.length === 0 ? "No audit entries yet." : "No entries match the current filters."}
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Timestamp</TableHead>
-                    <TableHead>User Name</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Date of Record</TableHead>
-                    <TableHead>Changes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLogs.map((entry) => {
-                    const meta = actionMeta[entry.action];
-                    const timestampLabel = entry.created_at
-                      ? `${formatSaudiDateTime(new Date(entry.created_at), { year: "numeric", month: "short", day: "numeric" })}, ${formatSaudiDateTime(new Date(entry.created_at), { hour: "2-digit", minute: "2-digit", hour12: true })}`
-                      : "—";
-                    const recordDateLabel = entry.record_date
-                      ? formatSaudiIsoDateForDisplay(entry.record_date, { year: "numeric", month: "short", day: "numeric" })
-                      : "—";
-                    return (
-                      <TableRow key={entry.id}>
-                        <TableCell className="whitespace-nowrap text-sm">{timestampLabel}</TableCell>
-                        <TableCell className="text-sm">{entry.user_name ?? "Unknown"}</TableCell>
-                        <TableCell>
-                          <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold", meta.badge)}>
-                            <meta.Icon className="h-3.5 w-3.5" />
-                            {meta.label}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm">{entry.department_name ?? "—"}</TableCell>
-                        <TableCell className="whitespace-nowrap text-sm">{recordDateLabel}</TableCell>
-                        <TableCell>{renderChanges(entry, departmentMap)}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            <>
+              {/* Mobile card list (<640px) */}
+              <div className="sm:hidden max-h-[70vh] overflow-auto space-y-3 pr-1">
+                {filteredLogs.map((entry) => {
+                  const meta = actionMeta[entry.action];
+                  const timestampLabel = entry.created_at
+                    ? `${formatSaudiDateTime(new Date(entry.created_at), { year: "numeric", month: "short", day: "numeric" })}, ${formatSaudiDateTime(new Date(entry.created_at), { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                    : "—";
+                  const recordDateLabel = entry.record_date
+                    ? formatSaudiIsoDateForDisplay(entry.record_date, { year: "numeric", month: "short", day: "numeric" })
+                    : "—";
+                  return (
+                    <div key={entry.id} className="rounded-lg border bg-card p-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold truncate">{entry.department_name ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground truncate">{timestampLabel}</div>
+                        </div>
+                        <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold shrink-0", meta.badge)}>
+                          <meta.Icon className="h-3 w-3" />
+                          {meta.label}
+                        </span>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <div className="text-muted-foreground">User</div>
+                          <div className="font-medium truncate">{entry.user_name ?? "Unknown"}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Record date</div>
+                          <div className="font-medium">{recordDateLabel}</div>
+                        </div>
+                      </div>
+                      <div className="mt-2 border-t pt-2">
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Changes</div>
+                        {renderChanges(entry, departmentMap)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Tablet/Desktop table (≥640px) with independent vertical scroll */}
+              <div className="hidden sm:block rounded-lg border bg-card">
+                <div className="max-h-[65vh] w-full overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80">
+                      <tr className="[&>th]:h-11 [&>th]:px-3 [&>th]:text-left [&>th]:font-medium [&>th]:text-muted-foreground">
+                        <th className="whitespace-nowrap">Timestamp</th>
+                        <th className="hidden md:table-cell">User</th>
+                        <th>Action</th>
+                        <th className="hidden lg:table-cell">Department</th>
+                        <th className="hidden xl:table-cell whitespace-nowrap">Date of Record</th>
+                        <th>Changes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="[&_tr]:border-b [&>tr:last-child]:border-0">
+                      {filteredLogs.map((entry, idx) => {
+                        const meta = actionMeta[entry.action];
+                        const timestampLabel = entry.created_at
+                          ? `${formatSaudiDateTime(new Date(entry.created_at), { year: "numeric", month: "short", day: "numeric" })}, ${formatSaudiDateTime(new Date(entry.created_at), { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                          : "—";
+                        const recordDateLabel = entry.record_date
+                          ? formatSaudiIsoDateForDisplay(entry.record_date, { year: "numeric", month: "short", day: "numeric" })
+                          : "—";
+                        return (
+                          <tr
+                            key={entry.id}
+                            className={cn(
+                              "transition-colors hover:bg-muted/40 [&>td]:px-3 [&>td]:py-2.5 [&>td]:align-top",
+                              idx % 2 === 1 && "bg-muted/20",
+                            )}
+                          >
+                            <td className="whitespace-nowrap">
+                              {timestampLabel}
+                              <div className="md:hidden text-xs text-muted-foreground">{entry.user_name ?? "Unknown"}</div>
+                            </td>
+                            <td className="hidden md:table-cell">{entry.user_name ?? "Unknown"}</td>
+                            <td>
+                              <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold", meta.badge)}>
+                                <meta.Icon className="h-3.5 w-3.5" />
+                                {meta.label}
+                              </span>
+                            </td>
+                            <td className="hidden lg:table-cell">{entry.department_name ?? "—"}</td>
+                            <td className="hidden xl:table-cell whitespace-nowrap">{recordDateLabel}</td>
+                            <td className="min-w-[200px]">{renderChanges(entry, departmentMap)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
