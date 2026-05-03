@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import type { DateRange } from "react-day-picker";
 import { fetchAuditLogs, fetchDepartments } from "@/lib/supabase-api";
+import { useAuth } from "@/hooks/use-auth";
 import {
   formatSaudiDateTime,
   formatSaudiIsoDateForDisplay,
@@ -83,9 +84,12 @@ const renderChanges = (entry: AuditLogEntry, departmentMap: Map<string, string>)
 };
 
 const AuditLogPage = () => {
-  const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["audit_logs"],
+  const { loading: authLoading, user } = useAuth();
+  const { data: logs = [], isLoading, isError, error } = useQuery({
+    queryKey: ["audit_logs", user?.id ?? "anon"],
     queryFn: () => fetchAuditLogs(500),
+    enabled: !authLoading && Boolean(user?.id),
+    retry: 1,
   });
   const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
 
@@ -297,8 +301,15 @@ const AuditLogPage = () => {
             </div>
           )}
 
-          {isLoading ? (
+          {authLoading || isLoading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : isError ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
+              <p className="font-medium text-destructive">Audit log table is not available yet.</p>
+              <p className="mt-1 text-muted-foreground">
+                The live database returned: {error instanceof Error ? error.message : "Unable to load audit logs."}
+              </p>
+            </div>
           ) : filteredLogs.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {logs.length === 0 ? "No audit entries yet." : "No entries match the current filters."}
