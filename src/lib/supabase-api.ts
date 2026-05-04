@@ -97,6 +97,18 @@ const DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS: OccupancyBenchmarkSettings = {
   ],
 };
 
+const isMissingSchemaTable = (err: unknown) => {
+  const msg = (err as { message?: string })?.message ?? "";
+  const code = (err as { code?: string })?.code ?? "";
+  return (
+    code === "PGRST205" ||
+    code === "42P01" ||
+    /schema cache/i.test(msg) ||
+    /Could not find the table/i.test(msg) ||
+    /relation .* does not exist/i.test(msg)
+  );
+};
+
 const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
   if (!value || typeof value !== "object") return { ...DEFAULT_ROLE_MENU_VISIBILITY };
   const source = value as Partial<Record<keyof RoleMenuVisibility, unknown>>;
