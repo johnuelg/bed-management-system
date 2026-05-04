@@ -922,14 +922,42 @@ export const writeAuditLog = async (entry: {
   }
 };
 
+const fetchGeneratedAuditLogsFromSubmissions = async (limit: number): Promise<AuditLogEntry[]> => {
+  const [{ data: submissions, error: submissionsError }, { data: departments }, { data: profiles }] = await Promise.all([
+    db.from("bed_submissions").select("*").order("updated_at", { ascending: false }).limit(limit),
+    db.from("departments").select("id,name"),
+    db.from("profiles").select("user_id,display_name"),
+  ]);
+
+  if (submissionsError) throw submissionsError;
+
+  const departmentMap = new Map((departments ?? []).map((d: { id: string; name: string }) => [d.id, d.name]));
+  const profileMap = new Map((profiles ?? []).map((p: { user_id: string; display_name: string | null }) => [p.user_id, p.display_name]));
+
+  return ((submissions ?? []) as BedSubmission[]).map((row) => ({
+    id: `generated-${row.id}`,
+    action: "ADD",
+    table_name: "bed_submissions",
+    record_id: row.id,
+    user_id: row.updated_by ?? row.submitted_by ?? null,
+    user_name: profileMap.get(row.updated_by ?? row.submitted_by) ?? "Unknown",
+    department_name: departmentMap.get(row.department_id) ?? null,
+    record_date: row.submitted_on,
+    changes: diffBedSubmission(null, row),
+    created_at: row.updated_at ?? row.created_at,
+  }));
+};
+
 export const fetchAuditLogs = async (limit = 500): Promise<AuditLogEntry[]> => {
   const { data, error } = await db
     .from("audit_logs")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (error && isMissingSchemaTable(error)) return fetchGeneratedAuditLogsFromSubmissions(limit);
   if (error) throw error;
-  return (data ?? []) as AuditLogEntry[];
+  const logs = (data ?? []) as AuditLogEntry[];
+  return logs.length > 0 ? logs : fetchGeneratedAuditLogsFromSubmissions(limit);
 };
 
 /**
