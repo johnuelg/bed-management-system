@@ -97,6 +97,18 @@ const DEFAULT_OCCUPANCY_BENCHMARK_SETTINGS: OccupancyBenchmarkSettings = {
   ],
 };
 
+const isMissingSchemaTable = (err: unknown) => {
+  const msg = (err as { message?: string })?.message ?? "";
+  const code = (err as { code?: string })?.code ?? "";
+  return (
+    code === "PGRST205" ||
+    code === "42P01" ||
+    /schema cache/i.test(msg) ||
+    /Could not find the table/i.test(msg) ||
+    /relation .* does not exist/i.test(msg)
+  );
+};
+
 const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
   if (!value || typeof value !== "object") return { ...DEFAULT_ROLE_MENU_VISIBILITY };
   const source = value as Partial<Record<keyof RoleMenuVisibility, unknown>>;
@@ -821,6 +833,7 @@ export const fetchUserEntryPermissions = async (userId: string): Promise<UserEnt
     .select("user_id,can_add,can_edit,can_delete")
     .eq("user_id", userId)
     .maybeSingle();
+  if (error && isMissingSchemaTable(error)) return { user_id: userId, ...DEFAULT_PERMISSIONS };
   if (error) throw error;
   if (!data) return { user_id: userId, ...DEFAULT_PERMISSIONS };
   return data as UserEntryPermissions;
@@ -861,18 +874,6 @@ export const writeAuditLog = async (entry: {
   // audit_logs table is missing from the schema cache or RLS blocks the
   // insert, log a warning and continue — the database trigger on
   // bed_submissions still captures the event server-side when present.
-  const isMissingTable = (err: unknown) => {
-    const msg = (err as { message?: string })?.message ?? "";
-    const code = (err as { code?: string })?.code ?? "";
-    return (
-      code === "PGRST205" ||
-      code === "42P01" ||
-      /schema cache/i.test(msg) ||
-      /Could not find the table/i.test(msg) ||
-      /relation .* does not exist/i.test(msg)
-    );
-  };
-
   try {
     if (entry.record_id) {
       const recentWindow = new Date(Date.now() - 15_000).toISOString();
@@ -886,7 +887,7 @@ export const writeAuditLog = async (entry: {
         .limit(1);
 
       if (lookupError) {
-        if (isMissingTable(lookupError)) {
+        if (isMissingSchemaTable(lookupError)) {
           console.warn("[audit] audit_logs unavailable, skipping client-side log:", lookupError.message);
           return;
         }
@@ -906,19 +907,45 @@ export const writeAuditLog = async (entry: {
       changes: entry.changes ?? {},
     });
     if (error) {
-      if (isMissingTable(error)) {
+      if (isMissingSchemaTable(error)) {
         console.warn("[audit] audit_logs unavailable, skipping client-side log:", error.message);
         return;
       }
       throw error;
     }
   } catch (err) {
-    if (isMissingTable(err)) {
+    if (isMissingSchemaTable(err)) {
       console.warn("[audit] audit_logs unavailable, skipping client-side log");
       return;
     }
     throw err;
   }
+};
+
+const fetchGeneratedAuditLogsFromSubmissions = async (limit: number): Promise<AuditLogEntry[]> => {
+  const [{ data: submissions, error: submissionsError }, { data: departments }, { data: profiles }] = await Promise.all([
+    db.from("bed_submissions").select("*").order("updated_at", { ascending: false }).limit(limit),
+    db.from("departments").select("id,name"),
+    db.from("profiles").select("user_id,display_name"),
+  ]);
+
+  if (submissionsError) throw submissionsError;
+
+  const departmentMap = new Map<string, string>((departments ?? []).map((d: { id: string; name: string }) => [d.id, d.name]));
+  const profileMap = new Map<string, string | null>((profiles ?? []).map((p: { user_id: string; display_name: string | null }) => [p.user_id, p.display_name]));
+
+  return ((submissions ?? []) as BedSubmission[]).map((row) => ({
+    id: `generated-${row.id}`,
+    action: "ADD",
+    table_name: "bed_submissions",
+    record_id: row.id,
+    user_id: row.updated_by ?? row.submitted_by ?? null,
+    user_name: profileMap.get(row.updated_by ?? row.submitted_by) ?? "Unknown",
+    department_name: departmentMap.get(row.department_id) ?? null,
+    record_date: row.submitted_on,
+    changes: diffBedSubmission(null, row),
+    created_at: row.updated_at ?? row.created_at,
+  }));
 };
 
 export const fetchAuditLogs = async (limit = 500): Promise<AuditLogEntry[]> => {
@@ -927,8 +954,10 @@ export const fetchAuditLogs = async (limit = 500): Promise<AuditLogEntry[]> => {
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (error && isMissingSchemaTable(error)) return fetchGeneratedAuditLogsFromSubmissions(limit);
   if (error) throw error;
-  return (data ?? []) as AuditLogEntry[];
+  const logs = (data ?? []) as AuditLogEntry[];
+  return logs.length > 0 ? logs : fetchGeneratedAuditLogsFromSubmissions(limit);
 };
 
 /**
