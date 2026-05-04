@@ -833,6 +833,7 @@ export const fetchUserEntryPermissions = async (userId: string): Promise<UserEnt
     .select("user_id,can_add,can_edit,can_delete")
     .eq("user_id", userId)
     .maybeSingle();
+  if (error && isMissingSchemaTable(error)) return { user_id: userId, ...DEFAULT_PERMISSIONS };
   if (error) throw error;
   if (!data) return { user_id: userId, ...DEFAULT_PERMISSIONS };
   return data as UserEntryPermissions;
@@ -873,18 +874,6 @@ export const writeAuditLog = async (entry: {
   // audit_logs table is missing from the schema cache or RLS blocks the
   // insert, log a warning and continue — the database trigger on
   // bed_submissions still captures the event server-side when present.
-  const isMissingTable = (err: unknown) => {
-    const msg = (err as { message?: string })?.message ?? "";
-    const code = (err as { code?: string })?.code ?? "";
-    return (
-      code === "PGRST205" ||
-      code === "42P01" ||
-      /schema cache/i.test(msg) ||
-      /Could not find the table/i.test(msg) ||
-      /relation .* does not exist/i.test(msg)
-    );
-  };
-
   try {
     if (entry.record_id) {
       const recentWindow = new Date(Date.now() - 15_000).toISOString();
@@ -898,7 +887,7 @@ export const writeAuditLog = async (entry: {
         .limit(1);
 
       if (lookupError) {
-        if (isMissingTable(lookupError)) {
+        if (isMissingSchemaTable(lookupError)) {
           console.warn("[audit] audit_logs unavailable, skipping client-side log:", lookupError.message);
           return;
         }
@@ -918,14 +907,14 @@ export const writeAuditLog = async (entry: {
       changes: entry.changes ?? {},
     });
     if (error) {
-      if (isMissingTable(error)) {
+      if (isMissingSchemaTable(error)) {
         console.warn("[audit] audit_logs unavailable, skipping client-side log:", error.message);
         return;
       }
       throw error;
     }
   } catch (err) {
-    if (isMissingTable(err)) {
+    if (isMissingSchemaTable(err)) {
       console.warn("[audit] audit_logs unavailable, skipping client-side log");
       return;
     }
