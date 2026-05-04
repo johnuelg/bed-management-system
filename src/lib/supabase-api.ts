@@ -931,8 +931,8 @@ const fetchGeneratedAuditLogsFromSubmissions = async (limit: number): Promise<Au
 
   if (submissionsError) throw submissionsError;
 
-  const departmentMap = new Map((departments ?? []).map((d: { id: string; name: string }) => [d.id, d.name]));
-  const profileMap = new Map((profiles ?? []).map((p: { user_id: string; display_name: string | null }) => [p.user_id, p.display_name]));
+  const departmentMap = new Map<string, string>((departments ?? []).map((d: { id: string; name: string }) => [d.id, d.name]));
+  const profileMap = new Map<string, string | null>((profiles ?? []).map((p: { user_id: string; display_name: string | null }) => [p.user_id, p.display_name]));
 
   return ((submissions ?? []) as BedSubmission[]).map((row) => ({
     id: `generated-${row.id}`,
