@@ -857,32 +857,68 @@ export const writeAuditLog = async (entry: {
   record_date?: string | null;
   changes?: Record<string, { from?: unknown; to?: unknown }>;
 }) => {
-  if (entry.record_id) {
-    const recentWindow = new Date(Date.now() - 15_000).toISOString();
-    const changesJson = JSON.stringify(entry.changes ?? {});
-    const { data: existing, error: lookupError } = await db
-      .from("audit_logs")
-      .select("id,changes")
-      .eq("action", entry.action)
-      .eq("record_id", entry.record_id)
-      .gte("created_at", recentWindow)
-      .limit(1);
+  // Audit logging must never block the underlying user action. If the
+  // audit_logs table is missing from the schema cache or RLS blocks the
+  // insert, log a warning and continue — the database trigger on
+  // bed_submissions still captures the event server-side when present.
+  const isMissingTable = (err: unknown) => {
+    const msg = (err as { message?: string })?.message ?? "";
+    const code = (err as { code?: string })?.code ?? "";
+    return (
+      code === "PGRST205" ||
+      code === "42P01" ||
+      /schema cache/i.test(msg) ||
+      /Could not find the table/i.test(msg) ||
+      /relation .* does not exist/i.test(msg)
+    );
+  };
 
-    if (lookupError) throw lookupError;
-    if ((existing ?? []).some((row: { changes?: unknown }) => JSON.stringify(row.changes ?? {}) === changesJson)) return;
+  try {
+    if (entry.record_id) {
+      const recentWindow = new Date(Date.now() - 15_000).toISOString();
+      const changesJson = JSON.stringify(entry.changes ?? {});
+      const { data: existing, error: lookupError } = await db
+        .from("audit_logs")
+        .select("id,changes")
+        .eq("action", entry.action)
+        .eq("record_id", entry.record_id)
+        .gte("created_at", recentWindow)
+        .limit(1);
+
+      if (lookupError) {
+        if (isMissingTable(lookupError)) {
+          console.warn("[audit] audit_logs unavailable, skipping client-side log:", lookupError.message);
+          return;
+        }
+        throw lookupError;
+      }
+      if ((existing ?? []).some((row: { changes?: unknown }) => JSON.stringify(row.changes ?? {}) === changesJson)) return;
+    }
+
+    const { error } = await db.from("audit_logs").insert({
+      action: entry.action,
+      table_name: "bed_submissions",
+      record_id: entry.record_id ?? null,
+      user_id: entry.user_id,
+      user_name: entry.user_name,
+      department_name: entry.department_name ?? null,
+      record_date: entry.record_date ?? null,
+      changes: entry.changes ?? {},
+    });
+    if (error) {
+      if (isMissingTable(error)) {
+        console.warn("[audit] audit_logs unavailable, skipping client-side log:", error.message);
+        return;
+      }
+      throw error;
+    }
+  } catch (err) {
+    if (isMissingTable(err)) {
+      console.warn("[audit] audit_logs unavailable, skipping client-side log");
+      return;
+    }
+    throw err;
   }
-
-  const { error } = await db.from("audit_logs").insert({
-    action: entry.action,
-    table_name: "bed_submissions",
-    record_id: entry.record_id ?? null,
-    user_id: entry.user_id,
-    user_name: entry.user_name,
-    department_name: entry.department_name ?? null,
-    record_date: entry.record_date ?? null,
-    changes: entry.changes ?? {},
-  });
-  if (error) throw error;
 };
 
 export const fetchAuditLogs = async (limit = 500): Promise<AuditLogEntry[]> => {
