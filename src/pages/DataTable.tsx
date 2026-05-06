@@ -348,10 +348,24 @@ const DataTablePage = () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
+      const previousRow = rows.find((row) => row.id === deleteTarget.id) ?? null;
       await deleteBedSubmission(roles, deleteTarget.id);
+      const currentUserId = await getCurrentUserId();
+      if (previousRow && currentUserId) {
+        await writeAuditLog({
+          action: "DELETE",
+          record_id: previousRow.id,
+          user_id: currentUserId,
+          user_name: user?.user_metadata?.display_name ?? user?.email?.split("@")[0] ?? null,
+          department_name: departmentMap.get(previousRow.department_id) ?? null,
+          record_date: previousRow.submitted_on,
+          changes: diffBedSubmission(previousRow, {}),
+        });
+      }
       toast({ title: "Entry deleted", description: deleteTarget.label });
       setDeleteTarget(null);
       void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
+      void qc.invalidateQueries({ queryKey: ["audit_logs"] });
     } catch (error) {
       toast({
         title: "Failed to delete entry",
@@ -366,10 +380,24 @@ const DataTablePage = () => {
   const handleConfirmDeleteAll = async () => {
     setIsDeleting(true);
     try {
+      const rowsToDelete = rows.slice(0, 500);
       await deleteAllBedSubmissions(roles);
+      const currentUserId = await getCurrentUserId();
+      if (currentUserId) {
+        await Promise.all(rowsToDelete.map((row) => writeAuditLog({
+          action: "DELETE",
+          record_id: row.id,
+          user_id: currentUserId,
+          user_name: user?.user_metadata?.display_name ?? user?.email?.split("@")[0] ?? null,
+          department_name: departmentMap.get(row.department_id) ?? null,
+          record_date: row.submitted_on,
+          changes: diffBedSubmission(row, {}),
+        })));
+      }
       toast({ title: "All bed entries deleted" });
       setConfirmDeleteAll(false);
       void qc.invalidateQueries({ queryKey: ["bed_submissions_dashboard"] });
+      void qc.invalidateQueries({ queryKey: ["audit_logs"] });
     } catch (error) {
       toast({
         title: "Failed to delete entries",
