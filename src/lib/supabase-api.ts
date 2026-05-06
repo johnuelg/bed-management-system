@@ -892,6 +892,7 @@ export const writeAuditLog = async (entry: {
 
   const storeFallbackLog = () => {
     try {
+      if (typeof localStorage === "undefined") return;
       const existing = JSON.parse(localStorage.getItem(AUDIT_LOG_FALLBACK_KEY) ?? "[]") as AuditLogEntry[];
       const next = [payload, ...existing]
         .filter((row, index, all) => all.findIndex((candidate) => candidate.id === row.id) === index)
@@ -928,7 +929,8 @@ export const writeAuditLog = async (entry: {
       if ((existing ?? []).some((row: { changes?: unknown }) => JSON.stringify(row.changes ?? {}) === changesJson)) return;
     }
 
-    const { error } = await db.from("audit_logs").insert(payload);
+    const { id: _localId, ...insertPayload } = payload;
+    const { error } = await db.from("audit_logs").insert(insertPayload);
     if (error) {
       if (isAuditStorageUnavailable(error)) {
         storeFallbackLog();
@@ -975,6 +977,7 @@ const fetchGeneratedAuditLogsFromSubmissions = async (limit: number): Promise<Au
 
 const fetchFallbackAuditLogs = (): AuditLogEntry[] => {
   try {
+    if (typeof localStorage === "undefined") return [];
     const parsed = JSON.parse(localStorage.getItem(AUDIT_LOG_FALLBACK_KEY) ?? "[]");
     return Array.isArray(parsed) ? parsed as AuditLogEntry[] : [];
   } catch {
