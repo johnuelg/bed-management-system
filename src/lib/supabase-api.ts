@@ -929,7 +929,16 @@ export const writeAuditLog = async (entry: {
       if ((existing ?? []).some((row: { changes?: unknown }) => JSON.stringify(row.changes ?? {}) === changesJson)) return;
     }
 
-    const { id: _localId, ...insertPayload } = payload;
+    const insertPayload = {
+      action: payload.action,
+      table_name: payload.table_name,
+      record_id: payload.record_id,
+      user_id: payload.user_id,
+      user_name: payload.user_name,
+      department_name: payload.department_name,
+      record_date: payload.record_date,
+      changes: payload.changes,
+    };
     const { error } = await db.from("audit_logs").insert(insertPayload);
     if (error) {
       if (isAuditStorageUnavailable(error)) {
