@@ -983,8 +983,8 @@ const fetchFallbackAuditLogs = (): AuditLogEntry[] => {
 };
 
 export const fetchAuditLogs = async (limit = 500): Promise<AuditLogEntry[]> => {
-  const mergeWithFallback = async (logs: AuditLogEntry[]) => {
-    const generated = await fetchGeneratedAuditLogsFromSubmissions(limit);
+  const mergeWithFallback = async (logs: AuditLogEntry[], includeGeneratedAdds: boolean) => {
+    const generated = includeGeneratedAdds ? await fetchGeneratedAuditLogsFromSubmissions(limit) : [];
     const merged = [...fetchFallbackAuditLogs(), ...logs, ...generated]
       .filter((row, index, all) => all.findIndex((candidate) => candidate.id === row.id) === index)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -996,10 +996,10 @@ export const fetchAuditLogs = async (limit = 500): Promise<AuditLogEntry[]> => {
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error && isMissingSchemaTable(error)) return mergeWithFallback([]);
+  if (error && isMissingSchemaTable(error)) return mergeWithFallback([], true);
   if (error) throw error;
   const logs = (data ?? []) as AuditLogEntry[];
-  return mergeWithFallback(logs);
+  return mergeWithFallback(logs, logs.length === 0);
 };
 
 /**
