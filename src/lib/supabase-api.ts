@@ -28,6 +28,7 @@ const NAV_VISIBILITY_KEY = "nav_visibility";
 const ROLE_CATALOG_KEY = "role_catalog";
 const OCCUPANCY_BENCHMARK_KEY = "occupancy_benchmark";
 const DEPARTMENT_TOTAL_BEDS_KEY = "department_total_beds";
+const AUDIT_LOG_FALLBACK_KEY = "audit_logs_fallback";
 const DEFAULT_ROLE_CATALOG: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   dashboard: true,
@@ -107,6 +108,12 @@ const isMissingSchemaTable = (err: unknown) => {
     /Could not find the table/i.test(msg) ||
     /relation .* does not exist/i.test(msg)
   );
+};
+
+const isAuditStorageUnavailable = (err: unknown) => {
+  const msg = (err as { message?: string })?.message ?? "";
+  const code = (err as { code?: string })?.code ?? "";
+  return isMissingSchemaTable(err) || code === "42501" || /row-level security|permission denied/i.test(msg);
 };
 
 const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
