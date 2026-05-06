@@ -994,6 +994,20 @@ const fetchGeneratedAuditLogsFromSubmissions = async (limit: number): Promise<Au
   }));
 };
 
+const fetchPersistentFallbackAuditLogs = async (limit: number): Promise<AuditLogEntry[]> => {
+  const { data, error } = await db
+    .from("app_settings")
+    .select("setting_value")
+    .eq("setting_key", AUDIT_LOG_FALLBACK_KEY)
+    .maybeSingle();
+  if (error) {
+    console.warn("[audit] Unable to read persistent fallback logs:", error.message);
+    return [];
+  }
+  const logs = Array.isArray(data?.setting_value) ? data.setting_value as AuditLogEntry[] : [];
+  return logs.slice(0, limit);
+};
+
 const fetchFallbackAuditLogs = (): AuditLogEntry[] => {
   try {
     if (typeof localStorage === "undefined") return [];
@@ -1006,8 +1020,9 @@ const fetchFallbackAuditLogs = (): AuditLogEntry[] => {
 
 export const fetchAuditLogs = async (limit = 500): Promise<AuditLogEntry[]> => {
   const mergeWithFallback = async (logs: AuditLogEntry[], includeGeneratedAdds: boolean) => {
+    const persistentFallback = await fetchPersistentFallbackAuditLogs(limit);
     const generated = includeGeneratedAdds ? await fetchGeneratedAuditLogsFromSubmissions(limit) : [];
-    const merged = [...fetchFallbackAuditLogs(), ...logs, ...generated]
+    const merged = [...fetchFallbackAuditLogs(), ...persistentFallback, ...logs, ...generated]
       .filter((row, index, all) => all.findIndex((candidate) => candidate.id === row.id) === index)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return merged.slice(0, limit);
