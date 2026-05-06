@@ -890,7 +890,17 @@ export const writeAuditLog = async (entry: {
     created_at: new Date().toISOString(),
   };
 
-  const storeFallbackLog = () => {
+  const storeFallbackLog = async () => {
+    try {
+      const { error } = await supabase.functions.invoke("audit-log-fallback", {
+        body: { entry: payload },
+      });
+      if (!error) return;
+      console.warn("[audit] Persistent fallback unavailable, using local fallback:", error.message);
+    } catch (functionError) {
+      console.warn("[audit] Persistent fallback unavailable, using local fallback:", functionError);
+    }
+
     try {
       if (typeof localStorage === "undefined") return;
       const existing = JSON.parse(localStorage.getItem(AUDIT_LOG_FALLBACK_KEY) ?? "[]") as AuditLogEntry[];
@@ -920,7 +930,7 @@ export const writeAuditLog = async (entry: {
 
       if (lookupError) {
         if (isAuditStorageUnavailable(lookupError)) {
-          storeFallbackLog();
+          await storeFallbackLog();
           console.warn("[audit] audit_logs unavailable, stored fallback log:", lookupError.message);
           return;
         }
@@ -942,7 +952,7 @@ export const writeAuditLog = async (entry: {
     const { error } = await db.from("audit_logs").insert(insertPayload);
     if (error) {
       if (isAuditStorageUnavailable(error)) {
-        storeFallbackLog();
+        await storeFallbackLog();
         console.warn("[audit] audit_logs unavailable, stored fallback log:", error.message);
         return;
       }
@@ -950,7 +960,7 @@ export const writeAuditLog = async (entry: {
     }
   } catch (err) {
     if (isAuditStorageUnavailable(err)) {
-      storeFallbackLog();
+      await storeFallbackLog();
       console.warn("[audit] audit_logs unavailable, stored fallback log");
       return;
     }
