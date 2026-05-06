@@ -38,10 +38,13 @@ import { buildRowScope, evaluateNamedFormula, evaluateOccupancyRate } from "@/li
 import {
   deleteAllBedSubmissions,
   deleteBedSubmission,
+  diffBedSubmission,
   fetchDashboardSubmissions,
   fetchDepartments,
   fetchKpiFormulas,
   fetchOccupancyBenchmarkSettings,
+  getCurrentUserId,
+  writeAuditLog,
 } from "@/lib/supabase-api";
 import type { BedSubmission, OccupancyBenchmarkLevel } from "@/types/hospital";
 
@@ -130,7 +133,7 @@ const csvEscape = (value: unknown) => {
 
 const DataTablePage = () => {
   const qc = useQueryClient();
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const { toast } = useToast();
   const canDelete = hasAnyRole(roles, ["admin", "director"]);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
