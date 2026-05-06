@@ -973,16 +973,33 @@ const fetchGeneratedAuditLogsFromSubmissions = async (limit: number): Promise<Au
   }));
 };
 
+const fetchFallbackAuditLogs = (): AuditLogEntry[] => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(AUDIT_LOG_FALLBACK_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed as AuditLogEntry[] : [];
+  } catch {
+    return [];
+  }
+};
+
 export const fetchAuditLogs = async (limit = 500): Promise<AuditLogEntry[]> => {
+  const mergeWithFallback = async (logs: AuditLogEntry[]) => {
+    const generated = await fetchGeneratedAuditLogsFromSubmissions(limit);
+    const merged = [...fetchFallbackAuditLogs(), ...logs, ...generated]
+      .filter((row, index, all) => all.findIndex((candidate) => candidate.id === row.id) === index)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return merged.slice(0, limit);
+  };
+
   const { data, error } = await db
     .from("audit_logs")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error && isMissingSchemaTable(error)) return fetchGeneratedAuditLogsFromSubmissions(limit);
+  if (error && isMissingSchemaTable(error)) return mergeWithFallback([]);
   if (error) throw error;
   const logs = (data ?? []) as AuditLogEntry[];
-  return logs.length > 0 ? logs : fetchGeneratedAuditLogsFromSubmissions(limit);
+  return mergeWithFallback(logs);
 };
 
 /**
