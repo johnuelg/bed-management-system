@@ -877,10 +877,34 @@ export const writeAuditLog = async (entry: {
   record_date?: string | null;
   changes?: Record<string, { from?: unknown; to?: unknown }>;
 }) => {
-  // Audit logging must never block the underlying user action. If the
-  // audit_logs table is missing from the schema cache or RLS blocks the
-  // insert, log a warning and continue — the database trigger on
-  // bed_submissions still captures the event server-side when present.
+  const payload: AuditLogEntry = {
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+    action: entry.action,
+    table_name: "bed_submissions",
+    record_id: entry.record_id ?? null,
+    user_id: entry.user_id,
+    user_name: entry.user_name,
+    department_name: entry.department_name ?? null,
+    record_date: entry.record_date ?? null,
+    changes: entry.changes ?? {},
+    created_at: new Date().toISOString(),
+  };
+
+  const storeFallbackLog = () => {
+    try {
+      const existing = JSON.parse(localStorage.getItem(AUDIT_LOG_FALLBACK_KEY) ?? "[]") as AuditLogEntry[];
+      const next = [payload, ...existing]
+        .filter((row, index, all) => all.findIndex((candidate) => candidate.id === row.id) === index)
+        .slice(0, 500);
+      localStorage.setItem(AUDIT_LOG_FALLBACK_KEY, JSON.stringify(next));
+    } catch (storageError) {
+      console.warn("[audit] Unable to store local fallback log:", storageError);
+    }
+  };
+
+  // Audit logging must never block the underlying user action. If the live
+  // audit_logs table is missing/unavailable, keep a browser-local fallback so
+  // EDIT and DELETE actions still appear on the Audit Log page immediately.
   try {
     if (entry.record_id) {
       const recentWindow = new Date(Date.now() - 15_000).toISOString();
@@ -894,8 +918,9 @@ export const writeAuditLog = async (entry: {
         .limit(1);
 
       if (lookupError) {
-        if (isMissingSchemaTable(lookupError)) {
-          console.warn("[audit] audit_logs unavailable, skipping client-side log:", lookupError.message);
+        if (isAuditStorageUnavailable(lookupError)) {
+          storeFallbackLog();
+          console.warn("[audit] audit_logs unavailable, stored fallback log:", lookupError.message);
           return;
         }
         throw lookupError;
@@ -903,26 +928,19 @@ export const writeAuditLog = async (entry: {
       if ((existing ?? []).some((row: { changes?: unknown }) => JSON.stringify(row.changes ?? {}) === changesJson)) return;
     }
 
-    const { error } = await db.from("audit_logs").insert({
-      action: entry.action,
-      table_name: "bed_submissions",
-      record_id: entry.record_id ?? null,
-      user_id: entry.user_id,
-      user_name: entry.user_name,
-      department_name: entry.department_name ?? null,
-      record_date: entry.record_date ?? null,
-      changes: entry.changes ?? {},
-    });
+    const { error } = await db.from("audit_logs").insert(payload);
     if (error) {
-      if (isMissingSchemaTable(error)) {
-        console.warn("[audit] audit_logs unavailable, skipping client-side log:", error.message);
+      if (isAuditStorageUnavailable(error)) {
+        storeFallbackLog();
+        console.warn("[audit] audit_logs unavailable, stored fallback log:", error.message);
         return;
       }
       throw error;
     }
   } catch (err) {
-    if (isMissingSchemaTable(err)) {
-      console.warn("[audit] audit_logs unavailable, skipping client-side log");
+    if (isAuditStorageUnavailable(err)) {
+      storeFallbackLog();
+      console.warn("[audit] audit_logs unavailable, stored fallback log");
       return;
     }
     throw err;
