@@ -28,6 +28,7 @@ const NAV_VISIBILITY_KEY = "nav_visibility";
 const ROLE_CATALOG_KEY = "role_catalog";
 const OCCUPANCY_BENCHMARK_KEY = "occupancy_benchmark";
 const DEPARTMENT_TOTAL_BEDS_KEY = "department_total_beds";
+const AUDIT_LOG_FALLBACK_KEY = "audit_logs_fallback";
 const DEFAULT_ROLE_CATALOG: AppRole[] = ["admin", "director", "doctor", "nurse", "staff"];
 const DEFAULT_ROLE_MENU_VISIBILITY: RoleMenuVisibility = {
   dashboard: true,
@@ -107,6 +108,12 @@ const isMissingSchemaTable = (err: unknown) => {
     /Could not find the table/i.test(msg) ||
     /relation .* does not exist/i.test(msg)
   );
+};
+
+const isAuditStorageUnavailable = (err: unknown) => {
+  const msg = (err as { message?: string })?.message ?? "";
+  const code = (err as { code?: string })?.code ?? "";
+  return isMissingSchemaTable(err) || code === "42501" || /row-level security|permission denied/i.test(msg);
 };
 
 const normalizeRoleMenuVisibility = (value: unknown): RoleMenuVisibility => {
@@ -870,10 +877,45 @@ export const writeAuditLog = async (entry: {
   record_date?: string | null;
   changes?: Record<string, { from?: unknown; to?: unknown }>;
 }) => {
-  // Audit logging must never block the underlying user action. If the
-  // audit_logs table is missing from the schema cache or RLS blocks the
-  // insert, log a warning and continue — the database trigger on
-  // bed_submissions still captures the event server-side when present.
+  const payload: AuditLogEntry = {
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+    action: entry.action,
+    table_name: "bed_submissions",
+    record_id: entry.record_id ?? null,
+    user_id: entry.user_id,
+    user_name: entry.user_name,
+    department_name: entry.department_name ?? null,
+    record_date: entry.record_date ?? null,
+    changes: entry.changes ?? {},
+    created_at: new Date().toISOString(),
+  };
+
+  const storeFallbackLog = async () => {
+    try {
+      const { error } = await supabase.functions.invoke("audit-log-fallback", {
+        body: { entry: payload },
+      });
+      if (!error) return;
+      console.warn("[audit] Persistent fallback unavailable, using local fallback:", error.message);
+    } catch (functionError) {
+      console.warn("[audit] Persistent fallback unavailable, using local fallback:", functionError);
+    }
+
+    try {
+      if (typeof localStorage === "undefined") return;
+      const existing = JSON.parse(localStorage.getItem(AUDIT_LOG_FALLBACK_KEY) ?? "[]") as AuditLogEntry[];
+      const next = [payload, ...existing]
+        .filter((row, index, all) => all.findIndex((candidate) => candidate.id === row.id) === index)
+        .slice(0, 500);
+      localStorage.setItem(AUDIT_LOG_FALLBACK_KEY, JSON.stringify(next));
+    } catch (storageError) {
+      console.warn("[audit] Unable to store local fallback log:", storageError);
+    }
+  };
+
+  // Audit logging must never block the underlying user action. If the live
+  // audit_logs table is missing/unavailable, keep a browser-local fallback so
+  // EDIT and DELETE actions still appear on the Audit Log page immediately.
   try {
     if (entry.record_id) {
       const recentWindow = new Date(Date.now() - 15_000).toISOString();
@@ -887,8 +929,9 @@ export const writeAuditLog = async (entry: {
         .limit(1);
 
       if (lookupError) {
-        if (isMissingSchemaTable(lookupError)) {
-          console.warn("[audit] audit_logs unavailable, skipping client-side log:", lookupError.message);
+        if (isAuditStorageUnavailable(lookupError)) {
+          await storeFallbackLog();
+          console.warn("[audit] audit_logs unavailable, stored fallback log:", lookupError.message);
           return;
         }
         throw lookupError;
@@ -896,26 +939,29 @@ export const writeAuditLog = async (entry: {
       if ((existing ?? []).some((row: { changes?: unknown }) => JSON.stringify(row.changes ?? {}) === changesJson)) return;
     }
 
-    const { error } = await db.from("audit_logs").insert({
-      action: entry.action,
-      table_name: "bed_submissions",
-      record_id: entry.record_id ?? null,
-      user_id: entry.user_id,
-      user_name: entry.user_name,
-      department_name: entry.department_name ?? null,
-      record_date: entry.record_date ?? null,
-      changes: entry.changes ?? {},
-    });
+    const insertPayload = {
+      action: payload.action,
+      table_name: payload.table_name,
+      record_id: payload.record_id,
+      user_id: payload.user_id,
+      user_name: payload.user_name,
+      department_name: payload.department_name,
+      record_date: payload.record_date,
+      changes: payload.changes,
+    };
+    const { error } = await db.from("audit_logs").insert(insertPayload);
     if (error) {
-      if (isMissingSchemaTable(error)) {
-        console.warn("[audit] audit_logs unavailable, skipping client-side log:", error.message);
+      if (isAuditStorageUnavailable(error)) {
+        await storeFallbackLog();
+        console.warn("[audit] audit_logs unavailable, stored fallback log:", error.message);
         return;
       }
       throw error;
     }
   } catch (err) {
-    if (isMissingSchemaTable(err)) {
-      console.warn("[audit] audit_logs unavailable, skipping client-side log");
+    if (isAuditStorageUnavailable(err)) {
+      await storeFallbackLog();
+      console.warn("[audit] audit_logs unavailable, stored fallback log");
       return;
     }
     throw err;
@@ -948,16 +994,49 @@ const fetchGeneratedAuditLogsFromSubmissions = async (limit: number): Promise<Au
   }));
 };
 
+const fetchPersistentFallbackAuditLogs = async (limit: number): Promise<AuditLogEntry[]> => {
+  const { data, error } = await db
+    .from("app_settings")
+    .select("setting_value")
+    .eq("setting_key", AUDIT_LOG_FALLBACK_KEY)
+    .maybeSingle();
+  if (error) {
+    console.warn("[audit] Unable to read persistent fallback logs:", error.message);
+    return [];
+  }
+  const logs = Array.isArray(data?.setting_value) ? data.setting_value as AuditLogEntry[] : [];
+  return logs.slice(0, limit);
+};
+
+const fetchFallbackAuditLogs = (): AuditLogEntry[] => {
+  try {
+    if (typeof localStorage === "undefined") return [];
+    const parsed = JSON.parse(localStorage.getItem(AUDIT_LOG_FALLBACK_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed as AuditLogEntry[] : [];
+  } catch {
+    return [];
+  }
+};
+
 export const fetchAuditLogs = async (limit = 500): Promise<AuditLogEntry[]> => {
+  const mergeWithFallback = async (logs: AuditLogEntry[], includeGeneratedAdds: boolean) => {
+    const persistentFallback = await fetchPersistentFallbackAuditLogs(limit);
+    const generated = includeGeneratedAdds ? await fetchGeneratedAuditLogsFromSubmissions(limit) : [];
+    const merged = [...fetchFallbackAuditLogs(), ...persistentFallback, ...logs, ...generated]
+      .filter((row, index, all) => all.findIndex((candidate) => candidate.id === row.id) === index)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return merged.slice(0, limit);
+  };
+
   const { data, error } = await db
     .from("audit_logs")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error && isMissingSchemaTable(error)) return fetchGeneratedAuditLogsFromSubmissions(limit);
+  if (error && isMissingSchemaTable(error)) return mergeWithFallback([], true);
   if (error) throw error;
   const logs = (data ?? []) as AuditLogEntry[];
-  return logs.length > 0 ? logs : fetchGeneratedAuditLogsFromSubmissions(limit);
+  return mergeWithFallback(logs, logs.length === 0);
 };
 
 /**
