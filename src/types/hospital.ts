@@ -88,6 +88,7 @@ export type RoleMenuVisibility = {
   audit_log?: boolean;
   bed_map?: boolean;
   reports_analytics?: boolean;
+  chat_assistant?: boolean;
 };
 
 export type ClinicalRole = "doctor" | "nurse" | "staff";
