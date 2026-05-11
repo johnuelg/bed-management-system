@@ -21,6 +21,7 @@ import UsersPage from "./pages/Users";
 import SettingsPage from "./pages/Settings";
 import AuditLogPage from "./pages/AuditLog";
 import ReportsAnalyticsPage from "./pages/ReportsAnalytics";
+import ChatAssistantPage from "./pages/ChatAssistant";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,10 @@ const App = () => (
                 </Route>
                 <Route element={<NavVisibilityGuard settingKey="reports_analytics" />}>
                   <Route path="/reports-analytics" element={<ReportsAnalyticsPage />} />
+                </Route>
+                <Route element={<NavVisibilityGuard settingKey="chat_assistant" />}>
+                  <Route path="/chat-assistant" element={<ChatAssistantPage />} />
+                  <Route path="/chat-assistant/:threadId" element={<ChatAssistantPage />} />
                 </Route>
 
                 <Route element={<RoleGuard allow={["admin"]} />}>
